@@ -1,0 +1,126 @@
+####################################################
+#           SHELLY ENERGY MONITORING PACKAGE       #
+#  Integrates 3-phase power, calculates net logic, #
+#  and tracks utility usage (Daily/Monthly).       #
+####################################################
+
+# Shelly 3EM templates for 3-phase Net Import, Export and Consumption (if you have solar generation details)
+# This uses the Shelly instantaneous power sensors to achieve the best possible accuracy.
+# Shelly Sensors are:
+#   sensor.shellypro3em_SHELLY_ID_phase_a_active_power,
+#   sensor.shellypro3em_SHELLY_ID_phase_b_active_power,
+#   sensor.shellypro3em_SHELLY_ID_phase_c_active_power for the three phases.
+# Solar generation in W is used to calculate consumption via sensor.power_solargen
+# V1.0 Initial release by Uksa007
+# V1.1 Add float(0) to Consumption template to stop log warnings.
+# V1.2 Add Friendly names to Utility Meter sensors.
+# V1.3 Remove negative spikes from power consumption due to different update timing of solar sensor.
+# V1.4 Change round: 2 for small value users.
+# M1.0 Set round to 4, integrate PV-Summation_Delivered to be used with sensor.power_solargen, add float for each phase (otherwise error).
+# M1.1 Introduce performance and accuracy enhancements:
+#       - Use of local 'set' variables to minimize repeated state lookups and improve performance.
+#       - Accurate 'availability_template' using float(none) and is_number validation.
+#       - Introduce a tolerance threshold (3W) in power_consumption logic to suppress jitter/noise when solar ≈ export.
+#       - Improve clarity and robustness of export/consumption calculation by avoiding undefined states and false negatives.
+#       - Remove early rounding in all sensors; final values are left raw to preserve precision for integration processing.
+# M1.2 Remove integration of PV-Summation_Delivred and use shellypmminig3_SHELLY_PM_ID_power instead
+# M1.3 Make tolerance dynamic but 1,5W at minimum
+# M1.4 Make tolerance less dynamic by applying a fixed 2W tolerance but the tolerance only applies when solar generation is < 100W
+#      - Please make sure if solar_val is being reported as positive or negative value and adapt sensor "power consumption" accordingly
+
+# 1. Template Sensors (Calculations)
+template:
+  - sensor:
+      # Calculates total power import (sum of 3 phases, only if active_power is > 0)
+      - name: "Power Import"
+        unit_of_measurement: "W"
+        device_class: power
+        state_class: measurement
+        state: >-
+          {% set a = states('sensor.shellypro3em_SHELLY_ID_phase_a_active_power') | float(0) %}
+          {% set b = states('sensor.shellypro3em_SHELLY_ID_phase_b_active_power') | float(0) %}
+          {% set c = states('sensor.shellypro3em_SHELLY_ID_phase_c_active_power') | float(0) %}
+          {% set total = a + b + c %}
+          {{ total if total > 0 else 0 }}
+        availability: >-
+          {% set sensors = [
+            states('sensor.shellypro3em_SHELLY_ID_phase_a_active_power') | float(none),
+            states('sensor.shellypro3em_SHELLY_ID_phase_b_active_power') | float(none),
+            states('sensor.shellypro3em_SHELLY_ID_phase_c_active_power') | float(none)
+          ] %}
+          {{ sensors | select('is_number') | list | count == 3 }}
+
+      # Calculates total power export (sum of 3 phases, only if active_power is < 0)
+      - name: "Power Export"
+        unit_of_measurement: "W"
+        device_class: power
+        state_class: measurement
+        state: >-
+          {% set a = states('sensor.shellypro3em_SHELLY_ID_phase_a_active_power') | float(0) %}
+          {% set b = states('sensor.shellypro3em_SHELLY_ID_phase_b_active_power') | float(0) %}
+          {% set c = states('sensor.shellypro3em_SHELLY_ID_phase_c_active_power') | float(0) %}
+          {% set total = a + b + c %}
+          {{ (total * -1) if total < 0 else 0 }}
+        availability: >-
+          {% set sensors = [
+            states('sensor.shellypro3em_SHELLY_ID_phase_a_active_power') | float(none),
+            states('sensor.shellypro3em_SHELLY_ID_phase_b_active_power') | float(none),
+            states('sensor.shellypro3em_SHELLY_ID_phase_c_active_power') | float(none)
+          ] %}
+          {{ sensors | select('is_number') | list | count == 3 }}
+
+
+# 2. Integration Sensors (W -> Wh)
+sensor:
+  - platform: integration
+    source: sensor.power_import
+    name: energy_import_sum
+    unit_prefix: k
+    round: 4
+    method: left
+
+  - platform: integration
+    source: sensor.power_export
+    name: energy_export_sum
+    unit_prefix: k
+    round: 4
+    method: left
+
+  - platform: integration
+    source: sensor.power_consumption
+    name: energy_consumption_sum
+    unit_prefix: k
+    round: 4
+    method: left
+
+# 3. Utility Meters (Tracking)
+utility_meter:
+  energy_import_daily:
+    source: sensor.energy_import_sum
+    name: Energy Import Daily
+    cycle: daily
+
+  energy_import_monthly:
+    source: sensor.energy_import_sum
+    name: Energy Import Monthly
+    cycle: monthly
+
+  energy_export_daily:
+    source: sensor.energy_export_sum
+    name: Energy Export Daily
+    cycle: daily
+
+  energy_export_monthly:
+    source: sensor.energy_export_sum
+    name: Energy Export Monthly
+    cycle: monthly
+
+  energy_consumption_daily:
+    source: sensor.energy_consumption_sum
+    name: Energy Consumption Daily
+    cycle: daily
+
+  energy_consumption_monthly:
+    source: sensor.energy_consumption_sum
+    name: Energy Consumption Monthly
+    cycle: monthly
