@@ -75,5 +75,7 @@ HUB2_SERIAL_NUMBER: Serial number of the 2nd SolarFlow Hub.
 BAT2_SERIAL_NUMBER: Serial number of the battery on the 2nd Hub.
 
 HUB2_IP_ADDRESS: Local IP address of the 2nd Hub.
+
 shellypro3em_SHELLY_ID: Unique ID of the Shelly 3EM (the part following shellypro3em_ in the entity ID).
+
 notify.YOUR_TELEGRAM_SERVICE: Name of the notification service (Telegram, mobile app, etc.).
