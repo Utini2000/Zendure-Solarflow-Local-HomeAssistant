@@ -811,4 +811,209 @@
 # 5. RETAINED: Smart Date Reset (on full charge), Dynamic Scaling, Smart REST.
 #    (No writeFlash parameter included).
 #
+# CHANGELOG V29.0 (Intelligent Protection & Hardening):
+# 1. DYNAMIC HYSTERESIS: When in Bypass Mode (Low Battery), the 'min_change'
+#    threshold increases from 10W to 50W. This drastically reduces flash writes
+#    during cloudy days when the battery is idle/protecting.
+# 2. STATE MACHINE ISOLATION: The "Reset to 0W" logic now strictly checks the
+#    trigger.entity_id. Unit 1 ending calibration will NEVER reset Unit 2.
+# 3. SMART DATE RESET: 'last_full_charge' is updated whenever battery hits 99%,
+#    regardless of calibration mode.
+# 4. SENSOR STABILITY: 'SolarFlow System Battery Level' uses 'availability'
+#    templating to prevent ValueError logs.
+# 5. MEMORY PROTECTION: 'is_number()' check added to memory sync automation.
+# CHANGELOG V30.0:
+# 1. EMERGENCY STOP: Added solar trigger (>200W) to stop grid charging.
+# 2. MIN_SOC FIX: Reduced hardware min_soc from 50 to 5.
+# 3. HYBRID LOGIC: Dynamic switching between "Zen Mode" and "Sniper Mode".
+# CHANGES V32.1:
+# - Loop-Time: 5 Seconds (Realtime-Response).
+# - Protocol: Pure MQTT (No HTTP/Rest).
+# - Logic: Removed "Zen-Mode" delay (Bypass follows Solar instantly).
+# - Settings: Tighter Hysteresis (10W) & Grid Bias (10W) in Season Manager.
+# CRITICAL FIXES V33:
+# - Fix: AC-Mode switch-back logic now uses internal sentinel (not sensor value).
+# - Fix: Forces OutputLimit to 0 when entering Charge/Calibration mode.
+# - Fix: SmartMode is re-applied when device comes back online.
+# - Fix: Anti-Drift ignores periods where device is in Charge Mode (-2).
+# TUNING V33:
+# - Speed: Max Step Up increased to 800W (Instant Response).
+# - Logic: Automation mode changed to 'restart' for realtime handling.
+# - MQTT: Added QoS: 1 for reliable command delivery.
+# CHANGES V33.1:
+# - REMOVED: Artificial Ramp-Up logic (Direct Target Calculation).
+# - REMOVED: Delays between MQTT commands (Parallel Execution).
+# - FIXED: AC-Mode switch-back using internal sentinel (-2).
+# - FIXED: OutputLimit forced to 0 during Charge/Calib modes.
+# - TUNED: Automation mode 'restart' for instant response.
+# MAJOR FIXES V34:
+# - CALIBRATION: Timer resets on ANY 100% charge (solar or forced).
+# - LOOP: Changed to 'mode: single' to prevent race conditions during load spikes.
+# - LOGIC: Hardened Sentinel (-2) clearing when switching back to Normal Mode.
+# - SAFETY: Auto-Emergency trigger protected against 'unavailable' sensors.
+# - BOOT: State Machine now checks status on 'homeassistant start'.
+# - CLEANUP: Removed deprecated 'default_entity_id', increased Watchdog to 300s.
+# CHANGES V36.0:
+# - LOGIC: Dynamic Hysteresis (5W Sport / 20W Zen-Mode) to save hardware.
+# - SAFETY: Ghost Load Protection (Offline units reduce available global power).
+# - SAFETY: Emergency Charge now requires 10 min stable low-solar condition.
+# - SAFETY: Voltage Sag Calibration only triggers between 10:00 - 15:00.
+# - STABILITY: Restored 'default_entity_id' for critical sensors (Reinstall-safe).
+# - SYNTAX: Converted all 'if' conditions to valid list format.
+#
+# CHANGELOG V27.40 (Logic Isolation & Hardening):
+# 1. STATE MACHINE FIX: Separated the "Reset to 0W" logic. Unit 1 completing
+#    calibration no longer forces Unit 2 to 0W. Each unit checks its own flags.
+# 2. DYNAMIC SCALING: The final safety clamp now scales output to the configured
+#    'max_output' slider value (e.g. 600W) instead of hardcoded 800W.
+# 3. ID HARDENING: Added 'default_entity_id' to Watchdog sensors to prevent ID
+#    shifts. Template sensors now return 'unavailable' instead of '0' on error.
+# 4. ROBUSTNESS: Memory Sync Automation checks for valid numbers before writing.
+#    Retained V27.39 features (Smart REST Check, 4s Timeout, Seq. Calibration).
+#
+# CHANGELOG V27.41 (True Dual Mode & Smart Reset):
+# 1. TRUE DUAL MODE: Removed calibration checks from Control Loop conditions.
+#    The loop now calculates for both, but forces 0 capacity for calibrating units.
+#    Commands are only sent to non-calibrating units.
+# 2. SMART DATE RESET: 'last_full_charge' is now updated whenever battery hits
+#    >99% for 5 mins (Solar or Manual), preventing unnecessary scheduled calibs.
+# 3. STATE MACHINE FIX: "Reset to 0W" triggers are now entity-specific.
+#    Unit 1 finishing calibration will NOT reset Unit 2.
+# 4. RETAINED: All hardening from V27.40 (Dynamic Scaling, Smart REST 200 OK,
+#    4s Timeout, Robust Sensors).
+#
+# CHANGELOG V28.0 (Logic Hardening & Bugfixes):
+# 1. STATE MACHINE ISOLATION: The "Reset to 0W" logic now strictly checks the
+#    trigger.entity_id. Unit 1 ending calibration will NEVER reset Unit 2.
+# 2. SENSOR STABILITY: 'SolarFlow System Battery Level' now uses 'availability'
+#    templating to prevent ValueError logs when data is missing.
+# 3. MEMORY PROTECTION: Added 'is_number()' check to memory sync automation to
+#    prevent learning '0' during brief sensor unavailability.
+# 4. CODE CLEANUP: Anti-Drift Watchdog refactored to use 'choose' instead of
+#    templated target IDs for better stability.
+# 5. RETAINED: Smart Date Reset (on full charge), Dynamic Scaling, Smart REST.
+#    (No writeFlash parameter included).
+#
+# CHANGELOG V29.0 (Intelligent Protection & Hardening):
+# 1. DYNAMIC HYSTERESIS: When in Bypass Mode (Low Battery), the 'min_change'
+#    threshold increases from 10W to 50W. This drastically reduces flash writes
+#    during cloudy days when the battery is idle/protecting.
+# 2. STATE MACHINE ISOLATION: The "Reset to 0W" logic now strictly checks the
+#    trigger.entity_id. Unit 1 ending calibration will NEVER reset Unit 2.
+# 3. SMART DATE RESET: 'last_full_charge' is updated whenever battery hits 99%,
+#    regardless of calibration mode.
+# 4. SENSOR STABILITY: 'SolarFlow System Battery Level' uses 'availability'
+#    templating to prevent ValueError logs.
+# 5. MEMORY PROTECTION: 'is_number()' check added to memory sync automation.
+#
+# CHANGELOG V30.0:
+# 1. EMERGENCY STOP: Added solar trigger (>200W) to stop grid charging.
+# 2. MIN_SOC FIX: Reduced hardware min_soc from 50 to 5.
+# 3. HYBRID LOGIC: Dynamic switching between "Zen Mode" and "Sniper Mode".
+#
+# CHANGES V32.1:
+# - Loop-Time: 5 Seconds (Realtime-Response).
+# - Protocol: Pure MQTT (No HTTP/Rest).
+# - Logic: Removed "Zen-Mode" delay (Bypass follows Solar instantly).
+# - Settings: Tighter Hysteresis (10W) & Grid Bias (10W) in Season Manager.
+#
+# CRITICAL FIXES V33:
+# - Fix: AC-Mode switch-back logic now uses internal sentinel (not sensor value).
+# - Fix: Forces OutputLimit to 0 when entering Charge/Calibration mode.
+# - Fix: SmartMode is re-applied when device comes back online.
+# - Fix: Anti-Drift ignores periods where device is in Charge Mode (-2).
+#
+# TUNING V33:
+# - Speed: Max Step Up increased to 800W (Instant Response).
+# - Logic: Automation mode changed to 'restart' for realtime handling.
+# - MQTT: Added QoS: 1 for reliable command delivery.
+#
+# CHANGES V33.1:
+# - REMOVED: Artificial Ramp-Up logic (Direct Target Calculation).
+# - REMOVED: Delays between MQTT commands (Parallel Execution).
+# - FIXED: AC-Mode switch-back using internal sentinel (-2).
+# - FIXED: OutputLimit forced to 0 during Charge/Calib modes.
+# - TUNED: Automation mode 'restart' for instant response.
+#
+# MAJOR FIXES V34:
+# - CALIBRATION: Timer resets on ANY 100% charge (solar or forced).
+# - LOOP: Changed to 'mode: single' to prevent race conditions during load spikes.
+# - LOGIC: Hardened Sentinel (-2) clearing when switching back to Normal Mode.
+# - SAFETY: Auto-Emergency trigger protected against 'unavailable' sensors.
+# - BOOT: State Machine now checks status on 'homeassistant start'.
+# - CLEANUP: Removed deprecated 'default_entity_id', increased Watchdog to 300s.
+#
+# CHANGES V36.0:
+# - LOGIC: Dynamic Hysteresis (5W Sport / 20W Zen-Mode) to save hardware.
+# - SAFETY: Ghost Load Protection (Offline units reduce available global power).
+# - SAFETY: Emergency Charge now requires 10 min stable low-solar condition.
+# - SAFETY: Voltage Sag Calibration only triggers between 10:00 - 15:00.
+# - STABILITY: Restored 'default_entity_id' for critical sensors (Reinstall-safe).
+# - SYNTAX: Converted all 'if' conditions to valid list format.
+#
+# CHANGES V37.0:
+# - WATCHDOG: Sensors now report REAL payload (e.g. "FAULT") instead of fake "OK".
+# - STABILITY: Anti-Drift Automation set to 'queued' to prevent overlapping writes.
+# - LOGIC: Emergency Stop trigger (>200W Solar) increased to 5 min delay.
+# - SEASON: Calibration interval is now dynamic (14d Summer / 30d Winter).
+# - BASE: Based on V36.1 (Bulletproof ID-Locking, Ghost Protection, List-Syntax).
+#
+## CHANGES V38.0:
+# - MATH FIX: 'target_clamped' now correctly references 'global_max' to avoid
+#   double-subtraction of ghost loads.
+# - SCALING FIX: Safety scaling now only throttles ONLINE units, respecting
+#   that offline units cannot be controlled (Ghost Load preserved).
+# - SAFETY: 'Auto-Off' only resets internal memory to 0 if the unit is actually
+#   ONLINE. Prevents losing track of potential output from offline units.
+# - LOGIC: Control Loop now triggers on Bypass ON and OFF (immediate reaction).
+# - BASE: Based on V37.1 (Fixed 14d Calib, Real Watchdog, Queued Drift).
+#
+# CHANGES V39.0:
+# - PROTOCOL FIX: Adapted to confirmed MQTT Explorer data:
+#     -> acMode is 'select' (Payloads: "Input mode" / "Output mode").
+#     -> smartMode is 'switch' (Payload: "ON").
+# - MATH FIX: 'target_clamped' references 'global_max' (Ghost Load Logic Fix).
+# - SCALING: Scales only ACTIVE units to fit remaining capacity.
+# - LOGIC: 
+#     -> Spillover disabled if unit is busy/calibrating.
+#     -> 'min_change' slider used for Sport (x1) and Zen (x4).
+#     -> Emergency Stop trigger added (2 min stable).
+#     -> Auto-Off memory reset protected (only if online).
+# - SYNTAX: Modernized to 'triggers:' list format.
+#
+# CHANGES V40.0:
+# - SAFETY GATE: Loop now triggers IMMEDIATELY if Total Output > Global Max,
+#   ignoring hysteresis. Prevents illegal output during ghost-load scenarios.
+# - MATH PERFECTION: Clean separation of 'target_total' vs 'target_online'.
+#   Ghost loads are subtracted from the target, ensuring online units only
+#   fill the remaining gap up to global_max.
+# - ROBUSTNESS: 
+#     -> 's1_ok' now blacklists 'FAULT'/'ERROR' explicitly.
+#     -> Watchdog timing tightened (120s expire + 3min trigger = 5min total).
+#     -> Input Numbers now have explicit 'step' to satisfy HA 2026 checks.
+#     -> Numeric payloads quoted (e.g., payload: "0").
+# - LOGIC: Spillover disabled if unit is busy. Emergency Stop Trigger bound properly.
+#
+# CHANGES V41.0:
+# - ANTI-SPAM: Loop only triggers on "Overload" if the unit can actually reduce
+#   its output (base > final). Prevents endless "0W" commands during ghost loads.
+# - SAFETY RECONNECT: Units coming online while Auto-Mode is OFF immediately
+#   receive "Output: 0" and "Mode: Output". Prevents unmanaged discharge.
+# - FULL RESET: Turning Auto-Mode OFF now clears all internal flags (Emergency,
+#   Calib) and resets acMode to Output, ensuring a clean state.
+# - EMERGENCY LOGIC: Stop condition now strictly bound to stable triggers
+#   (5min Solar or Battery Full). Periodic checks cannot accidentally stop charge.
+# - SYNTAX: Strict numeric casting |int(0) and list-based 'if' conditions.
+#
+# CHANGES V42.0:
+# - EMERGENCY LOGIC: Stop condition changed to "System Minimum". Charging stops
+#   only when ALL available units are above the threshold. Prevents early cut-off.
+# - MEMORY GUARD: Startup-Sync Automation respects Sentinel (-2). It will NOT
+#   overwrite internal memory if the unit is currently in Charge/Calib mode.
+# - SAFETY RECONNECT: "Auto-Off" reconnect logic now explicitly resets internal
+#   memory to 0, preventing ghost-load tracking from previous sessions.
+# - CLEANUP: Removed 'state_class' and 'expire_after' from setting sensors
+#   (OutputLimit, MinSoC) to keep database clean and prevent false availability.
+# - BASE: Based on V41.0 (Bulletproof Anti-Spam & Protocol).
+#
 ################################################################################
