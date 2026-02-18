@@ -23,7 +23,7 @@
 #       - Introduce a tolerance threshold (3W) in power_consumption logic to suppress jitter/noise when solar ≈ export.
 #       - Improve clarity and robustness of export/consumption calculation by avoiding undefined states and false negatives.
 #       - Remove early rounding in all sensors; final values are left raw to preserve precision for integration processing.
-# M1.2 Remove integration of PV-Summation_Delivred and use shellypmminig3_SHELLY_PM_ID_power instead
+# M1.2 Remove integration of PV-Summation_Delivred and use shellypmminig3_SHELLY_ID_power instead
 # M1.3 Make tolerance dynamic but 1,5W at minimum
 # M1.4 Make tolerance less dynamic by applying a fixed 2W tolerance but the tolerance only applies when solar generation is < 100W
 #      - Please make sure if solar_val is being reported as positive or negative value and adapt sensor "power consumption" accordingly
@@ -68,6 +68,46 @@ template:
             states('sensor.shellypro3em_SHELLY_ID_phase_c_active_power') | float(none)
           ] %}
           {{ sensors | select('is_number') | list | count == 3 }}
+
+      # Calculates real power consumption including solar generation and export
+      # Sets a tolerance to try and mitgitate any sensor noise / lags / jitters
+      # Make solar_val a positive number (the shelly will report the PV power as negative value)
+#      - name: "Power Consumption"
+#        unit_of_measurement: "W"
+#        device_class: power
+#        state_class: measurement
+#        state: >-
+#          {% set import_val = states('sensor.power_import') | float(0) %}
+#          {% set export_val = states('sensor.power_export') | float(0) %}
+#          {% set solar_val = (states('sensor.solarflow_system_total_output') | float(0)) * -1 %}
+#          {% set delta = solar_val - export_val %}
+#          {% set tolerance = 2.0 if solar_val < 100 else 0 %}
+#          {% if delta < -tolerance %}
+#            {{ import_val + solar_val }}
+#          {% elif delta > tolerance %}
+#            {{ delta }}
+#          {% elif abs(delta) <= tolerance %}
+#            {{ 0 }}
+#          {% else %}
+#            {{ import_val + solar_val }}
+#          {% endif %}
+          
+      - name: "Power Consumption"
+        unique_id: power_consumption
+        unit_of_measurement: "W"
+        device_class: power
+        state_class: measurement
+        availability: >
+          {{ is_number(states('sensor.shellypro3em_SHELLY_ID_total_active_power')) }}
+        state: >-
+          {# Netz: Shelly Total (Positiv=Bezug, Negativ=Einspeisung) #}
+          {% set grid = states('sensor.shellypro3em_SHELLY_ID_total_active_power') | float(0) %}
+          {# Solar: Was beide SolarFlows ins Haus schicken #}
+          {% set solar = states('sensor.solarflow_system_total_output') | float(0) %}
+          {# Berechnung: Netz + Solar = Das was im Haus "verschwindet" #}
+          {% set cons = grid + solar %}
+          {# Ergebnis: Mindestens 0 (keine negativen Werte bei Messfehlern) #}
+          {{ [cons, 0] | max | round(0) }}
 
 
 # 2. Integration Sensors (W -> Wh)
