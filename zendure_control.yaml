@@ -1,7 +1,29 @@
 ################################################################################
-#                   ZENDURE SOLARFLOW CONTROL PACKAGE (V45.0)                  #
-#             EDITION: REFINED LOGIC (RECONCILE & EMERGENCY FIXES)             #
+#                   ZENDURE SOLARFLOW CONTROL PACKAGE (V69.0)                  #
+#             EDITION: THE HEARTBEAT (FORCE UPDATE & TRUE FRESHNESS)           #
 ################################################################################
+#
+# DESCRIPTION:
+# Advanced local control for Zendure SolarFlow with Shelly 3EM.
+# Features strict validation, safe math, and separate state/loop logic.
+#
+# REQUIREMENTS:
+# - Zendure Hyper 2000 / SolarFlow 800 Pro (HTTP API enabled)
+# - Shelly Pro 3EM (Grid measurement)
+# - Integration "Forecast.Solar"
+#
+# STRATEGY (Managed by Logic Manager):
+# - WINTER: Stop 20% | Emerg Start 10% -> Charge to 15% (300W Soft)
+# - SUMMER: Stop 10% | Emerg Start 7%  -> Charge to 10% (300W Soft)
+# - ALWAYS: Hardware Limit (minSoc) fixed at 5% (Panic Line).
+# - ALWAYS: Soft Start (<12% SoC) limits Power to 300W.
+# - SAFETY: Heat Protection Bypass starts at 45°C (was 55°C).
+#
+# NETWORK STABILITY:
+# - Polling: 15s | Timeout: 30s | No forced updates (Anti-DDoS).
+
+# Complete Changelog:
+# https://github.com/Utini2000/Zendure-Solarflow-Local-HomeAssistant/blob/main/Changelog
 
 
 # ==============================================================================
@@ -44,13 +66,13 @@ input_number:
   zendure_last_sent_1:
     name: "System: Letzter Wert Unit 1"
     min: -2
-    max: 1200
+    max: 800
     step: 1
     mode: box
   zendure_last_sent_2:
     name: "System: Letzter Wert Unit 2"
     min: -2
-    max: 1200
+    max: 800
     step: 1
     mode: box
   zendure_conf_max_output:
@@ -97,7 +119,7 @@ input_number:
     unit_of_measurement: "W"
     
   zendure_conf_soc_off:
-    name: "SoC Limit: Not-Aus (Software)"
+    name: "SoC Limit: Batterie-Schutz (PV only)"
     min: 0
     max: 30
     step: 1
@@ -116,12 +138,14 @@ input_number:
     max: 50
     step: 1
     initial: 15
+    unit_of_measurement: "%"
   zendure_conf_soc_emerg_stop:
     name: "SoC Limit: Stopp Not-Ladung"
     min: 0
     max: 90
     step: 1
-    initial: 20
+    initial: 25 # V56: Winter Safe Default
+    unit_of_measurement: "%"
   zendure_conf_calib_days:
     name: "Kalibrierung: Intervall"
     min: 1
@@ -174,7 +198,6 @@ mqtt:
       state_topic: "Zendure/number/HUB1_SERIAL_NUMBER/outputLimit"
       unit_of_measurement: "W"
       device_class: power
-      state_class: measurement
       entity_category: diagnostic
 
     # Feedback Sensors
@@ -183,23 +206,26 @@ mqtt:
       default_entity_id: sensor.solarflow_1_setting_minsoc
       state_topic: "Zendure/number/HUB1_SERIAL_NUMBER/minSoc"
       unit_of_measurement: "%"
+      entity_category: diagnostic
     
     - name: "SolarFlow 1 Setting ChargeLimit"
       unique_id: solarflow_1_setting_chargelimit
       default_entity_id: sensor.solarflow_1_setting_chargelimit
       state_topic: "Zendure/number/HUB1_SERIAL_NUMBER/chargeMaxLimit"
       unit_of_measurement: "W"
+      entity_category: diagnostic
 
     - name: "SolarFlow 1 Temp"
       unique_id: solarflow_1_temp_mqtt
       default_entity_id: sensor.solarflow_1_temp
       state_topic: "Zendure/sensor/HUB1_SERIAL_NUMBER/hyperTmp"
       unit_of_measurement: "°C"
-      device_class: temperature # V45
+      device_class: temperature
       state_class: measurement
       value_template: >
-        {% set v = value | float(0) %}
-        {% if v > 1000 %} {{ ((v - 2731) / 10) | round(1) }}
+        {% set v = value | float(none) %}
+        {% if v is none %} {{ 'unavailable' }}
+        {% elif v > 1000 %} {{ ((v - 2731) / 10) | round(1) }}
         {% else %} {{ v }} {% endif %}
 
     - name: "SolarFlow 1 Battery Max Temp"
@@ -207,11 +233,12 @@ mqtt:
       default_entity_id: sensor.solarflow_1_batt_max_temp
       state_topic: "Zendure/sensor/BAT1_SERIAL_NUMBER/maxTemp"
       unit_of_measurement: "°C"
-      device_class: temperature # V45
+      device_class: temperature
       state_class: measurement
       value_template: >
-        {% set v = value | float(0) %}
-        {% if v > 1000 %} {{ ((v - 2731) / 10) | round(1) }}
+        {% set v = value | float(none) %}
+        {% if v is none %} {{ 'unavailable' }}
+        {% elif v > 1000 %} {{ ((v - 2731) / 10) | round(1) }}
         {% else %} {{ v }} {% endif %}
 
     - name: "SolarFlow 1 Cell Max Vol"
@@ -219,11 +246,12 @@ mqtt:
       default_entity_id: sensor.solarflow_1_cell_max_vol
       state_topic: "Zendure/sensor/BAT1_SERIAL_NUMBER/maxVol"
       unit_of_measurement: "V"
-      device_class: voltage # V45
+      device_class: voltage
       state_class: measurement
       value_template: >
         {% set v = value | float(none) %}
         {% if v is none %} {{ 'unavailable' }}
+        {% elif v > 2000 %} {{ (v / 1000) | round(3) }}
         {% elif v > 20 %} {{ (v / 100) | round(3) }}
         {% else %} {{ v | round(3) }}
         {% endif %}
@@ -233,11 +261,12 @@ mqtt:
       default_entity_id: sensor.solarflow_1_cell_min_vol
       state_topic: "Zendure/sensor/BAT1_SERIAL_NUMBER/minVol"
       unit_of_measurement: "V"
-      device_class: voltage # V45
+      device_class: voltage
       state_class: measurement
       value_template: >
         {% set v = value | float(none) %}
         {% if v is none %} {{ 'unavailable' }}
+        {% elif v > 2000 %} {{ (v / 1000) | round(3) }}
         {% elif v > 20 %} {{ (v / 100) | round(3) }}
         {% else %} {{ v | round(3) }}
         {% endif %}
@@ -282,7 +311,6 @@ mqtt:
       state_topic: "Zendure/number/HUB2_SERIAL_NUMBER/outputLimit"
       unit_of_measurement: "W"
       device_class: power
-      state_class: measurement
       entity_category: diagnostic
 
     # Feedback Sensors
@@ -291,23 +319,26 @@ mqtt:
       default_entity_id: sensor.solarflow_2_setting_minsoc
       state_topic: "Zendure/number/HUB2_SERIAL_NUMBER/minSoc"
       unit_of_measurement: "%"
+      entity_category: diagnostic
     
     - name: "SolarFlow 2 Setting ChargeLimit"
       unique_id: solarflow_2_setting_chargelimit
       default_entity_id: sensor.solarflow_2_setting_chargelimit
       state_topic: "Zendure/number/HUB2_SERIAL_NUMBER/chargeMaxLimit"
       unit_of_measurement: "W"
+      entity_category: diagnostic
 
     - name: "SolarFlow 2 Temp"
       unique_id: solarflow_2_temp_mqtt
       default_entity_id: sensor.solarflow_2_temp
       state_topic: "Zendure/sensor/HUB2_SERIAL_NUMBER/hyperTmp"
       unit_of_measurement: "°C"
-      device_class: temperature # V45
+      device_class: temperature
       state_class: measurement
       value_template: >
-        {% set v = value | float(0) %}
-        {% if v > 1000 %} {{ ((v - 2731) / 10) | round(1) }}
+        {% set v = value | float(none) %}
+        {% if v is none %} {{ 'unavailable' }}
+        {% elif v > 1000 %} {{ ((v - 2731) / 10) | round(1) }}
         {% else %} {{ v }} {% endif %}
 
     - name: "SolarFlow 2 Battery Max Temp"
@@ -315,11 +346,12 @@ mqtt:
       default_entity_id: sensor.solarflow_2_batt_max_temp
       state_topic: "Zendure/sensor/BAT2_SERIAL_NUMBER/maxTemp"
       unit_of_measurement: "°C"
-      device_class: temperature # V45
+      device_class: temperature
       state_class: measurement
       value_template: >
-        {% set v = value | float(0) %}
-        {% if v > 1000 %} {{ ((v - 2731) / 10) | round(1) }}
+        {% set v = value | float(none) %}
+        {% if v is none %} {{ 'unavailable' }}
+        {% elif v > 1000 %} {{ ((v - 2731) / 10) | round(1) }}
         {% else %} {{ v }} {% endif %}
 
     - name: "SolarFlow 2 Cell Max Vol"
@@ -327,11 +359,12 @@ mqtt:
       default_entity_id: sensor.solarflow_2_cell_max_vol
       state_topic: "Zendure/sensor/BAT2_SERIAL_NUMBER/maxVol"
       unit_of_measurement: "V"
-      device_class: voltage # V45
+      device_class: voltage
       state_class: measurement
       value_template: >
         {% set v = value | float(none) %}
         {% if v is none %} {{ 'unavailable' }}
+        {% elif v > 2000 %} {{ (v / 1000) | round(3) }}
         {% elif v > 20 %} {{ (v / 100) | round(3) }}
         {% else %} {{ v | round(3) }}
         {% endif %}
@@ -341,11 +374,12 @@ mqtt:
       default_entity_id: sensor.solarflow_2_cell_min_vol
       state_topic: "Zendure/sensor/BAT2_SERIAL_NUMBER/minVol"
       unit_of_measurement: "V"
-      device_class: voltage # V45
+      device_class: voltage
       state_class: measurement
       value_template: >
         {% set v = value | float(none) %}
         {% if v is none %} {{ 'unavailable' }}
+        {% elif v > 2000 %} {{ (v / 1000) | round(3) }}
         {% elif v > 20 %} {{ (v / 100) | round(3) }}
         {% else %} {{ v | round(3) }}
         {% endif %}
@@ -356,6 +390,8 @@ mqtt:
       default_entity_id: sensor.solarflow_1_status_raw
       state_topic: "Zendure/sensor/HUB1_SERIAL_NUMBER/packState"
       value_template: "{{ value }}"
+      # V69: Force update ensures last_reported updates on every msg (True Heartbeat)
+      force_update: true
       expire_after: 120
 
     - name: "SolarFlow 2 Status Raw"
@@ -363,6 +399,8 @@ mqtt:
       default_entity_id: sensor.solarflow_2_status_raw
       state_topic: "Zendure/sensor/HUB2_SERIAL_NUMBER/packState"
       value_template: "{{ value }}"
+      # V69: Force update ensures last_reported updates on every msg (True Heartbeat)
+      force_update: true
       expire_after: 120
 
 # ==============================================================================
@@ -377,7 +415,7 @@ template:
         state_class: measurement
         unit_of_measurement: "%"
         availability: >
-          {{ states('sensor.solarflow_1_status_raw') not in ['unavailable', 'unknown', 'FAULT', 'ERROR'] 
+          {{ states('sensor.solarflow_1_status_raw')|upper not in ['UNAVAILABLE', 'UNKNOWN', 'FAULT', 'ERROR'] 
              and is_number(states('sensor.solarflow_1_battery_level_hub')) }}
         state: >
           {{ states('sensor.solarflow_1_battery_level_hub') | int(0) }}
@@ -389,7 +427,7 @@ template:
         state_class: measurement
         unit_of_measurement: "%"
         availability: >
-          {{ states('sensor.solarflow_2_status_raw') not in ['unavailable', 'unknown', 'FAULT', 'ERROR'] 
+          {{ states('sensor.solarflow_2_status_raw')|upper not in ['UNAVAILABLE', 'UNKNOWN', 'FAULT', 'ERROR'] 
              and is_number(states('sensor.solarflow_2_battery_level_hub')) }}
         state: >
           {{ states('sensor.solarflow_2_battery_level_hub') | int(0) }}
@@ -401,8 +439,8 @@ template:
         device_class: power
         state_class: measurement
         state: >
-          {% set s1_ok = states('sensor.solarflow_1_status_raw') not in ['unavailable', 'unknown', 'FAULT', 'ERROR'] %}
-          {% set s2_ok = states('sensor.solarflow_2_status_raw') not in ['unavailable', 'unknown', 'FAULT', 'ERROR'] %}
+          {% set s1_ok = states('sensor.solarflow_1_status_raw')|upper not in ['UNAVAILABLE', 'UNKNOWN', 'FAULT', 'ERROR'] %}
+          {% set s2_ok = states('sensor.solarflow_2_status_raw')|upper not in ['UNAVAILABLE', 'UNKNOWN', 'FAULT', 'ERROR'] %}
           {% set s1 = states('sensor.solarflow_1_solar_input')|float(0) if s1_ok else 0 %}
           {% set s2 = states('sensor.solarflow_2_solar_input')|float(0) if s2_ok else 0 %}
           {{ (s1 + s2) | int }}
@@ -414,8 +452,8 @@ template:
         device_class: power
         state_class: measurement
         state: >
-          {% set s1_ok = states('sensor.solarflow_1_status_raw') not in ['unavailable', 'unknown', 'FAULT', 'ERROR'] %}
-          {% set s2_ok = states('sensor.solarflow_2_status_raw') not in ['unavailable', 'unknown', 'FAULT', 'ERROR'] %}
+          {% set s1_ok = states('sensor.solarflow_1_status_raw')|upper not in ['UNAVAILABLE', 'UNKNOWN', 'FAULT', 'ERROR'] %}
+          {% set s2_ok = states('sensor.solarflow_2_status_raw')|upper not in ['UNAVAILABLE', 'UNKNOWN', 'FAULT', 'ERROR'] %}
           {% set s1 = states('sensor.solarflow_1_grid_input_power')|float(0) if s1_ok else 0 %}
           {% set s2 = states('sensor.solarflow_2_grid_input_power')|float(0) if s2_ok else 0 %}
           {{ (s1 + s2) | int }}
@@ -427,8 +465,8 @@ template:
         device_class: power
         state_class: measurement
         state: >
-          {% set s1_ok = states('sensor.solarflow_1_status_raw') not in ['unavailable', 'unknown', 'FAULT', 'ERROR'] %}
-          {% set s2_ok = states('sensor.solarflow_2_status_raw') not in ['unavailable', 'unknown', 'FAULT', 'ERROR'] %}
+          {% set s1_ok = states('sensor.solarflow_1_status_raw')|upper not in ['UNAVAILABLE', 'UNKNOWN', 'FAULT', 'ERROR'] %}
+          {% set s2_ok = states('sensor.solarflow_2_status_raw')|upper not in ['UNAVAILABLE', 'UNKNOWN', 'FAULT', 'ERROR'] %}
           {% set s1 = states('sensor.solarflow_1_output_power')|float(0) if s1_ok else 0 %}
           {% set s2 = states('sensor.solarflow_2_output_power')|float(0) if s2_ok else 0 %}
           {{ (s1 + s2) | int }}
@@ -455,9 +493,10 @@ template:
         unique_id: solarflow_1_cell_imbalance
         default_entity_id: sensor.solarflow_1_cell_imbalance
         unit_of_measurement: "V"
+        device_class: voltage
         state_class: measurement
         availability: >
-          {{ states('sensor.solarflow_1_status_raw') not in ['unavailable', 'unknown', 'FAULT', 'ERROR'] 
+          {{ states('sensor.solarflow_1_status_raw')|upper not in ['UNAVAILABLE', 'UNKNOWN', 'FAULT', 'ERROR'] 
              and is_number(states('sensor.solarflow_1_cell_min_vol')) 
              and is_number(states('sensor.solarflow_1_cell_max_vol')) }}
         state: >
@@ -469,9 +508,10 @@ template:
         unique_id: solarflow_2_cell_imbalance
         default_entity_id: sensor.solarflow_2_cell_imbalance
         unit_of_measurement: "V"
+        device_class: voltage
         state_class: measurement
         availability: >
-          {{ states('sensor.solarflow_2_status_raw') not in ['unavailable', 'unknown', 'FAULT', 'ERROR'] 
+          {{ states('sensor.solarflow_2_status_raw')|upper not in ['UNAVAILABLE', 'UNKNOWN', 'FAULT', 'ERROR'] 
              and is_number(states('sensor.solarflow_2_cell_min_vol')) 
              and is_number(states('sensor.solarflow_2_cell_max_vol')) }}
         state: >
@@ -508,7 +548,7 @@ template:
           {{ diff if diff > 0 else 0 }}
 
 # ==============================================================================
-# 4. ENERGY SENSORS
+# 4. ENERGY SENSORS (RIEMANN SUM)
 # ==============================================================================
 sensor:
   - platform: integration
@@ -536,38 +576,149 @@ sensor:
       minutes: 1
 
 # ==============================================================================
-# 5. AUTOMATISIERUNGEN (V45.0 Refined Logic)
+# 5. AUTOMATISIERUNGEN (V69.0 The Heartbeat)
 # ==============================================================================
 automation:
+  # --- 5.1 KILL SWITCH (V68.0: UNIVERSAL GUARD & SENTINEL RESCUE) ---
+  - alias: "Zendure: Safety Kill Switch (Auto-Mode OFF)"
+    id: "zendure_safety_kill_switch"
+    mode: restart
+    triggers:
+      - trigger: state
+        entity_id: input_boolean.zendure_auto_mode
+        to: "off"
+        id: "off"
+      - trigger: state
+        entity_id: input_boolean.zendure_auto_mode
+        to: "on"
+        id: "on"
+    actions:
+      - if:
+          - condition: template
+            value_template: "{{ trigger.id == 'on' }}"
+        then:
+          - stop: "Auto-Mode switched ON. Kill-Switch cancelled."
+      
+      # 1. Internal Flags Reset
+      - action: input_boolean.turn_off
+        target:
+          entity_id:
+            - input_boolean.zendure_emergency_charge
+            - input_boolean.zendure_calib_mode_u1
+            - input_boolean.zendure_calib_mode_u2
+      
+      # 2. Force Output 0 and Output Mode (Loop 3x for Re-Assert)
+      - repeat:
+          count: 3
+          sequence:
+            # Snappy Break
+            - condition: state
+              entity_id: input_boolean.zendure_auto_mode
+              state: "off"
+            
+            - parallel:
+                - sequence:
+                    - action: mqtt.publish
+                      data: { topic: "Zendure/select/HUB1_SERIAL_NUMBER/acMode/set", payload: "Output mode", qos: 1 }
+                    - action: mqtt.publish
+                      data: { topic: "Zendure/number/HUB1_SERIAL_NUMBER/outputLimit/set", payload: "0", qos: 1 }
+                    # V68: Memory Reset - Universal Guard (Online AND Fresh)
+                    # Clear Sentinel (-2) if connected
+                    # Clear Ghost Load (>0) if connected
+                    - if:
+                        - condition: template
+                          value_template: >
+                            {% set last = states('input_number.zendure_last_sent_1')|int(0) %}
+                            {% set s = states.sensor.solarflow_1_status_raw %}
+                            {% set online = s.state|upper not in ['UNAVAILABLE','UNKNOWN','FAULT','ERROR'] %}
+                            {% set fresh = (as_timestamp(now()) - as_timestamp(s.last_reported, default=0)) < 60 %}
+                            {{ online and fresh and last != 0 }}
+                      then:
+                        - action: input_number.set_value
+                          target: { entity_id: input_number.zendure_last_sent_1 }
+                          data: { value: 0 }
+                
+                - sequence:
+                    - action: mqtt.publish
+                      data: { topic: "Zendure/select/HUB2_SERIAL_NUMBER/acMode/set", payload: "Output mode", qos: 1 }
+                    - action: mqtt.publish
+                      data: { topic: "Zendure/number/HUB2_SERIAL_NUMBER/outputLimit/set", payload: "0", qos: 1 }
+                    # V68: Memory Reset - Universal Guard (Online AND Fresh)
+                    - if:
+                        - condition: template
+                          value_template: >
+                            {% set last = states('input_number.zendure_last_sent_2')|int(0) %}
+                            {% set s = states.sensor.solarflow_2_status_raw %}
+                            {% set online = s.state|upper not in ['UNAVAILABLE','UNKNOWN','FAULT','ERROR'] %}
+                            {% set fresh = (as_timestamp(now()) - as_timestamp(s.last_reported, default=0)) < 60 %}
+                            {{ online and fresh and last != 0 }}
+                      then:
+                        - action: input_number.set_value
+                          target: { entity_id: input_number.zendure_last_sent_2 }
+                          data: { value: 0 }
+            - delay: "00:00:01"
+
+  # --- 6.0 INITIALIZATION (V54: INDEPENDENT INIT & MODERN SYNTAX) ---
+  - alias: "Zendure: Initialize Calibration Timer"
+    id: "zendure_init_calib_timer"
+    mode: single
+    triggers:
+      - trigger: homeassistant
+        event: start
+    actions:
+      - variables:
+          ts_now: "{{ as_timestamp(now()) | int(0) }}"
+      - if: 
+          - condition: template
+            value_template: >
+              {{ (as_timestamp(states('input_datetime.zendure_last_full_charge_1'), default=0) | int(0)) == 0 }}
+        then:
+          - action: input_datetime.set_datetime
+            target: { entity_id: input_datetime.zendure_last_full_charge_1 }
+            data: { timestamp: "{{ ts_now }}" }
+      - if: 
+          - condition: template
+            value_template: >
+              {{ (as_timestamp(states('input_datetime.zendure_last_full_charge_2'), default=0) | int(0)) == 0 }}
+        then:
+          - action: input_datetime.set_datetime
+            target: { entity_id: input_datetime.zendure_last_full_charge_2 }
+            data: { timestamp: "{{ ts_now }}" }
+
   # --- 6.1 SYNC ON STARTUP ---
   - alias: "Zendure: Sync Memory on Start"
     id: "zendure_sync_on_start"
     triggers:
       - trigger: homeassistant
         event: start
+    conditions:
+      # V54: SAFETY - Do not sync if Auto Mode is OFF (prevents stale data)
+      - condition: state
+        entity_id: input_boolean.zendure_auto_mode
+        state: "on"
     actions:
-      - delay: "00:00:10" # 10s wait for MQTT readiness
+      - delay: "00:00:10"
       - if: 
           - condition: template
-            # V45: Robustness Check - Only sync if Device is Online and not in Fault state
             value_template: >
               {{ is_number(states('sensor.solarflow_1_output_limit'))
-                 and states('sensor.solarflow_1_status_raw') not in ['unavailable', 'unknown', 'FAULT', 'ERROR']
+                 and states('sensor.solarflow_1_status_raw')|upper not in ['UNAVAILABLE', 'UNKNOWN', 'FAULT', 'ERROR']
                  and (states('input_number.zendure_last_sent_1')|int(0) >= 0) }}
         then:
           - action: input_number.set_value
             target: { entity_id: input_number.zendure_last_sent_1 }
-            data: { value: "{{ states('sensor.solarflow_1_output_limit')|int(0) }}" }
+            # Clamping 0-800
+            data: { value: "{{ [[states('sensor.solarflow_1_output_limit')|int(0),0]|max,800]|min }}" }
       - if: 
           - condition: template
             value_template: >
               {{ is_number(states('sensor.solarflow_2_output_limit'))
-                 and states('sensor.solarflow_2_status_raw') not in ['unavailable', 'unknown', 'FAULT', 'ERROR']
+                 and states('sensor.solarflow_2_status_raw')|upper not in ['UNAVAILABLE', 'UNKNOWN', 'FAULT', 'ERROR']
                  and (states('input_number.zendure_last_sent_2')|int(0) >= 0) }}
         then:
           - action: input_number.set_value
             target: { entity_id: input_number.zendure_last_sent_2 }
-            data: { value: "{{ states('sensor.solarflow_2_output_limit')|int(0) }}" }
+            data: { value: "{{ [[states('sensor.solarflow_2_output_limit')|int(0),0]|max,800]|min }}" }
 
   # --- 6.2 ANTI-DRIFT ---
   - alias: "Zendure: Anti-Drift Watchdog"
@@ -576,16 +727,33 @@ automation:
     triggers:
       - trigger: template
         id: "drift_1"
-        value_template: "{{ is_number(states('sensor.solarflow_1_output_limit')) and (states('sensor.solarflow_1_output_limit')|float(0) - states('input_number.zendure_last_sent_1')|float(0))|abs > 30 }}"
+        value_template: >
+          {{ states('sensor.solarflow_1_status_raw')|upper not in ['UNAVAILABLE','UNKNOWN','FAULT','ERROR']
+             and is_number(states('sensor.solarflow_1_output_limit'))
+             and (states('sensor.solarflow_1_output_limit')|float(0) - states('input_number.zendure_last_sent_1')|float(0))|abs > 30 }}
         for: "00:01:00"
       - trigger: template
         id: "drift_2"
-        value_template: "{{ is_number(states('sensor.solarflow_2_output_limit')) and (states('sensor.solarflow_2_output_limit')|float(0) - states('input_number.zendure_last_sent_2')|float(0))|abs > 30 }}"
+        value_template: >
+          {{ states('sensor.solarflow_2_status_raw')|upper not in ['UNAVAILABLE','UNKNOWN','FAULT','ERROR']
+             and is_number(states('sensor.solarflow_2_output_limit'))
+             and (states('sensor.solarflow_2_output_limit')|float(0) - states('input_number.zendure_last_sent_2')|float(0))|abs > 30 }}
         for: "00:01:00"
     conditions:
       - condition: state
         entity_id: input_boolean.zendure_auto_mode
         state: "on"
+      # V50: Global Block for Anti-Drift during special modes
+      - condition: state
+        entity_id: input_boolean.zendure_emergency_charge
+        state: "off"
+      - condition: state
+        entity_id: input_boolean.zendure_calib_mode_u1
+        state: "off"
+      - condition: state
+        entity_id: input_boolean.zendure_calib_mode_u2
+        state: "off"
+      
       - condition: template
         value_template: >
           {% if trigger.id == 'drift_1' %}
@@ -601,16 +769,16 @@ automation:
             sequence:
               - action: input_number.set_value
                 target: { entity_id: input_number.zendure_last_sent_1 }
-                data: { value: "{{ states('sensor.solarflow_1_output_limit')|int }}" }
+                data: { value: "{{ [[states('sensor.solarflow_1_output_limit')|int(0),0]|max,800]|min }}" }
           - conditions:
               - condition: template
                 value_template: "{{ trigger.id == 'drift_2' }}"
             sequence:
               - action: input_number.set_value
                 target: { entity_id: input_number.zendure_last_sent_2 }
-                data: { value: "{{ states('sensor.solarflow_2_output_limit')|int }}" }
+                data: { value: "{{ [[states('sensor.solarflow_2_output_limit')|int(0),0]|max,800]|min }}" }
 
-  # --- 6.2b SYNC MEMORY FROM MQTT ---
+  # --- 6.2b SYNC MEMORY FROM MQTT (DECOUPLED & OPTIMIZED) ---
   - alias: "Zendure: Sync Memory from OutputLimit"
     id: "zendure_sync_memory_from_outputlimit"
     mode: queued
@@ -620,32 +788,37 @@ automation:
           - sensor.solarflow_1_output_limit
           - sensor.solarflow_2_output_limit
     conditions:
+      # V61: Removed 'Auto-Mode ON' condition. Memory should always track reality.
       - condition: template
         value_template: >
           {{ is_number(trigger.to_state.state)
-             and is_state('input_boolean.zendure_emergency_charge','off')
-             and is_state('input_boolean.zendure_calib_mode_u1','off')
-             and is_state('input_boolean.zendure_calib_mode_u2','off') }}
+             and is_state('input_boolean.zendure_emergency_charge','off') }}
     actions:
       - choose:
           - conditions: 
               - condition: template
                 value_template: >
                   {{ trigger.entity_id == 'sensor.solarflow_1_output_limit'
-                     and (states('input_number.zendure_last_sent_1')|int(0) >= 0) }}
+                     and is_state('input_boolean.zendure_calib_mode_u1','off')
+                     and states('sensor.solarflow_1_status_raw')|upper not in ['UNAVAILABLE','UNKNOWN','FAULT','ERROR']
+                     and (states('input_number.zendure_last_sent_1')|int(0) >= 0)
+                     and (trigger.to_state.state|int(0) != states('input_number.zendure_last_sent_1')|int(0)) }}
             sequence:
               - action: input_number.set_value
                 target: { entity_id: input_number.zendure_last_sent_1 }
-                data: { value: "{{ trigger.to_state.state | int }}" }
+                data: { value: "{{ [[trigger.to_state.state|int(0),0]|max,800]|min }}" }
           - conditions: 
               - condition: template
                 value_template: >
                   {{ trigger.entity_id == 'sensor.solarflow_2_output_limit'
-                     and (states('input_number.zendure_last_sent_2')|int(0) >= 0) }}
+                     and is_state('input_boolean.zendure_calib_mode_u2','off')
+                     and states('sensor.solarflow_2_status_raw')|upper not in ['UNAVAILABLE','UNKNOWN','FAULT','ERROR']
+                     and (states('input_number.zendure_last_sent_2')|int(0) >= 0)
+                     and (trigger.to_state.state|int(0) != states('input_number.zendure_last_sent_2')|int(0)) }}
             sequence:
               - action: input_number.set_value
                 target: { entity_id: input_number.zendure_last_sent_2 }
-                data: { value: "{{ trigger.to_state.state | int }}" }
+                data: { value: "{{ [[trigger.to_state.state|int(0),0]|max,800]|min }}" }
 
   # --- 6.3 BYPASS LATCH MANAGER ---
   - alias: "Zendure: Bypass Latch Manager"
@@ -658,6 +831,9 @@ automation:
         event: start
       - trigger: state
         entity_id: input_number.zendure_conf_soc_bypass
+      # V55: Trigger on Auto Mode toggle to ensure immediate latch update
+      - trigger: state
+        entity_id: input_boolean.zendure_auto_mode
     actions:
       - variables:
           soc_entry: "{{ states('input_number.zendure_conf_soc_bypass') | int(30) }}"
@@ -693,10 +869,10 @@ automation:
           - action: input_boolean.turn_off
             target: { entity_id: input_boolean.zendure_bypass_u2 }
 
-  # --- 6.4 CONTROL LOOP (STABLE CORE) ---
+  # --- 6.4 CONTROL LOOP (V60: RACE CONDITION FIX & RESTART) ---
   - alias: "Zendure: Control Loop (Dual)"
     id: "zendure_control_loop_dual"
-    mode: single
+    mode: restart # V53: Changed from single to restart
     max_exceeded: silent
     triggers:
       - trigger: time_pattern
@@ -713,20 +889,35 @@ automation:
         entity_id: 
           - input_boolean.zendure_bypass_u1
           - input_boolean.zendure_bypass_u2
-    conditions:
-      - condition: state
-        entity_id: input_boolean.zendure_auto_mode
-        state: "on"
+      # V59: Added Status triggers to immediately abort/restart loop on mode change
+      - trigger: state
+        entity_id:
+          - input_boolean.zendure_auto_mode
+          - input_boolean.zendure_emergency_charge
+          - input_boolean.zendure_calib_mode_u1
+          - input_boolean.zendure_calib_mode_u2
+    # V60: Removed top-level conditions to ensure Restart behavior works on OFF-Toggle
     actions:
+      # V60: Immediate Stop Check (Hard Guard)
+      - if: 
+          - condition: state
+            entity_id: input_boolean.zendure_auto_mode
+            state: "off"
+        then:
+          - stop: "Auto Mode is OFF - Loop aborted."
+
       - variables:
-          s1_ok: "{{ states('sensor.solarflow_1_status_raw') not in ['unavailable', 'unknown', 'FAULT', 'ERROR'] }}"
-          s2_ok: "{{ states('sensor.solarflow_2_status_raw') not in ['unavailable', 'unknown', 'FAULT', 'ERROR'] }}"
+          s1_ok: "{{ states('sensor.solarflow_1_status_raw')|upper not in ['UNAVAILABLE', 'UNKNOWN', 'FAULT', 'ERROR'] }}"
+          s2_ok: "{{ states('sensor.solarflow_2_status_raw')|upper not in ['UNAVAILABLE', 'UNKNOWN', 'FAULT', 'ERROR'] }}"
           s1_base: "{{ [states('input_number.zendure_last_sent_1')|float(0)|int, 0]|max }}"
           s2_base: "{{ [states('input_number.zendure_last_sent_2')|float(0)|int, 0]|max }}"
           soc_off: "{{ states('input_number.zendure_conf_soc_off') | int(10) }}"
           hysteresis: "{{ states('input_number.zendure_conf_hysteresis') | int(10) }}"
           soc1_val: "{{ states('sensor.solarflow_1_battery_level') | float(0) }}"
           soc2_val: "{{ states('sensor.solarflow_2_battery_level') | float(0) }}"
+          soc1_valid: "{{ is_number(states('sensor.solarflow_1_battery_level')) }}"
+          soc2_valid: "{{ is_number(states('sensor.solarflow_2_battery_level')) }}"
+          
           t1: "{{ states('sensor.solarflow_1_batt_max_temp') | float(states('sensor.solarflow_1_temp')|float(99)) }}"
           t2: "{{ states('sensor.solarflow_2_batt_max_temp') | float(states('sensor.solarflow_2_temp')|float(99)) }}"
           bypass1: "{{ is_state('input_boolean.zendure_bypass_u1','on') }}"
@@ -736,18 +927,17 @@ automation:
           calib1: "{{ is_state('input_boolean.zendure_calib_mode_u1', 'on') }}"
           calib2: "{{ is_state('input_boolean.zendure_calib_mode_u2', 'on') }}"
           emerg_global: "{{ is_state('input_boolean.zendure_emergency_charge', 'on') }}"
-          emerg_stop: "{{ states('input_number.zendure_conf_soc_emerg_stop') | int(20) }}"
+          emerg_stop: "{{ states('input_number.zendure_conf_soc_emerg_stop') | int(25) }}"
           
-          # Sentinel Check
           sentinel_u1: "{{ states('input_number.zendure_last_sent_1')|int(0) == -2 }}"
           sentinel_u2: "{{ states('input_number.zendure_last_sent_2')|int(0) == -2 }}"
-          busy_u1: "{{ calib1 or sentinel_u1 or (emerg_global and soc1_val < emerg_stop) }}"
-          busy_u2: "{{ calib2 or sentinel_u2 or (emerg_global and soc2_val < emerg_stop) }}"
+          busy_u1: "{{ calib1 or sentinel_u1 or emerg_global }}"
+          busy_u2: "{{ calib2 or sentinel_u2 or emerg_global }}"
 
-          # Ghost Load
+          # V53: Explicit casting
           ghost_load_1: "{{ s1_base if (not s1_ok and s1_base > 0) else 0 }}"
           ghost_load_2: "{{ s2_base if (not s2_ok and s2_base > 0) else 0 }}"
-          ghost_total: "{{ ghost_load_1 + ghost_load_2 }}"
+          ghost_total: "{{ (ghost_load_1|int(0)) + (ghost_load_2|int(0)) }}"
 
           cap_u1: >
             {% if not s1_ok or busy_u1 %}0
@@ -758,12 +948,27 @@ automation:
             {% elif t2 < 0 or t2 > 45 or soc2_val <= soc_off or bypass2 %}{{ (s2_solar * 0.9) | int(0) }}
             {% else %}800{% endif %}
           
+          floor_1: >-
+            {% if soc1_valid and soc1_val >= 98 and not busy_u1 %}
+              {% if s1_solar > 400 %} 350
+              {% elif s1_solar > 300 %} 250
+              {% else %} 0 {% endif %}
+            {% else %} 0 {% endif %}
+          floor_2: >-
+            {% if soc2_valid and soc2_val >= 98 and not busy_u2 %}
+              {% if s2_solar > 400 %} 350
+              {% elif s2_solar > 300 %} 250
+              {% else %} 0 {% endif %}
+            {% else %} 0 {% endif %}
+          
+          spillover_override: "{{ (floor_1|int(0) > s1_base|int(0)) or (floor_2|int(0) > s2_base|int(0)) }}"
+
           override_u1: "{{ s1_ok and (s1_base|int(0) > cap_u1|int(0)) }}"
           override_u2: "{{ s2_ok and (s2_base|int(0) > cap_u2|int(0)) }}"
           safety_override: "{{ override_u1 or override_u2 }}"
 
           global_max: "{{ states('input_number.zendure_conf_max_output') | int(800) }}"
-          available_capacity: "{{ [ (global_max - ghost_total), 0 ] | max }}"
+          available_capacity: "{{ [ (global_max|int(0) - ghost_total|int(0)), 0 ] | max }}"
 
           failsafe: "{{ states('input_number.zendure_conf_failsafe_watt') | int(130) }}"
           grid_bias: "{{ states('input_number.zendure_conf_grid_bias') | int(10) }}"
@@ -784,18 +989,16 @@ automation:
           target_total: "{{ [[target_raw|int(0), 0]|max, global_max]|min }}"
           delta_effective: "{{ (target_total|int(0)) - (total_base|int(0)) }}"
       
-      # Safety Gate
       - condition: template
         value_template: >
-          {{ safety_override 
-             or ((delta_effective | abs) > (hysteresis | int(0)))
+          {{ safety_override
+             or spillover_override
+             or ((delta_effective | int(0) | abs) > (hysteresis | int(0)))
              or (total_base | int(0) > global_max | int(0)) }}
 
       - variables:
-          target_online: "{{ [[(target_total - ghost_total)|int(0), 0]|max, available_capacity]|min }}"
+          target_online: "{{ [[(target_total|int(0) - ghost_total|int(0)), 0]|max, available_capacity|int(0)]|min }}"
           
-          soc1_valid: "{{ is_number(states('sensor.solarflow_1_battery_level')) }}"
-          soc2_valid: "{{ is_number(states('sensor.solarflow_2_battery_level')) }}"
           active_1: "{{ s1_ok }}"
           active_2: "{{ s2_ok }}"
           weight_1: >-
@@ -806,19 +1009,6 @@ automation:
             {% endif %}
           req_1: "{{ ((target_online | int(0)) * (weight_1 | float(0))) | int(0) }}"
           req_2: "{{ (target_online | int(0)) - (req_1 | int(0)) }}"
-          
-          floor_1: >-
-            {% if soc1_val >= 98 and not busy_u1 %}
-              {% if s1_solar > 400 %} 350
-              {% elif s1_solar > 300 %} 250
-              {% else %} 0 {% endif %}
-            {% else %} 0 {% endif %}
-          floor_2: >-
-            {% if soc2_val >= 98 and not busy_u2 %}
-              {% if s2_solar > 400 %} 350
-              {% elif s2_solar > 300 %} 250
-              {% else %} 0 {% endif %}
-            {% else %} 0 {% endif %}
           
           req_1_final: "{{ [req_1|int(0), floor_1|int(0)]|max }}"
           req_2_final: "{{ [req_2|int(0), floor_2|int(0)]|max }}"
@@ -835,7 +1025,7 @@ automation:
           final_1_raw: >
             {% if active_1 %}
               {% set v = (target_online | int(0)) - (final_2_raw | int(0)) %}
-              {% set v_safe = [v, floor_1]|max %}
+              {% set v_safe = [v, floor_1|int(0)]|max %}
               {{ [[v_safe, 0] | max, cap_u1 | int(0)] | min }}
             {% else %}
               0
@@ -855,11 +1045,10 @@ automation:
             {% else %} 1
             {% endif %}
 
-          final_1: "{{ (final_1_raw|int(0) * scale_active) | int }}"
-          final_2: "{{ (final_2_raw|int(0) * scale_active) | int }}"
+          final_1: "{{ (final_1_raw|int(0) * (scale_active|float(1))) | int }}"
+          final_2: "{{ (final_2_raw|int(0) * (scale_active|float(1))) | int }}"
 
       - parallel:
-          # V43: Override U1
           - if: 
               - condition: template
                 value_template: >-
@@ -878,7 +1067,6 @@ automation:
                 target: { entity_id: input_number.zendure_last_sent_1 }
                 data: { value: "{{ final_1|int }}" }
 
-          # V44: Logic structure matched to U1 (parentheses consistency)
           - if: 
               - condition: template
                 value_template: >-
@@ -897,7 +1085,7 @@ automation:
                 target: { entity_id: input_number.zendure_last_sent_2 }
                 data: { value: "{{ final_2|int }}" }
 
-  # --- 6.5 STATE MACHINE (REFINED LOGIC) ---
+  # --- 6.5 STATE MACHINE (SAFE RETURN) ---
   - alias: "Zendure: State Machine (Smart Single-Channel)"
     id: "zendure_state_machine_dual"
     mode: queued
@@ -922,7 +1110,6 @@ automation:
         to: "off"
         id: "auto_off"
       
-      # V45: Reconcile Trigger (Update Limits every 5min based on Temp/SoC)
       - trigger: time_pattern
         minutes: "/5"
         id: "periodic_reconcile"
@@ -931,23 +1118,35 @@ automation:
         entity_id: [sensor.solarflow_1_battery_level, sensor.solarflow_2_battery_level]
         for: "00:05:00"
       
-      # V44: Trigger Damping (5s stable state required)
       - trigger: template
         id: "device_online_u1"
-        value_template: "{{ states('sensor.solarflow_1_status_raw') not in ['unavailable','unknown','FAULT','ERROR'] }}"
-        for: "00:00:05"
+        value_template: "{{ states('sensor.solarflow_1_status_raw')|upper not in ['UNAVAILABLE','UNKNOWN','FAULT','ERROR'] }}"
+        # V58: Reduced to 1s for faster Boot Safety
+        for: "00:00:01"
       - trigger: template
         id: "device_online_u2"
-        value_template: "{{ states('sensor.solarflow_2_status_raw') not in ['unavailable','unknown','FAULT','ERROR'] }}"
-        for: "00:00:05"
+        value_template: "{{ states('sensor.solarflow_2_status_raw')|upper not in ['UNAVAILABLE','UNKNOWN','FAULT','ERROR'] }}"
+        # V58: Reduced to 1s for faster Boot Safety
+        for: "00:00:01"
       
       - trigger: homeassistant
         event: start
         id: "boot_check"
     actions:
       - choose:
-          # AUTO-OFF FULL RESET (Flags off, Mode Output, Limit 0)
-          - conditions: "{{ trigger.id == 'auto_off' }}"
+          # V64.0: QUEUE HYGIENE - Stop if trigger is 'auto_off' but state is 'on'
+          # This prevents a stale queued trigger from shutting down the system after re-enabling
+          - conditions:
+              - condition: template
+                value_template: >
+                  {{ trigger.id == 'auto_off' and is_state('input_boolean.zendure_auto_mode','on') }}
+            sequence:
+              - stop: "Stale auto_off trigger ignored (Auto-Mode already ON)."
+
+          # AUTO-OFF FULL RESET (V54: Strict Condition)
+          - conditions:
+              - condition: template
+                value_template: "{{ trigger.id == 'auto_off' }}"
             sequence:
               - action: input_boolean.turn_off
                 target:
@@ -957,49 +1156,178 @@ automation:
                     - input_boolean.zendure_calib_mode_u2
               
               - parallel:
-                # UNIT 1 Reset
                 - if:
                     - condition: template
-                      value_template: "{{ states('sensor.solarflow_1_status_raw') not in ['unavailable','unknown','FAULT','ERROR'] }}"
+                      value_template: "{{ states('sensor.solarflow_1_status_raw')|upper not in ['UNAVAILABLE','UNKNOWN','FAULT','ERROR'] }}"
                   then:
                     - action: mqtt.publish
                       data: { topic: "Zendure/select/HUB1_SERIAL_NUMBER/acMode/set", payload: "Output mode", qos: 1 }
                     - action: mqtt.publish
                       data: { topic: "Zendure/number/HUB1_SERIAL_NUMBER/outputLimit/set", payload: "0", qos: 1 }
-                    - action: input_number.set_value
-                      target: { entity_id: input_number.zendure_last_sent_1 }
-                      data: { value: 0 }
+                    # V68: Universal Guard
+                    - if:
+                        - condition: template
+                          value_template: >
+                            {% set last = states('input_number.zendure_last_sent_1')|int(0) %}
+                            {% set s = states.sensor.solarflow_1_status_raw %}
+                            {% set online = s.state|upper not in ['UNAVAILABLE','UNKNOWN','FAULT','ERROR'] %}
+                            {% set fresh = (as_timestamp(now()) - as_timestamp(s.last_reported, default=0)) < 60 %}
+                            {{ online and fresh and last != 0 }}
+                      then:
+                        - action: input_number.set_value
+                          target: { entity_id: input_number.zendure_last_sent_1 }
+                          data: { value: 0 }
                 
-                # UNIT 2 Reset
                 - if:
                     - condition: template
-                      value_template: "{{ states('sensor.solarflow_2_status_raw') not in ['unavailable','unknown','FAULT','ERROR'] }}"
+                      value_template: "{{ states('sensor.solarflow_2_status_raw')|upper not in ['UNAVAILABLE','UNKNOWN','FAULT','ERROR'] }}"
                   then:
                     - action: mqtt.publish
                       data: { topic: "Zendure/select/HUB2_SERIAL_NUMBER/acMode/set", payload: "Output mode", qos: 1 }
                     - action: mqtt.publish
                       data: { topic: "Zendure/number/HUB2_SERIAL_NUMBER/outputLimit/set", payload: "0", qos: 1 }
-                    - action: input_number.set_value
-                      target: { entity_id: input_number.zendure_last_sent_2 }
-                      data: { value: 0 }
+                    # V68: Universal Guard
+                    - if:
+                        - condition: template
+                          value_template: >
+                            {% set last = states('input_number.zendure_last_sent_2')|int(0) %}
+                            {% set s = states.sensor.solarflow_2_status_raw %}
+                            {% set online = s.state|upper not in ['UNAVAILABLE','UNKNOWN','FAULT','ERROR'] %}
+                            {% set fresh = (as_timestamp(now()) - as_timestamp(s.last_reported, default=0)) < 60 %}
+                            {{ online and fresh and last != 0 }}
+                      then:
+                        - action: input_number.set_value
+                          target: { entity_id: input_number.zendure_last_sent_2 }
+                          data: { value: 0 }
               - stop: "Automatik beendet - Full Hard Reset."
           
-          # DEVICE ONLINE & BOOT CHECK (SmartMode & Safety Reconnect)
-          - conditions: "{{ trigger.id in ['device_online_u1', 'device_online_u2', 'boot_check'] }}"
+          # DEVICE ONLINE & BOOT CHECK (V54: Strict Condition)
+          - conditions:
+              - condition: template
+                value_template: "{{ trigger.id in ['device_online_u1', 'device_online_u2', 'boot_check'] }}"
             sequence:
-              - delay: "00:00:05"
+              # V60.1: HARD RESET of mode flags if Auto-Mode is OFF at boot/online
+              - if:
+                  - condition: template
+                    value_template: "{{ is_state('input_boolean.zendure_auto_mode','off') }}"
+                then:
+                  - action: input_boolean.turn_off
+                    target:
+                      entity_id:
+                        - input_boolean.zendure_emergency_charge
+                        - input_boolean.zendure_calib_mode_u1
+                        - input_boolean.zendure_calib_mode_u2
+
+              # V60.2: IMMEDIATE SAFETY DISPATCH (Close Boot Gap)
+              # Updated condition: Fire if Emergency is ON OR Auto-Mode is OFF
+              - if:
+                  - condition: template
+                    value_template: >
+                      {{ is_state('input_boolean.zendure_emergency_charge','on')
+                         or is_state('input_boolean.zendure_auto_mode','off') }}
+                then:
+                  - action: mqtt.publish
+                    data: { topic: "Zendure/number/HUB1_SERIAL_NUMBER/outputLimit/set", payload: "0", qos: 1 }
+                  - action: mqtt.publish
+                    data: { topic: "Zendure/number/HUB2_SERIAL_NUMBER/outputLimit/set", payload: "0", qos: 1 }
+                  
+                  # V68: MEMORY RESET GHOST GUARD (Online AND Fresh)
+                  - if:
+                      - condition: state
+                        entity_id: input_boolean.zendure_auto_mode
+                        state: "off"
+                    then:
+                      - if:
+                          - condition: template
+                            value_template: >
+                              {% set last = states('input_number.zendure_last_sent_1')|int(0) %}
+                              {% set s = states.sensor.solarflow_1_status_raw %}
+                              {% set online = s.state|upper not in ['UNAVAILABLE','UNKNOWN','FAULT','ERROR'] %}
+                              {% set fresh = (as_timestamp(now()) - as_timestamp(s.last_reported, default=0)) < 60 %}
+                              {{ online and fresh and last > 0 }}
+                        then:
+                          - action: input_number.set_value
+                            target: { entity_id: input_number.zendure_last_sent_1 }
+                            data: { value: 0 }
+                      - if:
+                          - condition: template
+                            value_template: >
+                              {% set last = states('input_number.zendure_last_sent_2')|int(0) %}
+                              {% set s = states.sensor.solarflow_2_status_raw %}
+                              {% set online = s.state|upper not in ['UNAVAILABLE','UNKNOWN','FAULT','ERROR'] %}
+                              {% set fresh = (as_timestamp(now()) - as_timestamp(s.last_reported, default=0)) < 60 %}
+                              {{ online and fresh and last > 0 }}
+                        then:
+                          - action: input_number.set_value
+                            target: { entity_id: input_number.zendure_last_sent_2 }
+                            data: { value: 0 }
+
+              # V63: SMART DELAYS 1 (Using wait.completed tripwire)
+              - wait_template: "{{ is_state('input_boolean.zendure_auto_mode','off') }}"
+                timeout: "00:00:05"
+                continue_on_timeout: true
               
-              # A) SmartMode Double Tap
+              - if:
+                  # V63: Check if wait condition was MET (Tripwire triggered)
+                  - condition: template
+                    value_template: "{{ wait.completed }}"
+                then:
+                  # FULL SAFETY ABORT (V62) + V68 Freshness
+                  - parallel:
+                      - if:
+                          - condition: template
+                            value_template: "{{ states('sensor.solarflow_1_status_raw')|upper not in ['UNAVAILABLE','UNKNOWN','FAULT','ERROR'] }}"
+                        then:
+                          - action: mqtt.publish
+                            data: { topic: "Zendure/select/HUB1_SERIAL_NUMBER/acMode/set", payload: "Output mode", qos: 1 }
+                          - action: mqtt.publish
+                            data: { topic: "Zendure/number/HUB1_SERIAL_NUMBER/outputLimit/set", payload: "0", qos: 1 }
+                          # V68: Universal Guard
+                          - if:
+                              - condition: template
+                                value_template: >
+                                  {% set last = states('input_number.zendure_last_sent_1')|int(0) %}
+                                  {% set s = states.sensor.solarflow_1_status_raw %}
+                                  {% set online = s.state|upper not in ['UNAVAILABLE','UNKNOWN','FAULT','ERROR'] %}
+                                  {% set fresh = (as_timestamp(now()) - as_timestamp(s.last_reported, default=0)) < 60 %}
+                                  {{ online and fresh and last > 0 }}
+                            then:
+                              - action: input_number.set_value
+                                target: { entity_id: input_number.zendure_last_sent_1 }
+                                data: { value: 0 }
+                      - if:
+                          - condition: template
+                            value_template: "{{ states('sensor.solarflow_2_status_raw')|upper not in ['UNAVAILABLE','UNKNOWN','FAULT','ERROR'] }}"
+                        then:
+                          - action: mqtt.publish
+                            data: { topic: "Zendure/select/HUB2_SERIAL_NUMBER/acMode/set", payload: "Output mode", qos: 1 }
+                          - action: mqtt.publish
+                            data: { topic: "Zendure/number/HUB2_SERIAL_NUMBER/outputLimit/set", payload: "0", qos: 1 }
+                          # V68: Universal Guard
+                          - if:
+                              - condition: template
+                                value_template: >
+                                  {% set last = states('input_number.zendure_last_sent_2')|int(0) %}
+                                  {% set s = states.sensor.solarflow_2_status_raw %}
+                                  {% set online = s.state|upper not in ['UNAVAILABLE','UNKNOWN','FAULT','ERROR'] %}
+                                  {% set fresh = (as_timestamp(now()) - as_timestamp(s.last_reported, default=0)) < 60 %}
+                                  {{ online and fresh and last > 0 }}
+                            then:
+                              - action: input_number.set_value
+                                target: { entity_id: input_number.zendure_last_sent_2 }
+                                data: { value: 0 }
+                  - stop: "Auto-Mode switched OFF during Boot/Online Sequence. Full Safety Reconnect applied."
+
               - parallel:
                 - if: 
                     - condition: template
-                      value_template: "{{ states('sensor.solarflow_1_status_raw') not in ['unavailable', 'unknown', 'FAULT', 'ERROR'] }}"
+                      value_template: "{{ states('sensor.solarflow_1_status_raw')|upper not in ['UNAVAILABLE', 'UNKNOWN', 'FAULT', 'ERROR'] }}"
                   then:
                     - action: mqtt.publish
                       data: { topic: "Zendure/switch/HUB1_SERIAL_NUMBER/smartMode/set", payload: "ON", qos: 1 }
                 - if: 
                     - condition: template
-                      value_template: "{{ states('sensor.solarflow_2_status_raw') not in ['unavailable', 'unknown', 'FAULT', 'ERROR'] }}"
+                      value_template: "{{ states('sensor.solarflow_2_status_raw')|upper not in ['UNAVAILABLE', 'UNKNOWN', 'FAULT', 'ERROR'] }}"
                   then:
                     - action: mqtt.publish
                       data: { topic: "Zendure/switch/HUB2_SERIAL_NUMBER/smartMode/set", payload: "ON", qos: 1 }
@@ -1007,18 +1335,88 @@ automation:
               - parallel:
                 - if: 
                     - condition: template
-                      value_template: "{{ states('sensor.solarflow_1_status_raw') not in ['unavailable', 'unknown', 'FAULT', 'ERROR'] }}"
+                      value_template: "{{ states('sensor.solarflow_1_status_raw')|upper not in ['UNAVAILABLE', 'UNKNOWN', 'FAULT', 'ERROR'] }}"
                   then:
                     - action: mqtt.publish
                       data: { topic: "Zendure/switch/HUB1_SERIAL_NUMBER/smartMode/set", payload: "ON", qos: 1 }
                 - if: 
                     - condition: template
-                      value_template: "{{ states('sensor.solarflow_2_status_raw') not in ['unavailable', 'unknown', 'FAULT', 'ERROR'] }}"
+                      value_template: "{{ states('sensor.solarflow_2_status_raw')|upper not in ['UNAVAILABLE', 'UNKNOWN', 'FAULT', 'ERROR'] }}"
+                  then:
+                    - action: mqtt.publish
+                      data: { topic: "Zendure/switch/HUB2_SERIAL_NUMBER/smartMode/set", payload: "ON", qos: 1 }
+              
+              # V63: SMART DELAY 2 (Using wait.completed tripwire)
+              - wait_template: "{{ is_state('input_boolean.zendure_auto_mode','off') }}"
+                timeout: "00:00:02"
+                continue_on_timeout: true
+              
+              - if:
+                  # V63: Check if wait condition was MET
+                  - condition: template
+                    value_template: "{{ wait.completed }}"
+                then:
+                  # FULL SAFETY ABORT (V62) + V68 Freshness
+                  - parallel:
+                      - if:
+                          - condition: template
+                            value_template: "{{ states('sensor.solarflow_1_status_raw')|upper not in ['UNAVAILABLE','UNKNOWN','FAULT','ERROR'] }}"
+                        then:
+                          - action: mqtt.publish
+                            data: { topic: "Zendure/select/HUB1_SERIAL_NUMBER/acMode/set", payload: "Output mode", qos: 1 }
+                          - action: mqtt.publish
+                            data: { topic: "Zendure/number/HUB1_SERIAL_NUMBER/outputLimit/set", payload: "0", qos: 1 }
+                          # V68: Universal Guard
+                          - if:
+                              - condition: template
+                                value_template: >
+                                  {% set last = states('input_number.zendure_last_sent_1')|int(0) %}
+                                  {% set s = states.sensor.solarflow_1_status_raw %}
+                                  {% set online = s.state|upper not in ['UNAVAILABLE','UNKNOWN','FAULT','ERROR'] %}
+                                  {% set fresh = (as_timestamp(now()) - as_timestamp(s.last_reported, default=0)) < 60 %}
+                                  {{ online and fresh and last > 0 }}
+                            then:
+                              - action: input_number.set_value
+                                target: { entity_id: input_number.zendure_last_sent_1 }
+                                data: { value: 0 }
+                      - if:
+                          - condition: template
+                            value_template: "{{ states('sensor.solarflow_2_status_raw')|upper not in ['UNAVAILABLE','UNKNOWN','FAULT','ERROR'] }}"
+                        then:
+                          - action: mqtt.publish
+                            data: { topic: "Zendure/select/HUB2_SERIAL_NUMBER/acMode/set", payload: "Output mode", qos: 1 }
+                          - action: mqtt.publish
+                            data: { topic: "Zendure/number/HUB2_SERIAL_NUMBER/outputLimit/set", payload: "0", qos: 1 }
+                          # V68: Universal Guard
+                          - if:
+                              - condition: template
+                                value_template: >
+                                  {% set last = states('input_number.zendure_last_sent_2')|int(0) %}
+                                  {% set s = states.sensor.solarflow_2_status_raw %}
+                                  {% set online = s.state|upper not in ['UNAVAILABLE','UNKNOWN','FAULT','ERROR'] %}
+                                  {% set fresh = (as_timestamp(now()) - as_timestamp(s.last_reported, default=0)) < 60 %}
+                                  {{ online and fresh and last > 0 }}
+                            then:
+                              - action: input_number.set_value
+                                target: { entity_id: input_number.zendure_last_sent_2 }
+                                data: { value: 0 }
+                  - stop: "Auto-Mode switched OFF during Boot/Online Sequence. Full Safety Reconnect applied."
+
+              - parallel:
+                - if: 
+                    - condition: template
+                      value_template: "{{ states('sensor.solarflow_1_status_raw')|upper not in ['UNAVAILABLE', 'UNKNOWN', 'FAULT', 'ERROR'] }}"
+                  then:
+                    - action: mqtt.publish
+                      data: { topic: "Zendure/switch/HUB1_SERIAL_NUMBER/smartMode/set", payload: "ON", qos: 1 }
+                - if: 
+                    - condition: template
+                      value_template: "{{ states('sensor.solarflow_2_status_raw')|upper not in ['UNAVAILABLE', 'UNKNOWN', 'FAULT', 'ERROR'] }}"
                   then:
                     - action: mqtt.publish
                       data: { topic: "Zendure/switch/HUB2_SERIAL_NUMBER/smartMode/set", payload: "ON", qos: 1 }
 
-              # B) SAFETY RECONNECT: If Auto-Mode is OFF, force 0W + Output Mode + Reset Memory
+              # SAFETY RECONNECT
               - if:
                   - condition: template
                     value_template: "{{ is_state('input_boolean.zendure_auto_mode','off') }}"
@@ -1026,37 +1424,86 @@ automation:
                   - parallel:
                       - if:
                           - condition: template
-                            value_template: "{{ states('sensor.solarflow_1_status_raw') not in ['unavailable','unknown','FAULT','ERROR'] }}"
+                            value_template: "{{ states('sensor.solarflow_1_status_raw')|upper not in ['UNAVAILABLE','UNKNOWN','FAULT','ERROR'] }}"
                         then:
                           - action: mqtt.publish
                             data: { topic: "Zendure/select/HUB1_SERIAL_NUMBER/acMode/set", payload: "Output mode", qos: 1 }
                           - action: mqtt.publish
                             data: { topic: "Zendure/number/HUB1_SERIAL_NUMBER/outputLimit/set", payload: "0", qos: 1 }
-                          - action: input_number.set_value
-                            target: { entity_id: input_number.zendure_last_sent_1 }
-                            data: { value: 0 }
+                          # V68: Universal Guard
+                          - if:
+                              - condition: template
+                                value_template: >
+                                  {% set last = states('input_number.zendure_last_sent_1')|int(0) %}
+                                  {% set s = states.sensor.solarflow_1_status_raw %}
+                                  {% set online = s.state|upper not in ['UNAVAILABLE','UNKNOWN','FAULT','ERROR'] %}
+                                  {% set fresh = (as_timestamp(now()) - as_timestamp(s.last_reported, default=0)) < 60 %}
+                                  {{ online and fresh and last != 0 }}
+                            then:
+                              - action: input_number.set_value
+                                target: { entity_id: input_number.zendure_last_sent_1 }
+                                data: { value: 0 }
                             
                       - if:
                           - condition: template
-                            value_template: "{{ states('sensor.solarflow_2_status_raw') not in ['unavailable','unknown','FAULT','ERROR'] }}"
+                            value_template: "{{ states('sensor.solarflow_2_status_raw')|upper not in ['UNAVAILABLE','UNKNOWN','FAULT','ERROR'] }}"
                         then:
                           - action: mqtt.publish
                             data: { topic: "Zendure/select/HUB2_SERIAL_NUMBER/acMode/set", payload: "Output mode", qos: 1 }
                           - action: mqtt.publish
                             data: { topic: "Zendure/number/HUB2_SERIAL_NUMBER/outputLimit/set", payload: "0", qos: 1 }
-                          - action: input_number.set_value
-                            target: { entity_id: input_number.zendure_last_sent_2 }
-                            data: { value: 0 }
+                          # V68: Universal Guard
+                          - if:
+                              - condition: template
+                                value_template: >
+                                  {% set last = states('input_number.zendure_last_sent_2')|int(0) %}
+                                  {% set s = states.sensor.solarflow_2_status_raw %}
+                                  {% set online = s.state|upper not in ['UNAVAILABLE','UNKNOWN','FAULT','ERROR'] %}
+                                  {% set fresh = (as_timestamp(now()) - as_timestamp(s.last_reported, default=0)) < 60 %}
+                                  {{ online and fresh and last != 0 }}
+                            then:
+                              - action: input_number.set_value
+                                target: { entity_id: input_number.zendure_last_sent_2 }
+                                data: { value: 0 }
                   - stop: "Auto-Mode OFF: Safety Reconnect Hard-Stop applied."
 
+      # V55: FINAL HARDENING: Do nothing when Auto-Mode is OFF (except safety branches above)
+      - if:
+          - condition: template
+            value_template: >
+              {% set tid = trigger.id | default('') %}
+              {{ is_state('input_boolean.zendure_auto_mode','off')
+                 and tid not in ['auto_off','device_online_u1','device_online_u2','boot_check'] }}
+        then:
+          - stop: "Auto-Mode OFF: Trigger ignoriert (Strict Hands-Off)."
+
+      # V56: EMERGENCY OVERRIDES CALIBRATION (Priority Fix)
+      - if:
+          - condition: template
+            value_template: >
+              {{ is_state('input_boolean.zendure_emergency_charge','on')
+                 and (is_state('input_boolean.zendure_calib_mode_u1','on')
+                      or is_state('input_boolean.zendure_calib_mode_u2','on')) }}
+        then:
+          - action: input_boolean.turn_off
+            target:
+              entity_id:
+                - input_boolean.zendure_calib_mode_u1
+                - input_boolean.zendure_calib_mode_u2
+
       - variables:
-          online1: "{{ states('sensor.solarflow_1_status_raw') not in ['unavailable', 'unknown', 'FAULT', 'ERROR'] }}"
-          online2: "{{ states('sensor.solarflow_2_status_raw') not in ['unavailable', 'unknown', 'FAULT', 'ERROR'] }}"
+          online1: "{{ states('sensor.solarflow_1_status_raw')|upper not in ['UNAVAILABLE', 'UNKNOWN', 'FAULT', 'ERROR'] }}"
+          online2: "{{ states('sensor.solarflow_2_status_raw')|upper not in ['UNAVAILABLE', 'UNKNOWN', 'FAULT', 'ERROR'] }}"
           min_soc: 5
-          t1: "{{ states('sensor.solarflow_1_batt_max_temp') | float(states('sensor.solarflow_1_temp')|float(99)) }}"
-          t2: "{{ states('sensor.solarflow_2_batt_max_temp') | float(states('sensor.solarflow_2_temp')|float(99)) }}"
+          # V48: Temp default changed to 0 (Cold-Charge Protection on error)
+          t1: "{{ states('sensor.solarflow_1_batt_max_temp') | float(states('sensor.solarflow_1_temp')|float(0)) }}"
+          t2: "{{ states('sensor.solarflow_2_batt_max_temp') | float(states('sensor.solarflow_2_temp')|float(0)) }}"
           soc1: "{{ states('sensor.solarflow_1_battery_level') | float(0) }}"
           soc2: "{{ states('sensor.solarflow_2_battery_level') | float(0) }}"
+          # V48: Added SOC Validation
+          soc1_valid: "{{ is_number(states('sensor.solarflow_1_battery_level')) }}"
+          soc2_valid: "{{ is_number(states('sensor.solarflow_2_battery_level')) }}"
+          
           cl1: "{% if t1 < 5 %} 100 {% elif t1 < 10 %} 300 {% else %} 800 {% endif %}"
           cl2: "{% if t2 < 5 %} 100 {% elif t2 < 10 %} 300 {% else %} 800 {% endif %}"
           sl1: "{% if soc1 > 97 %} 100 {% elif soc1 >= 90 %} 200 {% else %} 800 {% endif %}"
@@ -1074,11 +1521,12 @@ automation:
           curr_min_soc_2: "{{ states('sensor.solarflow_2_setting_minsoc') | int(-1) }}"
           curr_charge_2: "{{ states('sensor.solarflow_2_setting_chargelimit') | int(-1) }}"
           emerg_global: "{{ is_state('input_boolean.zendure_emergency_charge', 'on') }}"
-          emerg_stop: "{{ states('input_number.zendure_conf_soc_emerg_stop') | int(20) }}"
+          emerg_stop: "{{ states('input_number.zendure_conf_soc_emerg_stop') | int(25) }}" # V56: 25%
 
-      - if: 
-          - condition: template
-            value_template: "{{ is_state('input_boolean.zendure_auto_mode','on') }}"
+      - if:
+          - condition: state
+            entity_id: input_boolean.zendure_auto_mode
+            state: "on"
         then:
           - parallel:
             - if: 
@@ -1099,16 +1547,53 @@ automation:
                   data: { topic: "Zendure/number/HUB2_SERIAL_NUMBER/chargeMaxLimit/set", payload: "{{ charge_limit_u2 }}", qos: 1 }
       
       - parallel:
-          # --- UNIT 1 LOGIC (V39 Protocol) ---
+          # --- UNIT 1 LOGIC ---
           - sequence:
+              # V62.0: EMERGENCY OUTPUT STOP (HARDENED & BOOT-SAFE & SENSOR-SAFE)
+              - if:
+                  - condition: template
+                    value_template: >
+                      {% set tid = trigger.id | default('') %}
+                      {% set out = states('sensor.solarflow_1_output_limit') %}
+                      {{ emerg_global
+                         and is_state('input_boolean.zendure_calib_mode_u1','off')
+                         and (
+                           tid in ['boot_check','device_online_u1']
+                           or out in ['unknown','unavailable']
+                           or (out|int(0) != 0)
+                           or (states('input_number.zendure_last_sent_1')|int(0) > 0)
+                         ) }}
+                then:
+                  - action: mqtt.publish
+                    data: { topic: "Zendure/number/HUB1_SERIAL_NUMBER/outputLimit/set", payload: "0", qos: 1 }
+                  # V68: MEMORY RESET GHOST GUARD (Online AND Fresh)
+                  - if:
+                      - condition: template
+                        value_template: >
+                          {% set last = states('input_number.zendure_last_sent_1')|int(0) %}
+                          {% set s = states.sensor.solarflow_1_status_raw %}
+                          {% set online = s.state|upper not in ['UNAVAILABLE','UNKNOWN','FAULT','ERROR'] %}
+                          {% set fresh = (as_timestamp(now()) - as_timestamp(s.last_reported, default=0)) < 60 %}
+                          {{ online and fresh and last > 0 }}
+                    then:
+                      - action: input_number.set_value
+                        target: { entity_id: input_number.zendure_last_sent_1 }
+                        data: { value: 0 }
+
+              # V65: INPUT MODE GUARD (Unit 1) (Fixed V68)
               - if: 
                   - condition: template
                     value_template: "{{ is_state('input_boolean.zendure_calib_mode_u1','on') and online1 }}"
                 then:
-                  # Force Charge (Input mode)
+                  # Guard: Only proceed if Auto-Mode is really ON
+                  - if:
+                      - condition: state
+                        entity_id: input_boolean.zendure_auto_mode
+                        state: "off"
+                    then:
+                      - stop: "Auto Mode OFF. Aborting Input Mode switch for Unit 1."
                   - action: mqtt.publish
                     data: { topic: "Zendure/select/HUB1_SERIAL_NUMBER/acMode/set", payload: "Input mode", qos: 1 }
-                  # Force Output 0
                   - action: mqtt.publish
                     data: { topic: "Zendure/number/HUB1_SERIAL_NUMBER/outputLimit/set", payload: "0", qos: 1 }
                   - action: mqtt.publish
@@ -1119,11 +1604,18 @@ automation:
               
               - if: 
                   - condition: template
-                    value_template: "{{ emerg_global and is_state('input_boolean.zendure_calib_mode_u1','off') and online1 and soc1 < emerg_stop }}"
+                    # V48: Added soc1_valid check
+                    value_template: "{{ emerg_global and is_state('input_boolean.zendure_calib_mode_u1','off') and online1 and soc1_valid and soc1 < emerg_stop }}"
                 then:
+                  # V65: Guard: Only proceed if Auto-Mode is really ON
+                  - if:
+                      - condition: state
+                        entity_id: input_boolean.zendure_auto_mode
+                        state: "off"
+                    then:
+                      - stop: "Auto Mode OFF. Aborting Emergency Input Mode switch for Unit 1."
                   - action: mqtt.publish
                     data: { topic: "Zendure/select/HUB1_SERIAL_NUMBER/acMode/set", payload: "Input mode", qos: 1 }
-                  # Force Output 0
                   - action: mqtt.publish
                     data: { topic: "Zendure/number/HUB1_SERIAL_NUMBER/outputLimit/set", payload: "0", qos: 1 }
                   - action: mqtt.publish
@@ -1135,25 +1627,78 @@ automation:
               # Return to Normal Mode
               - if: 
                   - condition: template
+                    # V48: Added soc1_valid check
                     value_template: >
                       {{ (is_state('input_boolean.zendure_calib_mode_u1','off') 
-                          and (not emerg_global or soc1 >= emerg_stop)
+                          and (not emerg_global or (soc1_valid and soc1 >= emerg_stop))
                           and online1
                           and states('input_number.zendure_last_sent_1')|int(0) == -2 ) }}
                 then:
                    - action: mqtt.publish
                      data: { topic: "Zendure/select/HUB1_SERIAL_NUMBER/acMode/set", payload: "Output mode", qos: 1 }
-                   - action: input_number.set_value
-                     target: { entity_id: input_number.zendure_last_sent_1 }
-                     data: { value: 0 }
+                   # V56: Explicitly set OutputLimit 0 on return for safety
+                   - action: mqtt.publish
+                     data: { topic: "Zendure/number/HUB1_SERIAL_NUMBER/outputLimit/set", payload: "0", qos: 1 }
+                   # V68: Universal Guard (Sentinel reset)
+                   - if:
+                       - condition: template
+                         value_template: >
+                           {% set last = states('input_number.zendure_last_sent_1')|int(0) %}
+                           {% set s = states.sensor.solarflow_1_status_raw %}
+                           {% set online = s.state|upper not in ['UNAVAILABLE','UNKNOWN','FAULT','ERROR'] %}
+                           {% set fresh = (as_timestamp(now()) - as_timestamp(s.last_reported, default=0)) < 60 %}
+                           {{ online and fresh and last == -2 }}
+                     then:
+                       - action: input_number.set_value
+                         target: { entity_id: input_number.zendure_last_sent_1 }
+                         data: { value: 0 }
                    - delay: "00:00:01" 
 
-          # --- UNIT 2 LOGIC (V39 Protocol) ---
+          # --- UNIT 2 LOGIC ---
           - sequence:
+              # V57: EMERGENCY OUTPUT STOP (HARDENED & BOOT-SAFE & SENSOR-SAFE)
+              - if:
+                  - condition: template
+                    value_template: >
+                      {% set tid = trigger.id | default('') %}
+                      {% set out = states('sensor.solarflow_2_output_limit') %}
+                      {{ emerg_global
+                         and is_state('input_boolean.zendure_calib_mode_u2','off')
+                         and (
+                           tid in ['boot_check','device_online_u2']
+                           or out in ['unknown','unavailable']
+                           or (out|int(0) != 0)
+                           or (states('input_number.zendure_last_sent_2')|int(0) > 0)
+                         ) }}
+                then:
+                  - action: mqtt.publish
+                    data: { topic: "Zendure/number/HUB2_SERIAL_NUMBER/outputLimit/set", payload: "0", qos: 1 }
+                  # V68: MEMORY RESET GHOST GUARD (Online AND Fresh)
+                  - if:
+                      - condition: template
+                        value_template: >
+                          {% set last = states('input_number.zendure_last_sent_2')|int(0) %}
+                          {% set s = states.sensor.solarflow_2_status_raw %}
+                          {% set online = s.state|upper not in ['UNAVAILABLE','UNKNOWN','FAULT','ERROR'] %}
+                          {% set fresh = (as_timestamp(now()) - as_timestamp(s.last_reported, default=0)) < 60 %}
+                          {{ online and fresh and last > 0 }}
+                    then:
+                      - action: input_number.set_value
+                        target: { entity_id: input_number.zendure_last_sent_2 }
+                        data: { value: 0 }
+
+              # V65: INPUT MODE GUARD (Unit 2)
               - if: 
                   - condition: template
                     value_template: "{{ is_state('input_boolean.zendure_calib_mode_u2','on') and online2 }}"
                 then:
+                  # Guard: Only proceed if Auto-Mode is really ON
+                  - if:
+                      - condition: state
+                        entity_id: input_boolean.zendure_auto_mode
+                        state: "off"
+                    then:
+                      - stop: "Auto Mode OFF. Aborting Input Mode switch for Unit 2."
                   - action: mqtt.publish
                     data: { topic: "Zendure/select/HUB2_SERIAL_NUMBER/acMode/set", payload: "Input mode", qos: 1 }
                   - action: mqtt.publish
@@ -1166,8 +1711,15 @@ automation:
               
               - if: 
                   - condition: template
-                    value_template: "{{ emerg_global and is_state('input_boolean.zendure_calib_mode_u2','off') and online2 and soc2 < emerg_stop }}"
+                    value_template: "{{ emerg_global and is_state('input_boolean.zendure_calib_mode_u2','off') and online2 and soc2_valid and soc2 < emerg_stop }}"
                 then:
+                  # V65: Guard: Only proceed if Auto-Mode is really ON
+                  - if:
+                      - condition: state
+                        entity_id: input_boolean.zendure_auto_mode
+                        state: "off"
+                    then:
+                      - stop: "Auto Mode OFF. Aborting Emergency Input Mode switch for Unit 2."
                   - action: mqtt.publish
                     data: { topic: "Zendure/select/HUB2_SERIAL_NUMBER/acMode/set", payload: "Input mode", qos: 1 }
                   - action: mqtt.publish
@@ -1183,18 +1735,31 @@ automation:
                   - condition: template
                     value_template: >
                       {{ (is_state('input_boolean.zendure_calib_mode_u2','off') 
-                          and (not emerg_global or soc2 >= emerg_stop)
+                          and (not emerg_global or (soc2_valid and soc2 >= emerg_stop))
                           and online2
                           and states('input_number.zendure_last_sent_2')|int(0) == -2 ) }}
                 then:
                    - action: mqtt.publish
                      data: { topic: "Zendure/select/HUB2_SERIAL_NUMBER/acMode/set", payload: "Output mode", qos: 1 }
-                   - action: input_number.set_value
-                     target: { entity_id: input_number.zendure_last_sent_2 }
-                     data: { value: 0 }
+                   # V56: Explicitly set OutputLimit 0 on return for safety
+                   - action: mqtt.publish
+                     data: { topic: "Zendure/number/HUB2_SERIAL_NUMBER/outputLimit/set", payload: "0", qos: 1 }
+                   # V68: Universal Guard (Sentinel reset)
+                   - if:
+                       - condition: template
+                         value_template: >
+                           {% set last = states('input_number.zendure_last_sent_2')|int(0) %}
+                           {% set s = states.sensor.solarflow_2_status_raw %}
+                           {% set online = s.state|upper not in ['UNAVAILABLE','UNKNOWN','FAULT','ERROR'] %}
+                           {% set fresh = (as_timestamp(now()) - as_timestamp(s.last_reported, default=0)) < 60 %}
+                           {{ online and fresh and last == -2 }}
+                     then:
+                       - action: input_number.set_value
+                         target: { entity_id: input_number.zendure_last_sent_2 }
+                         data: { value: 0 }
                    - delay: "00:00:01"
 
-  # --- 6.6 CALIBRATION MANAGER (V36: Daytime Sag & Natural Full Charge) ---
+  # --- 6.6 CALIBRATION MANAGER ---
   - alias: "Zendure: Smart Calibration Manager"
     id: "zendure_calibration_manager"
     mode: queued
@@ -1220,19 +1785,19 @@ automation:
         above: 99
         for: "00:05:00"
         id: "stop_u2"
-      - trigger: numeric_state
-        entity_id: sensor.solarflow_1_battery_level
-        above: 99
-        id: "natural_full_u1"
-      - trigger: numeric_state
-        entity_id: sensor.solarflow_2_battery_level
-        above: 99
-        id: "natural_full_u2"
     conditions:
       - condition: state
         entity_id: input_boolean.zendure_auto_mode
         state: "on"
     actions:
+      # V65: Guard: Check Auto-Mode at start of actions (double safety)
+      - if:
+          - condition: state
+            entity_id: input_boolean.zendure_auto_mode
+            state: "off"
+        then:
+          - stop: "Auto Mode OFF. Calibration aborted."
+
       - variables:
           last_u1: "{{ as_timestamp(states('input_datetime.zendure_last_full_charge_1'), default=0) }}"
           last_u2: "{{ as_timestamp(states('input_datetime.zendure_last_full_charge_2'), default=0) }}"
@@ -1242,7 +1807,7 @@ automation:
       
       - if: 
           - condition: template
-            value_template: "{{ trigger.id == 'stop_u1' or trigger.id == 'natural_full_u1' }}"
+            value_template: "{{ trigger.id == 'stop_u1' }}"
         then:
           - action: input_datetime.set_datetime
             target: { entity_id: input_datetime.zendure_last_full_charge_1 }
@@ -1250,53 +1815,77 @@ automation:
       
       - if: 
           - condition: template
-            value_template: "{{ trigger.id == 'stop_u2' or trigger.id == 'natural_full_u2' }}"
+            value_template: "{{ trigger.id == 'stop_u2' }}"
         then:
           - action: input_datetime.set_datetime
             target: { entity_id: input_datetime.zendure_last_full_charge_2 }
             data: { timestamp: "{{ as_timestamp(now()) }}" }
 
+      # V56: Added Online-Check AND Emergency-Check (Emergency blocks Calibration)
       - if: 
           - condition: template
-            value_template: "{{ trigger.id == 'check_time' and days_u1 > days_cfg and is_state('input_boolean.zendure_calib_mode_u1', 'off') }}"
+            value_template: >
+              {{ trigger.id == 'check_time' and days_u1 > days_cfg
+                 and is_state('input_boolean.zendure_calib_mode_u1', 'off') 
+                 and is_state('input_boolean.zendure_emergency_charge','off')
+                 and states('sensor.solarflow_1_status_raw')|upper not in ['UNAVAILABLE','UNKNOWN','FAULT','ERROR'] }}
         then:
           - action: input_boolean.turn_on
             target: { entity_id: input_boolean.zendure_calib_mode_u1 }
+          # V60.1: Notify Syntax Fix (entity_id in target)
           - action: notify.send_message
-            target: { entity_id: notify.telegram_bot_YOUR_TELEGRAM_SERVICE }
-            data: { message: "📅 *Kalibrierung U1*\nGestartet (Zeit-Trigger: {{ days_u1 }} Tage)." }
+            target:
+              entity_id: notify.telegram_bot_YOUR_TELEGRAM_SERVICE
+            data:
+              message: "📅 *Kalibrierung U1*\nGestartet (Zeit-Trigger: {{ days_u1 }} Tage)."
       
-      # V36: Sag Trigger restricted to daytime (10-15h)
       - if: 
           - condition: template
-            value_template: "{{ trigger.id == 'sag_u1' and is_state('input_boolean.zendure_calib_mode_u1', 'off') and 10 <= now().hour < 15 }}"
+            value_template: >
+              {{ trigger.id == 'sag_u1' and is_state('input_boolean.zendure_calib_mode_u1', 'off')
+                 and is_state('input_boolean.zendure_emergency_charge','off')
+                 and 10 <= now().hour < 15
+                 and states('sensor.solarflow_1_status_raw')|upper not in ['UNAVAILABLE','UNKNOWN','FAULT','ERROR'] }}
         then:
           - action: input_boolean.turn_on
             target: { entity_id: input_boolean.zendure_calib_mode_u1 }
           - action: notify.send_message
-            target: { entity_id: notify.telegram_bot_YOUR_TELEGRAM_SERVICE }
-            data: { message: "📉 *Not-Kalibrierung U1*\nSpannungseinbruch erkannt (Voltage Sag)!" }
+            target:
+              entity_id: notify.telegram_bot_YOUR_TELEGRAM_SERVICE
+            data:
+              message: "📉 *Not-Kalibrierung U1*\nSpannungseinbruch erkannt (Voltage Sag)!"
 
       - if: 
           - condition: template
-            value_template: "{{ trigger.id == 'check_time' and days_u2 > days_cfg and is_state('input_boolean.zendure_calib_mode_u2', 'off') }}"
+            value_template: >
+              {{ trigger.id == 'check_time' and days_u2 > days_cfg
+                 and is_state('input_boolean.zendure_calib_mode_u2', 'off') 
+                 and is_state('input_boolean.zendure_emergency_charge','off')
+                 and states('sensor.solarflow_2_status_raw')|upper not in ['UNAVAILABLE','UNKNOWN','FAULT','ERROR'] }}
         then:
           - action: input_boolean.turn_on
             target: { entity_id: input_boolean.zendure_calib_mode_u2 }
           - action: notify.send_message
-            target: { entity_id: notify.telegram_bot_YOUR_TELEGRAM_SERVICE }
-            data: { message: "📅 *Kalibrierung U2*\nGestartet (Zeit-Trigger: {{ days_u2 }} Tage)." }
+            target:
+              entity_id: notify.telegram_bot_YOUR_TELEGRAM_SERVICE
+            data:
+              message: "📅 *Kalibrierung U2*\nGestartet (Zeit-Trigger: {{ days_u2 }} Tage)."
       
-      # V36: Sag Trigger restricted to daytime (10-15h)
       - if: 
           - condition: template
-            value_template: "{{ trigger.id == 'sag_u2' and is_state('input_boolean.zendure_calib_mode_u2', 'off') and 10 <= now().hour < 15 }}"
+            value_template: >
+              {{ trigger.id == 'sag_u2' and is_state('input_boolean.zendure_calib_mode_u2', 'off')
+                 and is_state('input_boolean.zendure_emergency_charge','off')
+                 and 10 <= now().hour < 15
+                 and states('sensor.solarflow_2_status_raw')|upper not in ['UNAVAILABLE','UNKNOWN','FAULT','ERROR'] }}
         then:
           - action: input_boolean.turn_on
             target: { entity_id: input_boolean.zendure_calib_mode_u2 }
           - action: notify.send_message
-            target: { entity_id: notify.telegram_bot_YOUR_TELEGRAM_SERVICE }
-            data: { message: "📉 *Not-Kalibrierung U2*\nSpannungseinbruch erkannt (Voltage Sag)!" }
+            target:
+              entity_id: notify.telegram_bot_YOUR_TELEGRAM_SERVICE
+            data:
+              message: "📉 *Not-Kalibrierung U2*\nSpannungseinbruch erkannt (Voltage Sag)!"
 
       - if: 
           - condition: template
@@ -1305,8 +1894,10 @@ automation:
           - action: input_boolean.turn_off
             target: { entity_id: input_boolean.zendure_calib_mode_u1 }
           - action: notify.send_message
-            target: { entity_id: notify.telegram_bot_YOUR_TELEGRAM_SERVICE }
-            data: { message: "✅ *Kalibrierung U1*\nErfolgreich beendet (100%)." }
+            target:
+              entity_id: notify.telegram_bot_YOUR_TELEGRAM_SERVICE
+            data:
+              message: "✅ *Kalibrierung U1*\nErfolgreich beendet (100%)."
 
       - if: 
           - condition: template
@@ -1315,8 +1906,10 @@ automation:
           - action: input_boolean.turn_off
             target: { entity_id: input_boolean.zendure_calib_mode_u2 }
           - action: notify.send_message
-            target: { entity_id: notify.telegram_bot_YOUR_TELEGRAM_SERVICE }
-            data: { message: "✅ *Kalibrierung U2*\nErfolgreich beendet (100%)." }
+            target:
+              entity_id: notify.telegram_bot_YOUR_TELEGRAM_SERVICE
+            data:
+              message: "✅ *Kalibrierung U2*\nErfolgreich beendet (100%)."
 
   # --- 6.7 HEALTH REPORTER ---
   - alias: "Zendure: Weekly Health Report"
@@ -1336,16 +1929,19 @@ automation:
           imb1_raw: "{{ states('sensor.solarflow_1_cell_imbalance') }}"
           imb2_raw: "{{ states('sensor.solarflow_2_cell_imbalance') }}"
       - action: notify.send_message
-        target: { entity_id: notify.telegram_bot_YOUR_TELEGRAM_SERVICE }
+        target:
+          entity_id: notify.telegram_bot_YOUR_TELEGRAM_SERVICE
         data:
-          message: >
+          message: |
             ℹ️ *Zendure Wochenbericht*
             Unit 1: {{ days_u1 }} Tage ({{ imb1_raw }} V)
             Unit 2: {{ days_u2 }} Tage ({{ imb2_raw }} V)
 
-  # --- 6.8b AUTO-EMERGENCY MANAGER (V45: Periodic trigger no longer stops on Solar) ---
+  # --- 6.8b AUTO-EMERGENCY MANAGER (V62.0: RESTART MODE EXPLICIT) ---
   - alias: "Zendure: Auto-Emergency Manager"
     id: "zendure_auto_emergency_manager"
+    # V62: Changed to 'restart' to allow immediate reaction during wait periods
+    mode: restart
     triggers:
       - trigger: time_pattern
         minutes: "/30"
@@ -1357,11 +1953,22 @@ automation:
         above: 200
         for: "00:05:00"
       
-      # V42: New dedicated Stop Trigger (Battery Full)
+      # V56: Added Boot Trigger for immediate Reconcile (With ID)
+      - trigger: homeassistant
+        event: start
+        id: "boot_reconcile"
+
+      # V60.2: Trigger when Auto Mode is turned ON (catch up missed logic)
+      - trigger: state
+        entity_id: input_boolean.zendure_auto_mode
+        to: "on"
+        id: "auto_on"
+      
       - trigger: template
         id: "stop_min_soc"
         value_template: >
-          {% set stop = states('input_number.zendure_conf_soc_emerg_stop')|float(20) %}
+          {# V57: Fixed Jinja Comment Syntax #}
+          {% set stop = states('input_number.zendure_conf_soc_emerg_stop')|float(25) %}
           {% set s1 = states('sensor.solarflow_1_battery_level')|float(-1) %}
           {% set s2 = states('sensor.solarflow_2_battery_level')|float(-1) %}
           {% set vals = [] %}
@@ -1370,11 +1977,11 @@ automation:
           {{ vals|length > 0 and (vals|min) >= stop }}
         for: "00:02:00"
       
-      # V36: Start Condition (Low Solar + Low Battery for 10 min)
       - trigger: template
         id: "stable_start_u1"
         value_template: >
           {{ is_number(states('sensor.solarflow_1_battery_level')) 
+             and is_number(states('sensor.solarflow_total_solar_input'))
              and states('sensor.solarflow_1_battery_level')|float(0) < states('input_number.zendure_conf_soc_emerg_start')|float(15)
              and states('sensor.solarflow_total_solar_input')|float(0) < 150 }}
         for: "00:10:00"
@@ -1382,6 +1989,7 @@ automation:
         id: "stable_start_u2"
         value_template: >
           {{ is_number(states('sensor.solarflow_2_battery_level')) 
+             and is_number(states('sensor.solarflow_total_solar_input'))
              and states('sensor.solarflow_2_battery_level')|float(0) < states('input_number.zendure_conf_soc_emerg_start')|float(15)
              and states('sensor.solarflow_total_solar_input')|float(0) < 150 }}
         for: "00:10:00"
@@ -1391,44 +1999,92 @@ automation:
         entity_id: input_boolean.zendure_auto_mode
         state: "on"
     actions:
+      # V60: Consistent Wait for sensors (Battery+Solar Pairs)
+      # V60.2: Also wait if triggered by "auto_on"
+      - if: 
+          - condition: template
+            value_template: "{{ trigger.id in ['boot_reconcile', 'auto_on'] }}"
+        then:
+          - wait_template: >
+              {{ (is_number(states('sensor.solarflow_1_battery_level')) and is_number(states('sensor.solarflow_1_solar_input')))
+                 or
+                 (is_number(states('sensor.solarflow_2_battery_level')) and is_number(states('sensor.solarflow_2_solar_input'))) }}
+            timeout: "00:00:30"
+            continue_on_timeout: true
+          
+          # V60: Safety Stop if wait timed out and sensors still invalid
+          - if:
+              - condition: template
+                value_template: >
+                  {{ not (
+                       (is_number(states('sensor.solarflow_1_battery_level')) and is_number(states('sensor.solarflow_1_solar_input')))
+                       or
+                       (is_number(states('sensor.solarflow_2_battery_level')) and is_number(states('sensor.solarflow_2_solar_input')))
+                     ) }}
+            then:
+              - stop: "Boot Reconcile: Sensors still invalid after wait. Skipping decision to prevent errors."
+
+          # V60.1: Abort if Auto-Mode was turned OFF during the boot wait
+          - if:
+              - condition: state
+                entity_id: input_boolean.zendure_auto_mode
+                state: "off"
+            then:
+              - stop: "Boot Reconcile: Auto Mode switched OFF during wait. Aborting."
+
       - variables:
           s1: "{{ states('sensor.solarflow_1_battery_level')|float(-1) }}"
           s2: "{{ states('sensor.solarflow_2_battery_level')|float(-1) }}"
-          valid_socs: >
-            {% set list = [] %}
-            {% if s1 >= 0 %}{% set list = list + [s1] %}{% endif %}
-            {% if s2 >= 0 %}{% set list = list + [s2] %}{% endif %}
-            {{ list }}
-          min_soc_val: "{{ valid_socs | min if valid_socs | length > 0 else 100 }}"
+          min_soc_val: >
+            {% set vals = [] %}
+            {% if s1 >= 0 %}{% set vals = vals + [s1] %}{% endif %}
+            {% if s2 >= 0 %}{% set vals = vals + [s2] %}{% endif %}
+            {{ (vals|min) if (vals|length > 0) else -1 }}
+          
           solar: "{{ states('sensor.solarflow_total_solar_input')|float(0) }}"
-          start_lim: "{{ states('input_number.zendure_conf_soc_emerg_start')|int }}"
-          stop_lim: "{{ states('input_number.zendure_conf_soc_emerg_stop')|int }}"
+          # V58: Added Safe Fallbacks to variables (15/25)
+          start_lim: "{{ states('input_number.zendure_conf_soc_emerg_start')|int(15) }}"
+          stop_lim: "{{ states('input_number.zendure_conf_soc_emerg_stop')|int(25) }}"
       
       - choose:
-          # V36: Start only if stable trigger fired OR manually if somehow missed (fallback)
-          - conditions: "{{ (trigger.id in ['stable_start_u1', 'stable_start_u2', 'periodic']) and is_state('input_boolean.zendure_emergency_charge', 'off') and (min_soc_val < start_lim) and (solar < 150) }}"
+          # V56: Added boot_reconcile to Start Conditions
+          # V60.2: Added auto_on to Start Conditions
+          - conditions:
+              - condition: template
+                value_template: >
+                  {{ (trigger.id in ['stable_start_u1', 'stable_start_u2', 'boot_reconcile', 'auto_on'])
+                     and is_state('input_boolean.zendure_emergency_charge', 'off')
+                     and (min_soc_val|float > -1)
+                     and (min_soc_val|float < start_lim)
+                     and (solar < 150) }}
             sequence:
               - action: input_boolean.turn_on
                 target: { entity_id: input_boolean.zendure_emergency_charge }
               - action: notify.send_message
-                target: { entity_id: notify.telegram_bot_YOUR_TELEGRAM_SERVICE }
-                data: 
+                target:
+                  entity_id: notify.telegram_bot_YOUR_TELEGRAM_SERVICE
+                data:
                   message: "🔋 *Zendure Notladung*\nGestartet (Min SoC: {{ min_soc_val|round(0) }}% < {{ start_lim }}%)."
           
-          # V45: Stop Logic Fix - Periodic checks ONLY SoC, Solar checks ONLY stable trigger
-          - conditions: >
-              {{ is_state('input_boolean.zendure_emergency_charge','on') and (
-                   (trigger.id in ['stop_min_soc', 'periodic'] and (min_soc_val >= stop_lim))
-                   or (trigger.id == 'solar_stable_stop')
-                 ) }}
+          # V56: Added boot_reconcile to Stop Conditions
+          # V60.2: Added auto_on to Stop Conditions
+          - conditions:
+              - condition: template
+                value_template: >
+                  {{ is_state('input_boolean.zendure_emergency_charge','on') and (
+                       (trigger.id in ['stop_min_soc', 'periodic', 'boot_reconcile', 'auto_on']) and (min_soc_val|float >= stop_lim)
+                       or (trigger.id == 'solar_stable_stop')
+                     ) }}
             sequence:
               - action: input_boolean.turn_off
                 target: { entity_id: input_boolean.zendure_emergency_charge }
               - action: notify.send_message
-                target: { entity_id: notify.telegram_bot_YOUR_TELEGRAM_SERVICE }
-                data: { message: "✅ *Zendure Notladung*\nBeendet." }
+                target:
+                  entity_id: notify.telegram_bot_YOUR_TELEGRAM_SERVICE
+                data:
+                  message: "✅ *Zendure Notladung*\nBeendet."
 
-  # --- 6.9 SEASON MANAGER (SPORT SETTINGS & FIXED 14D CALIB) ---
+  # --- 6.9 SEASON MANAGER (V54: STRICT SYNTAX) ---
   - alias: "Zendure: Season Manager"
     id: "zendure_season_manager_dual"
     triggers:
@@ -1439,7 +2095,9 @@ automation:
     actions:
       - choose:
           # WINTER (Oktober - März)
-          - conditions: "{{ now().month >= 10 or now().month < 4 }}"
+          - conditions:
+              - condition: template
+                value_template: "{{ now().month >= 10 or now().month < 4 }}"
             sequence:
               - action: input_number.set_value
                 target: { entity_id: input_number.zendure_conf_soc_off }
@@ -1453,13 +2111,14 @@ automation:
               - action: input_number.set_value
                 target: { entity_id: input_number.zendure_conf_soc_emerg_stop }
                 data: { value: 25 }
-              # V37.1: FIXED 14 Days (User Request)
               - action: input_number.set_value
                 target: { entity_id: input_number.zendure_conf_calib_days }
                 data: { value: 14 }
 
           # SOMMER (April - September)
-          - conditions: "{{ now().month >= 4 and now().month < 10 }}"
+          - conditions:
+              - condition: template
+                value_template: "{{ now().month >= 4 and now().month < 10 }}"
             sequence:
               - action: input_number.set_value
                 target: { entity_id: input_number.zendure_conf_soc_off }
@@ -1473,12 +2132,10 @@ automation:
               - action: input_number.set_value
                 target: { entity_id: input_number.zendure_conf_soc_emerg_stop }
                 data: { value: 9 }
-              # V37.1: FIXED 14 Days (User Request)
               - action: input_number.set_value
                 target: { entity_id: input_number.zendure_conf_calib_days }
                 data: { value: 14 }
       
-      # V36: Base settings (Dynamic Hysteresis is handled in Control Loop)
       - action: input_number.set_value
         target: { entity_id: input_number.zendure_conf_grid_bias }
         data: { value: 10 }
@@ -1489,37 +2146,37 @@ automation:
         target: { entity_id: input_number.zendure_conf_min_change }
         data: { value: 5 }
 
+      # V68.1: Restored missing SmartMode enforcement block
       - delay: "00:00:05"
-      # V39: Double-Tap SmartMode ON (SWITCH PROTOCOL "ON")
       - parallel:
         - if: 
             - condition: template
-              value_template: "{{ states('sensor.solarflow_1_status_raw') not in ['unavailable', 'unknown', 'FAULT', 'ERROR'] }}"
+              value_template: "{{ states('sensor.solarflow_1_status_raw')|upper not in ['UNAVAILABLE', 'UNKNOWN', 'FAULT', 'ERROR'] }}"
           then:
             - action: mqtt.publish
               data: { topic: "Zendure/switch/HUB1_SERIAL_NUMBER/smartMode/set", payload: "ON", qos: 1 }
         - if: 
             - condition: template
-              value_template: "{{ states('sensor.solarflow_2_status_raw') not in ['unavailable', 'unknown', 'FAULT', 'ERROR'] }}"
+              value_template: "{{ states('sensor.solarflow_2_status_raw')|upper not in ['UNAVAILABLE', 'UNKNOWN', 'FAULT', 'ERROR'] }}"
           then:
             - action: mqtt.publish
               data: { topic: "Zendure/switch/HUB2_SERIAL_NUMBER/smartMode/set", payload: "ON", qos: 1 }
-      - delay: "00:00:02" # Safety Delay
+      - delay: "00:00:02"
       - parallel:
         - if: 
             - condition: template
-              value_template: "{{ states('sensor.solarflow_1_status_raw') not in ['unavailable', 'unknown', 'FAULT', 'ERROR'] }}"
+              value_template: "{{ states('sensor.solarflow_1_status_raw')|upper not in ['UNAVAILABLE', 'UNKNOWN', 'FAULT', 'ERROR'] }}"
           then:
             - action: mqtt.publish
               data: { topic: "Zendure/switch/HUB1_SERIAL_NUMBER/smartMode/set", payload: "ON", qos: 1 }
         - if: 
             - condition: template
-              value_template: "{{ states('sensor.solarflow_2_status_raw') not in ['unavailable', 'unknown', 'FAULT', 'ERROR'] }}"
+              value_template: "{{ states('sensor.solarflow_2_status_raw')|upper not in ['UNAVAILABLE', 'UNKNOWN', 'FAULT', 'ERROR'] }}"
           then:
             - action: mqtt.publish
               data: { topic: "Zendure/switch/HUB2_SERIAL_NUMBER/smartMode/set", payload: "ON", qos: 1 }
 
-  # --- 6.10 MONITORING ---
+  # --- 6.10 MONITORING (V54: STRICT SYNTAX) ---
   - alias: "Zendure: Monitoring"
     id: "zendure_monitoring_dual"
     triggers:
@@ -1531,33 +2188,80 @@ automation:
         id: "shelly_ok"
         value_template: "{{ is_number(states('sensor.shellypro3em_SHELLY_ID_total_active_power')) }}"
         for: "00:01:00"
+      
+      # Offline
       - trigger: state
         entity_id: sensor.solarflow_1_status_raw
         to: "unavailable"
-        for: "00:03:00" # V40: Reduced to 3m (total 5m with expiry)
-        id: "u1_fail"
+        for: "00:03:00"
+        id: "u1_offline"
       - trigger: state
         entity_id: sensor.solarflow_2_status_raw
         to: "unavailable"
-        for: "00:03:00" # V40: Reduced to 3m
-        id: "u2_fail"
+        for: "00:03:00"
+        id: "u2_offline"
+      
+      # Fault
+      - trigger: template
+        id: "u1_fault"
+        value_template: "{{ states('sensor.solarflow_1_status_raw')|upper in ['FAULT', 'ERROR'] }}"
+        for: "00:03:00"
+      - trigger: template
+        id: "u2_fault"
+        value_template: "{{ states('sensor.solarflow_2_status_raw')|upper in ['FAULT', 'ERROR'] }}"
+        for: "00:03:00"
+
     actions:
       - choose:
-          - conditions: "{{ trigger.id == 'shelly_fail' }}"
+          - conditions:
+              - condition: template
+                value_template: "{{ trigger.id == 'shelly_fail' }}"
             sequence:
               - action: persistent_notification.create
                 data: { title: "⚠️ Zendure Failsafe", message: "Netzdaten fehlen (Shelly offline). Grundlast aktiv.", notification_id: "sf_failsafe" }
-          - conditions: "{{ trigger.id == 'shelly_ok' }}"
+          - conditions:
+              - condition: template
+                value_template: "{{ trigger.id == 'shelly_ok' }}"
             sequence:
               - action: persistent_notification.dismiss
                 data: { notification_id: "sf_failsafe" }
-          - conditions: "{{ trigger.id == 'u1_fail' }}"
+          
+          # Offline Alerts
+          - conditions:
+              - condition: template
+                value_template: "{{ trigger.id == 'u1_offline' }}"
             sequence:
               - action: notify.send_message
-                target: { entity_id: notify.telegram_bot_YOUR_TELEGRAM_SERVICE }
-                data: { message: "⚠️ *Zendure Warnung*\nUnit 1 ist offline/nicht erreichbar." }
-          - conditions: "{{ trigger.id == 'u2_fail' }}"
+                target:
+                  entity_id: notify.telegram_bot_YOUR_TELEGRAM_SERVICE
+                data:
+                  message: "⚠️ *Zendure Warnung*\nUnit 1 ist offline/nicht erreichbar."
+          - conditions:
+              - condition: template
+                value_template: "{{ trigger.id == 'u2_offline' }}"
             sequence:
               - action: notify.send_message
-                target: { entity_id: notify.telegram_bot_YOUR_TELEGRAM_SERVICE }
-                data: { message: "⚠️ *Zendure Warnung*\nUnit 2 ist offline/nicht erreichbar." }
+                target:
+                  entity_id: notify.telegram_bot_YOUR_TELEGRAM_SERVICE
+                data:
+                  message: "⚠️ *Zendure Warnung*\nUnit 2 ist offline/nicht erreichbar."
+          
+          # Fault Alerts
+          - conditions:
+              - condition: template
+                value_template: "{{ trigger.id == 'u1_fault' }}"
+            sequence:
+              - action: notify.send_message
+                target:
+                  entity_id: notify.telegram_bot_YOUR_TELEGRAM_SERVICE
+                data:
+                  message: "❌ *Zendure Fehler*\nUnit 1 meldet Fehlerstatus (FAULT/ERROR)!"
+          - conditions:
+              - condition: template
+                value_template: "{{ trigger.id == 'u2_fault' }}"
+            sequence:
+              - action: notify.send_message
+                target:
+                  entity_id: notify.telegram_bot_YOUR_TELEGRAM_SERVICE
+                data:
+                  message: "❌ *Zendure Fehler*\nUnit 2 meldet Fehlerstatus (FAULT/ERROR)!"
