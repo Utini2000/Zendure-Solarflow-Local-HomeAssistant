@@ -1016,4 +1016,292 @@
 #   (OutputLimit, MinSoC) to keep database clean and prevent false availability.
 # - BASE: Based on V41.0 (Bulletproof Anti-Spam & Protocol).
 #
+# CHANGES V45.0:
+# - EMERGENCY LOGIC FIX: The periodic (30min) trigger can no longer stop emergency
+#   charge based on instantaneous solar power (preventing stop on sun spikes).
+#   Solar stop is now exclusively handled by the stable 'solar_stable_stop' trigger.
+# - STATE MACHINE RECONCILE: Added a 5-minute time pattern trigger. This ensures
+#   that temperature-dependent limits (e.g. cold weather throttling) are updated
+#   dynamically even if no other events occur.
+# - STARTUP ROBUSTNESS: 'Sync Memory on Start' now explicitly checks if the
+#   device status is OK before syncing. Prevents learning stale MQTT retained values.
+# - SENSOR POLISH: Added 'device_class' for Temperature and Voltage sensors.
+# - SYNTAX: Standardized all 'if' actions to use strict list-condition format.
+# - BASE: Based on V44.1 (Stable Core).
+#
+# CHANGES V46.0:
+# - ARCHITECTURE FIX: Moved Spillover (floor_1/2) calculation BEFORE the Safety
+#   Gate. Added 'spillover_override' to the gate condition. This ensures that
+#   excess power is exported even if grid consumption is stable (deadband).
+# - OFFLINE SAFETY: Added strict online checks (status not unavailable/fault) to
+#   'Anti-Drift' and 'Sync Memory from OutputLimit' automations. Prevents learning
+#   stale/retained MQTT values during device outages.
+# - EMERGENCY ROBUSTNESS: Changed default min_soc from 100 to -1 when sensors
+#   are missing. Prevents accidental emergency stop on sensor glitches.
+# - SENSOR HYGIENE: Temp sensors now return 'unavailable' on error (was 0).
+# - SYNTAX: Converted 'notify' targets to 'data: entity_id' standard.
+# - BASE: Based on V45.0 (Refined Logic).
+#
+# CHANGES V47.0:
+# - VOLTAGE SCALING: Enhanced MQTT value templates for Cell Voltages to handle
+#   millivolts (>2000), centivolts (>20), and volts robustly. Prevents scaling
+#   errors if device protocol changes (e.g. 3350mV interpreted as 33.5V).
+# - INPUT LIMITS: Reduced 'zendure_last_sent' max value from 1200 to 800 to
+#   match physical hardware limits and prevent manual ghost-load math errors.
+# - INCLUDED V46.2 FIXES:
+#   -> Architecture Fix (Spillover calculated before Safety Gate).
+#   -> Offline Safety (Anti-Retain checks in sync automations).
+#   -> Emergency Robustness (Default SOC -1).
+#   -> Logic Hardening (Explicit soc_valid checks).
+#
+# CHANGES V48.0:
+# - BUSY LOGIC: 'busy_uX' now strictly respects 'emerg_global'. If emergency
+#   charge is active globally, units remain busy/input-mode regardless of their
+#   individual SoC. Prevents mode ping-pong when one unit is full but other isnt.
+# - FAIL-SAFE DEFAULTS: Temp default in State Machine changed from 99 to 0.
+#   Missing sensors now trigger cold-weather throttling (safe) instead of full
+#   power (unsafe). Added 'soc_valid' checks before mode transitions.
+# - INPUT CLAMPING: All automations syncing 'last_sent' (Startup, Drift, Sync)
+#   now enforce [0, 800] limits. Protects against invalid MQTT values.
+# - ROBUSTNESS: Status checks now use '| upper' to be case-insensitive.
+# - RENAMING: 'soc_off' helper renamed to clarify "PV only" behavior.
+# - BASE: Based on V46.2/V47 architecture.
+#
+# CHANGES V49.0:
+# - EMERGENCY OUTPUT STOP: Added logic to State Machine to force Output Limit to 0
+#   for units that are NOT in Input Mode during a global emergency. This fixes
+#   "phantom discharge" where a full unit would keep discharging because the
+#   control loop was locked.
+# - CALIBRATION STABILITY: Removed 'natural_full' triggers (instant >99%). Now
+#   relys solely on stable triggers (>99% for 5min) to reset the 14-day timer.
+#   Prevents timer resets due to SoC fluttering at 99%.
+# - SENSOR CONSISTENCY: Unit 2 Temp sensor now returns 'unavailable' on error
+#   (matched to Unit 1), preventing misleading 0°C readings.
+# - SYNTAX: Converted remaining shorthand 'if' condition to strict list format.
+# - BASE: Based on V48.0 (Logic Hardening).
+#
+# CHANGES V50.0:
+# - MEMORY SYNC DECOUPLING: Moved calibration checks from global conditions to
+#   specific 'choose' branches. Now, if Unit 1 calibrates, Unit 2 can still
+#   sync its memory (e.g. manual app changes), and vice versa.
+# - EMERGENCY STOP HARDENING: The force-0W logic in State Machine now checks
+#   'last_sent > 0' as a fallback. Ensures discharge stops even if the
+#   OutputLimit sensor is temporarily unavailable/0.
+# - ANTI-DRIFT SAFETY: Added global conditions to block Anti-Drift during
+#   Emergency or Calibration modes to prevent learning invalid values.
+# - TYPE SAFETY: Added explicit '|int(0)' casts to 'floor_1/2' and
+#   'available_capacity' in Control Loop to prevent Jinja2 type errors.
+# - BASE: Based on V49.0 (Emergency Perfection).
+#
+# CHANGES V51.0:
+# - CRITICAL FIX: Removed the '#' comment inside the Jinja2 template for
+#   'final_1_raw' in the Control Loop. This previously broke the calculation by
+#   injecting text into the formula.
+# - SYNTAX FIX: Converted the 'if' shorthand in State Machine (Auto Mode check)
+#   to strict '- condition: state' list format for maximum HA compatibility.
+# - TYPING HARDENING:
+#   -> Auto-Emergency: 'min_soc_val' is now calculated directly as a number,
+#      avoiding list-to-string casting issues.
+#   -> Control Loop: Explicit '|int(0)' casts added for 'delta_effective' and
+#      'available_capacity' to prevent type errors.
+# - OPTIMIZATION: 'Sync Memory' automation now checks if the value actually
+#   changed before writing to input_number, reducing database writes.
+# - POLISH: Added '%' unit to emergency start/stop configuration helpers.
+# - BASE: Based on V50.0 (Fortress).
+#
+# CHANGES V53.0:
+# - BLOCKER FIX: Added 'default_entity_id' to 'home_power_consumption_total'
+#   template sensor. Ensures correct linking with the integration sensor.
+# - BLOCKER FIX: Corrected 'notify.send_message' syntax. Moved 'entity_id' from
+#   'data' to 'target' block in all actions.
+# - LOGIC FIX (STATE MACHINE): Hardened Emergency Stop logic. It now forces
+#   MQTT OutputLimit to 0 but only overwrites 'last_sent' memory if it was > 0.
+#   This protects the '-2' sentinel so units return to Input Mode correctly.
+# - LOGIC FIX (CONTROL LOOP): Changed mode to 'restart' to prevent dropped events.
+#   Added explicit type casting for variables to prevent Template Errors.
+# - LOGIC FIX (EMERGENCY START): Removed 'periodic' from start trigger. Added
+#   'is_number' checks to stable triggers to prevent false starts on sensor loss.
+# - INITIALIZATION: Added logic to set 'last_full_charge' to now() on first boot
+#   if it is 0 (1970), preventing immediate calibration loops.
+# - MONITORING: Added FAULT/ERROR triggers. Added 'availability' to Power Sensor.
+#   Fixed Weekly Report formatting (|).
+# - POLISH: Added units to emergency helpers.
+#
+# CHANGES V54.0:
+# - BLOCKER FIX: Corrected 'notify.send_message' syntax to align with official
+#   docs. 'entity_id' is now inside the 'data' block.
+# - LOGIC FIX (INIT): Rewrote 'Initialize Calibration Timer' automation to use
+#   modern trigger syntax and initialize Unit 1 & Unit 2 timestamps independently.
+# - CRITICAL SAFETY (SYNC): Added 'Auto Mode: ON' condition to Memory Sync
+#   automations. Prevents stale MQTT retained messages from corrupting internal
+#   memory ('last_sent') when the system is supposed to be OFF.
+# - SCHEMA HARDENING: Converted all shorthand 'choose' conditions (strings) into
+#   strict list format ('- condition: template') for maximum HA compatibility.
+# - DATABASE OPTIMIZATION: Removed 'state_class: measurement' from setting/limit
+#   sensors (OutputLimit, MinSoC) to prevent unnecessary history stats.
+# - BASE: Based on V53.0 (Completion).
+#
+# CHANGES V58.0:
+# - LOGIC FIX (BOOT RECONCILE): Added a 'wait_template' at the start of the
+#   Auto-Emergency Manager actions. If triggered by boot, it waits up to 30s
+#   for valid battery sensors. Prevents the logic from skipping execution due
+#   to 'unknown' sensor states during HA startup.
+# - SAFETY HARDENING: Updated 'start_lim' and 'stop_lim' variable definitions
+#   to include explicit fallbacks (15% and 25%). Prevents these values from
+#   defaulting to 0 if the Input Helper is unavailable at boot.
+# - PERFORMANCE: Reduced 'device_online' trigger duration in State Machine from
+#   5s to 1s. This ensures faster application of safety limits (0W) when a
+#   unit reconnects during an emergency.
+# - BASE: Based on V57.0 (Final Safety).
+#
+# CHANGES V59.0:
+# - LOGIC FIX (BOOT RECONCILE): Extended the 'wait_template' in Auto-Emergency
+#   Manager. It now waits for valid Battery AND Solar sensors. This prevents
+#   false positives where missing solar data at boot (read as 0) triggers
+#   Emergency Charge because the system assumes it is night.
+# - RACE CONDITION FIX (CONTROL LOOP): Added triggers for all global Input
+#   Booleans (Auto Mode, Emergency, Calibration). Since the automation mode is
+#   'restart', any state change now immediately aborts a running calculation loop
+#   and restarts with the new state. This prevents an old "Output" command from
+#   being sent milliseconds after Emergency Mode was activated.
+# - BASE: Based on V58.0 (Final Polish).
+#
+# CHANGES V60.0:
+# - LOGIC FIX (CONTROL LOOP): Removed top-level 'conditions'. Moved 'Auto Mode'
+#   check to the very first Action with a 'stop' command.
+#   Reason: In 'mode: restart', HA only cancels the running instance if the NEW
+#   trigger's conditions are met. By moving the check to actions, we guarantee
+#   that turning Auto-Mode OFF immediately restarts and stops the loop, preventing
+#   any residual commands from being sent.
+# - LOGIC FIX (BOOT RECONCILE): hardened the 'wait_template'. It now requires
+#   CONSISTENT pairs (Battery+Solar from Unit 1 OR Battery+Solar from Unit 2).
+#   Prevents mixed-data scenarios (Unit 1 Battery + Unit 2 ghost Solar).
+# - SAFETY (BOOT TIMEOUT): Added a strict check after the boot wait. If sensors
+#   are still invalid after 30s, the automation STOPS immediately instead of
+#   calculating with default 0 values.
+# - BASE: Based on V59.0 (Platinum).
+#
+# CHANGES V60.1:
+# - SAFETY PATCH (STATE MACHINE): Added a hard reset for all internal mode flags
+#   (Emergency/Calibration) inside the 'boot_check'/'device_online' branch if
+#   Auto-Mode is OFF. This cleans up restored states that shouldn't persist when
+#   automation is disabled.
+# - SAFETY PATCH (AUTO-EMERGENCY): Added a re-check of 'Auto-Mode' AFTER the
+#   30s boot wait. If the user turns Auto-Mode OFF during the wait period, the
+#   automation now correctly aborts instead of activating Emergency Charge.
+# - BASE: Based on V60.0 (Diamond).
+#
+# CHANGES V60.2:
+# - SAFETY HARDENING (STATE MACHINE): Updated the 'Immediate Safety Dispatch'
+#   condition in the Boot/Online branch. It now triggers if Emergency is ON *OR*
+#   if Auto-Mode is OFF. This ensures immediate 0W enforcement even if the
+#   Emergency flag was just cleared by the Auto-Off Cleanup logic (closing the
+#   7s delay gap).
+# - LOGIC FIX (AUTO-EMERGENCY): Added 'auto_on' trigger (State 'on' of Auto-Mode).
+#   Included this trigger in the 'wait_template' logic and the Start-Conditions.
+#   Reason: Prevents missed emergency starts if the template triggers (stable_start)
+#   fired while Auto-Mode was OFF (and were blocked). Switching Auto-Mode ON now
+#   forces an immediate re-evaluation.
+# - BASE: Based on V60.0 (Diamond) & V60.1 (Patch).
+#
+# CHANGES V61.0:
+# - SAFETY (STATE MACHINE): Replaced static 'delay's in the Boot/Online branch
+#   with 'wait_template' monitoring Auto-Mode. If Auto-Mode is switched OFF
+#   during the wait, the automation aborts immediately and forces 0W Output.
+# - LOGIC FIX (STATE MACHINE): Added 'last_sent' memory reset to the Immediate
+#   Safety Dispatch. If Auto-Mode is OFF, internal memory is cleared (set to 0,
+#   preserving sentinel -2) to prevent "output jumps" when turning Auto-Mode back ON.
+# - LOGIC FIX (SYNC MEMORY): Removed 'Auto-Mode ON' condition. Memory is now
+#   synced 24/7. This ensures the control loop always starts with correct values
+#   after manual interventions or reboots.
+# - PERFORMANCE (AUTO-EMERGENCY): Changed automation mode to 'restart'. Ensures
+#   that trigger events occurring during the 30s boot-wait are not lost but
+#   cause an immediate re-evaluation.
+# - BASE: Based on V60.2 (Final Polish 2).
+#
+# CHANGES V62.0:
+# - REGRESSION FIX (STATE MACHINE): In the Boot/Online branch, the Smart Delay
+#   Abort blocks (triggered if Auto-Mode turns OFF) now perform a FULL Safety
+#   Reconnect sequence. Previously, they only sent "0W", potentially leaving the
+#   device in "Input Mode". Now they explicitly set "Output Mode" + "0W" +
+#   "Memory Reset".
+# - LOGIC FIX (STATE MACHINE): Added 'online' check to the memory reset logic
+#   inside the regular "Emergency Output Stop" block. This prevents clearing
+#   "Ghost Loads" for offline units during an emergency event.
+# - CONFIG (AUTO-EMERGENCY): Explicitly added 'mode: restart' to the Auto-
+#   Emergency Manager to ensure triggers during the boot-wait period cause an
+#   immediate re-evaluation.
+# - BASE: Based on V61.1 (Titanium).
+#
+# CHANGES V63.0:
+# - LOGIC FIX (SMART DELAYS): Changed the abort condition in the Boot/Online
+#   sequence from checking 'is_state(off)' to checking 'wait.completed'.
+#   Reason: Ensures that even a transient OFF-toggle (OFF->ON) during the wait
+#   period triggers the safety abort. 'wait.completed' captures if the condition
+#   was met at ANY point, whereas checking the state only looks at the end result.
+# - LOGIC FIX (QUEUED EXECUTION): Added a state condition to the 'auto_off'
+#   branch in the State Machine.
+#   Reason: Since mode is 'queued', an 'auto_off' trigger could be processed
+#   delayed. If the user switched Auto-Mode back ON in the meantime, the old
+#   trigger would still shut down the system. The new condition prevents this
+#   stale execution.
+# - BASE: Based on V62.0 (Final Resilience).
+#
+# CHANGES V64.0:
+# - ARCHITECTURE CHANGE (KILL SWITCH): Added a dedicated "Safety Kill Switch"
+#   automation. It triggers immediately on 'Auto-Mode -> OFF', bypassing the
+#   queued State Machine. It forces OutputLimit 0, Output Mode, and resets flags.
+#   This acts as a virtual "Emergency Stop" button with zero latency.
+# - LOGIC FIX (STATE MACHINE): Added "Queue Hygiene" at the start of the Actions.
+#   If the automation processes an 'auto_off' trigger but the current state is
+#   already 'ON' (stale trigger due to queueing), it stops execution immediately.
+# - BASE: Based on V63.0 (The Perfectionist).
+#
+# CHANGES V65.0:
+# - ARCHITECTURE (KILL SWITCH): Implemented 'Re-Assert' logic. The Kill Switch
+#   now broadcasts the safety commands (0W, Output Mode) 3 times in a loop.
+# - LOGIC FIX (KILL SWITCH): Fixed the memory reset logic to unconditionally
+#   clear Sentinel values (<0) while protecting positive Ghost Loads (online only).
+# - SAFETY (STATE MACHINE): Added "Input Mode Guards". Before sending any
+#   "Input mode" command, the automation re-checks if Auto-Mode is still ON.
+# - SAFETY (CALIBRATION): Added "Auto-Mode Guard" at the start of actions.
+#
+# CHANGES V66.0:
+# - LOGIC FIX (KILL SWITCH): Modified the memory reset logic to strictly require
+#   an 'online' status before clearing ANY value (including Sentinel -2).
+#   New Logic: "online AND last_sent != 0".
+#   Reason: Prevents the "Input-Mode Trap". If a unit goes offline while in
+#   Input Mode (-2), the value -2 is now preserved. Upon reconnecting, the
+#   State Machine detects -2 and correctly forces "Return to Normal Mode".
+# - UX IMPROVEMENT (KILL SWITCH): Added a condition check inside the Kill Switch
+#   repeat-loop. If Auto-Mode is switched back ON immediately, the safety loop
+#   aborts instantly. Prevents "0W afterburners" for a snappier user experience.
+# - BASE: Based on V65.1 (The Fortress - Complete).
+#
+# CHANGES V67.1:
+# - CORRECTION (STATE MACHINE): Applied the "Stale Data Protection" (Freshness
+#   Check: last_updated < 60s) consistently to ALL remaining memory reset paths:
+#     1. 'auto_off' branch (Regular Shutdown).
+#     2. 'Emergency Output Stop' block.
+#   This ensures that Ghost Loads and Sentinels are preserved even during
+#   regular shutdowns or emergency stops if the device data is stale.
+#
+# CHANGES V68.0:
+# - ARCHITECTURE (HEARTBEAT): Switched all freshness checks from 'last_updated'
+#   to 'last_reported'. This ensures devices aren't marked as "stale" just
+#   because their state hasn't changed value recently (true heartbeat).
+# - SECURITY (UNIVERSAL GUARDS): Applied the strict "Online AND Fresh" guard
+#   to ALL memory reset paths.
+# - BUGFIX (UNIT 1): Added the missing "Auto-Mode Guard" before the Input-Mode
+#   switch in Unit 1.
+#
+# CHANGES V69.0:
+# - CONFIG (MQTT): Added 'force_update: true' to the Watchdog Sensors
+#   (SolarFlow 1/2 Status Raw).
+#   Reason: By default, HA does not update 'last_reported' if the MQTT payload
+#   is identical to the previous state. 'force_update' ensures that EVERY
+#   message updates the timestamp. This makes the logic check
+#   "(now - last_reported) < 60" a reliable, true heartbeat for stale data protection.
+# - BASE: Based on V68.1 (Final Polish).
+#
 ################################################################################
