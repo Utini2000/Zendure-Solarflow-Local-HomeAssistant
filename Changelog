@@ -1304,4 +1304,48 @@
 #   "(now - last_reported) < 60" a reliable, true heartbeat for stale data protection.
 # - BASE: Based on V68.1 (Final Polish).
 #
+# CHANGES V69.1 (The Re-Assert Fix):
+# - LOGIC (CONTROL LOOP): Added 'acMode: Output mode' command payload to the
+#   primary regulation actions. If a unit misses the "End Emergency" / "End Calib"
+#   command due to a WiFi/MQTT drop and gets stuck in Input mode, the next normal
+#   load change will now violently force it back into Output mode. Eliminates the
+#   "Stuck in Charging" IoT bug.
+#
+# CHANGES V69.2 (Deep Cycle & Voltage Guard):
+# - HARDWARE PROTECTION (Voltage Guard): The bypass is no longer triggered solely by the 
+#   calculated SoC value, but also directly by the physical cell voltage. If a cell drops 
+#   below 3.15V, the hub is immediately forced into "passthrough" mode (0W discharge) 
+#   to prevent a sudden SoC drop (SOC jump) caused by BMS miscalculations.
+# - DYNAMIC CALIBRATION (Bottom-to-Top): The script now utilizes the 14-day timer for a 
+#   natural calibration cycle. Once the timer expires, the script temporarily lowers the 
+#   discharge limit to the 5% hardware limit. It then waits until the house has naturally 
+#   drained the battery below 10% during normal operation. Only at this true low point 
+#   does the calibration start, perfectly retraining the BMS from 0 to 100% (Deep Cycle).
+# - CALIBRATION FALLBACK: If the battery fails to drop below 10% within 21 days 
+#   (14 days regular + 7 days grace period) due to excess solar energy, the script 
+#   forces the usual time-triggered calibration at 13:00 (1:00 PM) as a fallback.
+#
+# CHANGES V69.3 (Top-Balancing & Sensor Polish):
+# - BATTERY HEALTH (Top-Balancing): Reverted the forced 5% deep discharge from V69.2. 
+#   LiFePO4 (LFP) cells balance at the top (100%), and forcing deep discharges every 14 days 
+#   causes unnecessary wear. The 14-day cycle now strictly performs Top-Balancing at 13:00.
+# - EMERGENCY CALIBRATION: The Voltage Guard (< 3.15V) now acts as a symptom-based safety net. 
+#   If a cell drops below 3.15V unexpectedly (indicating BMS zero-point drift), it immediately 
+#   triggers a safety calibration to catch the fall and relearn the bottom limit.
+# - SOFT-LANDING (Discharge): Added a discharge throttle to prevent sudden voltage drops 
+#   (the LFP cliff). When the SoC approaches the cutoff limit (soc_off + 5%), the maximum 
+#   discharge power is smoothly throttled to 150W to allow the BMS to track voltage accurately.
+# - MQTT PATH FIX (Critical): Corrected the state topics for battery-specific sensors 
+#   (minVol, maxVol, maxTemp). The Zendure API repeats the battery serial number in the topic path 
+#   (e.g., .../SN/SN_maxVol). This resolves the issue where these sensors remained 'unknown'.
+# - DASHBOARD UI: Added new optional telemetry sensors including Battery Heater status 
+#   (heatState), Bypass status (pass), and direct BMS Power for advanced dashboard visualization.
+#
+# CHANGES V69.4 (Top-Balancing):
+# - Change floor_1 and floor_2 from 98 to 100 so that the battery charges fully before forcing a specific output power.
+#
+# CHANGES V69.5 (Calibration / BMS Failure optimization):
+# - Voltage Guard optimized for day/night mode. During the night it will not instantly start a calibration (if required) but instead 
+#   start emergency charging and postpone a calibration for the next day at 13:00h.
+#
 ################################################################################
