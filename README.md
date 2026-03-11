@@ -68,13 +68,13 @@ HUB1_SERIAL_NUMBER: Serial number of the 1st SolarFlow Hub (e.g., EEA1...).
 
 BAT1_SERIAL_NUMBER: Serial number of the battery on the 1st Hub (e.g., CO4...).
 
-HUB1_IP_ADDRESS: Local IP address of the 1st Hub (e.g., 192.168.178.50).
+OBSOLETE in current version: HUB1_IP_ADDRESS: Local IP address of the 1st Hub (e.g., 192.168.178.50).
 
 HUB2_SERIAL_NUMBER: Serial number of the 2nd SolarFlow Hub.
 
 BAT2_SERIAL_NUMBER: Serial number of the battery on the 2nd Hub.
 
-HUB2_IP_ADDRESS: Local IP address of the 2nd Hub.
+OBSOLETE in current version: HUB2_IP_ADDRESS: Local IP address of the 2nd Hub.
 
 shellypro3em_SHELLY_ID: Unique ID of the Shelly 3EM (the part following shellypro3em_ in the entity ID).
 
