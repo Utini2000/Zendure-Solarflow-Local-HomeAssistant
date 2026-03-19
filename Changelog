@@ -1348,4 +1348,26 @@
 # - Voltage Guard optimized for day/night mode. During the night it will not instantly start a calibration (if required) but instead 
 #   start emergency charging and postpone a calibration for the next day at 13:00h.
 #
+# CHANGES V69.6 (Calibration fixes):
+# - Use PV power only for calibration (as long as enough PV power is available).
+#   Dynamically switch to AC power for calibration if required.
+#
+# CHANGES V70:
+# - Added smart notification for when to run devices to consume excess energy
+#   Added high temperature notification
+#
+# CHANGES V71:
+# - Added off grid power outlet sensor + switch
+#   Added automation to turn it on when UPS Tower is active / discharging
+#
+# CHANGES V72:
+# - Big rework of calibration and emergency charging sensors and strategy to be more reliable
+#
+# CHANGES V73:
+# - Improvements in the balancing logic when using two units (based on unit temperature, battery level, input power)
+# - Improvements regarding the thermal throttling by using the synergy of two units
+# - Fixes and reliablity improvements on fore the emergency mode
+# - Implemented best practise standards for data freshness and verification
+# - Reduced write work load by further optimizing the script
+#
 ################################################################################
