@@ -1370,4 +1370,7 @@
 # - Implemented best practise standards for data freshness and verification
 # - Reduced write work load by further optimizing the script
 #
+# CHANGES V74:
+# - Fixing typo mistake from last update
+#
 ################################################################################
