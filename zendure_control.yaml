@@ -1,5 +1,5 @@
 ################################################################################
-#                   ZENDURE SOLARFLOW CONTROL PACKAGE (V73)                    #
+#                   ZENDURE SOLARFLOW CONTROL PACKAGE (V74)                    #
 #             EDITION: THE HEARTBEAT (FORCE UPDATE & TRUE FRESHNESS)           #
 ################################################################################
 #
@@ -457,7 +457,7 @@ mqtt:
       state_topic: "Zendure/sensor/HUB1_SERIAL_NUMBER/packState"
       value_template: "{{ value }}"
       force_update: true
-      expire_after: 120
+      expire_after: 300
 
     - name: "SolarFlow 2 Status Raw"
       unique_id: solarflow_2_status_mqtt
@@ -465,7 +465,7 @@ mqtt:
       state_topic: "Zendure/sensor/HUB2_SERIAL_NUMBER/packState"
       value_template: "{{ value }}"
       force_update: true
-      expire_after: 120
+      expire_after: 300
 
     # --- UNIT 1 OFF-GRID LEISTUNG ---
     - name: "SolarFlow 1 Off-Grid Leistung"
@@ -498,11 +498,11 @@ template:
         state_class: measurement
         unit_of_measurement: "%"
         availability: >
-          {% set s = states.sensor.solarflow_1_status_raw %}
-          {% set fresh = s is not none and s.state|upper not in ['UNAVAILABLE', 'UNKNOWN', 'FAULT', 'ERROR'] and (as_timestamp(now()) - as_timestamp(s.last_reported, 0)) < 120 %}
+          {% set s = states.sensor.solarflow_1_battery_level_hub %}
+          {% set fresh = s is not none and is_number(s.state) and (as_timestamp(now()) - as_timestamp(s.last_reported, 0)) < 180 %}
           {% set vol = states('sensor.solarflow_1_cell_min_vol') | float(3.3) %}
           {% set temp = states('sensor.solarflow_1_batt_max_temp') | float(0) %}
-          {{ fresh and is_number(states('sensor.solarflow_1_battery_level_hub')) and vol > 0 and temp < 80 }}
+          {{ fresh and vol > 0 and temp < 80 }}
         state: >
           {{ states('sensor.solarflow_1_battery_level_hub') | int(0) }}
 
@@ -513,11 +513,11 @@ template:
         state_class: measurement
         unit_of_measurement: "%"
         availability: >
-          {% set s = states.sensor.solarflow_2_status_raw %}
-          {% set fresh = s is not none and s.state|upper not in ['UNAVAILABLE', 'UNKNOWN', 'FAULT', 'ERROR'] and (as_timestamp(now()) - as_timestamp(s.last_reported, 0)) < 120 %}
+          {% set s = states.sensor.solarflow_2_battery_level_hub %}
+          {% set fresh = s is not none and is_number(s.state) and (as_timestamp(now()) - as_timestamp(s.last_reported, 0)) < 180 %}
           {% set vol = states('sensor.solarflow_2_cell_min_vol') | float(3.3) %}
           {% set temp = states('sensor.solarflow_2_batt_max_temp') | float(0) %}
-          {{ fresh and is_number(states('sensor.solarflow_2_battery_level_hub')) and vol > 0 and temp < 80 }}
+          {{ fresh and vol > 0 and temp < 80 }}
         state: >
           {{ states('sensor.solarflow_2_battery_level_hub') | int(0) }}
 
@@ -528,13 +528,13 @@ template:
         device_class: power
         state_class: measurement
         state: >
-          {% set s1 = states.sensor.solarflow_1_status_raw %}
-          {% set s1_fresh = s1 is not none and s1.state|upper not in ['UNAVAILABLE', 'UNKNOWN', 'FAULT', 'ERROR'] and (as_timestamp(now()) - as_timestamp(s1.last_reported, 0)) < 120 %}
-          {% set v1 = states('sensor.solarflow_1_solar_input')|float(0) if s1_fresh else 0 %}
+          {% set s1 = states.sensor.solarflow_1_solar_input %}
+          {% set s1_fresh = s1 is not none and is_number(s1.state) and (as_timestamp(now()) - as_timestamp(s1.last_reported, 0)) < 180 %}
+          {% set v1 = s1.state | float(0) if s1_fresh else 0 %}
 
-          {% set s2 = states.sensor.solarflow_2_status_raw %}
-          {% set s2_fresh = s2 is not none and s2.state|upper not in ['UNAVAILABLE', 'UNKNOWN', 'FAULT', 'ERROR'] and (as_timestamp(now()) - as_timestamp(s2.last_reported, 0)) < 120 %}
-          {% set v2 = states('sensor.solarflow_2_solar_input')|float(0) if s2_fresh else 0 %}
+          {% set s2 = states.sensor.solarflow_2_solar_input %}
+          {% set s2_fresh = s2 is not none and is_number(s2.state) and (as_timestamp(now()) - as_timestamp(s2.last_reported, 0)) < 180 %}
+          {% set v2 = s2.state | float(0) if s2_fresh else 0 %}
 
           {{ (v1 + v2) | int }}
 
@@ -545,13 +545,13 @@ template:
         device_class: power
         state_class: measurement
         state: >
-          {% set s1 = states.sensor.solarflow_1_status_raw %}
-          {% set s1_fresh = s1 is not none and s1.state|upper not in ['UNAVAILABLE', 'UNKNOWN', 'FAULT', 'ERROR'] and (as_timestamp(now()) - as_timestamp(s1.last_reported, 0)) < 120 %}
-          {% set v1 = states('sensor.solarflow_1_grid_input_power')|float(0) if s1_fresh else 0 %}
+          {% set s1 = states.sensor.solarflow_1_grid_input_power %}
+          {% set s1_fresh = s1 is not none and is_number(s1.state) and (as_timestamp(now()) - as_timestamp(s1.last_reported, 0)) < 180 %}
+          {% set v1 = s1.state | float(0) if s1_fresh else 0 %}
 
-          {% set s2 = states.sensor.solarflow_2_status_raw %}
-          {% set s2_fresh = s2 is not none and s2.state|upper not in ['UNAVAILABLE', 'UNKNOWN', 'FAULT', 'ERROR'] and (as_timestamp(now()) - as_timestamp(s2.last_reported, 0)) < 120 %}
-          {% set v2 = states('sensor.solarflow_2_grid_input_power')|float(0) if s2_fresh else 0 %}
+          {% set s2 = states.sensor.solarflow_2_grid_input_power %}
+          {% set s2_fresh = s2 is not none and is_number(s2.state) and (as_timestamp(now()) - as_timestamp(s2.last_reported, 0)) < 180 %}
+          {% set v2 = s2.state | float(0) if s2_fresh else 0 %}
 
           {{ (v1 + v2) | int }}
 
@@ -562,13 +562,13 @@ template:
         device_class: power
         state_class: measurement
         state: >
-          {% set s1 = states.sensor.solarflow_1_status_raw %}
-          {% set s1_fresh = s1 is not none and s1.state|upper not in ['UNAVAILABLE', 'UNKNOWN', 'FAULT', 'ERROR'] and (as_timestamp(now()) - as_timestamp(s1.last_reported, 0)) < 120 %}
-          {% set v1 = states('sensor.solarflow_1_output_power')|float(0) if s1_fresh else 0 %}
+          {% set s1 = states.sensor.solarflow_1_output_power %}
+          {% set s1_fresh = s1 is not none and is_number(s1.state) and (as_timestamp(now()) - as_timestamp(s1.last_reported, 0)) < 180 %}
+          {% set v1 = s1.state | float(0) if s1_fresh else 0 %}
 
-          {% set s2 = states.sensor.solarflow_2_status_raw %}
-          {% set s2_fresh = s2 is not none and s2.state|upper not in ['UNAVAILABLE', 'UNKNOWN', 'FAULT', 'ERROR'] and (as_timestamp(now()) - as_timestamp(s2.last_reported, 0)) < 120 %}
-          {% set v2 = states('sensor.solarflow_2_output_power')|float(0) if s2_fresh else 0 %}
+          {% set s2 = states.sensor.solarflow_2_output_power %}
+          {% set s2_fresh = s2 is not none and is_number(s2.state) and (as_timestamp(now()) - as_timestamp(s2.last_reported, 0)) < 180 %}
+          {% set v2 = s2.state | float(0) if s2_fresh else 0 %}
 
           {{ (v1 + v2) | int }}
 
@@ -597,9 +597,9 @@ template:
         device_class: voltage
         state_class: measurement
         availability: >
-          {% set s = states.sensor.solarflow_1_status_raw %}
-          {% set fresh = s is not none and s.state|upper not in ['UNAVAILABLE', 'UNKNOWN', 'FAULT', 'ERROR'] and (as_timestamp(now()) - as_timestamp(s.last_reported, 0)) < 120 %}
-          {{ fresh and is_number(states('sensor.solarflow_1_cell_min_vol')) and is_number(states('sensor.solarflow_1_cell_max_vol')) }}
+          {% set s_min = states.sensor.solarflow_1_cell_min_vol %}
+          {% set fresh = s_min is not none and is_number(s_min.state) and (as_timestamp(now()) - as_timestamp(s_min.last_reported, 0)) < 180 %}
+          {{ fresh and is_number(states('sensor.solarflow_1_cell_max_vol')) }}
         state: >
           {% set min_v = states('sensor.solarflow_1_cell_min_vol') | float(0) %}
           {% set max_v = states('sensor.solarflow_1_cell_max_vol') | float(0) %}
@@ -612,9 +612,9 @@ template:
         device_class: voltage
         state_class: measurement
         availability: >
-          {% set s = states.sensor.solarflow_2_status_raw %}
-          {% set fresh = s is not none and s.state|upper not in ['UNAVAILABLE', 'UNKNOWN', 'FAULT', 'ERROR'] and (as_timestamp(now()) - as_timestamp(s.last_reported, 0)) < 120 %}
-          {{ fresh and is_number(states('sensor.solarflow_2_cell_min_vol')) and is_number(states('sensor.solarflow_2_cell_max_vol')) }}
+          {% set s_min = states.sensor.solarflow_2_cell_min_vol %}
+          {% set fresh = s_min is not none and is_number(s_min.state) and (as_timestamp(now()) - as_timestamp(s_min.last_reported, 0)) < 180 %}
+          {{ fresh and is_number(states('sensor.solarflow_2_cell_max_vol')) }}
         state: >
           {% set min_v = states('sensor.solarflow_2_cell_min_vol') | float(0) %}
           {% set max_v = states('sensor.solarflow_2_cell_max_vol') | float(0) %}
@@ -1019,12 +1019,12 @@ automation:
             {{ s is not none and is_number(s.state) and (as_timestamp(now()) - as_timestamp(s.last_reported, 0)) < 25 }}
 
           s1_fresh: >-
-            {% set s = states.sensor.solarflow_1_status_raw %}
-            {{ s is not none and s.state|upper not in ['UNAVAILABLE', 'UNKNOWN', 'FAULT', 'ERROR'] and (as_timestamp(now()) - as_timestamp(s.last_reported, 0)) < 120 }}
+            {% set s = states.sensor.solarflow_1_output_limit %}
+            {{ s is not none and is_number(s.state) and (as_timestamp(now()) - as_timestamp(s.last_reported, 0)) < 180 }}
 
           s2_fresh: >-
-            {% set s = states.sensor.solarflow_2_status_raw %}
-            {{ s is not none and s.state|upper not in ['UNAVAILABLE', 'UNKNOWN', 'FAULT', 'ERROR'] and (as_timestamp(now()) - as_timestamp(s.last_reported, 0)) < 120 }}
+            {% set s = states.sensor.solarflow_2_output_limit %}
+            {{ s is not none and is_number(s.state) and (as_timestamp(now()) - as_timestamp(s.last_reported, 0)) < 180 }}
 
           v1_min: "{{ states('sensor.solarflow_1_cell_min_vol') | float(3.3) }}"
           v2_min: "{{ states('sensor.solarflow_2_cell_min_vol') | float(3.3) }}"
@@ -2967,8 +2967,8 @@ automation:
               - condition: template
                 value_template: >
                   {% set ups = states('sensor.ups_status') | lower %}
-                  {% set d1 = states('select.eea1nen9n380978_gridoffmode') %}
-                  {% set d2 = states('select.eea1nen9n380024_gridoffmode') %}
+                  {% set d1 = states('select.HUB1_SERIAL_NUMBER_gridoffmode') %}
+                  {% set d2 = states('select.HUB2_SERIAL_NUMBER_gridoffmode') %}
                   {{ ('on battery' in ups or 'ob' in ups or 'discharging' in ups) and
                      (d1 == 'off' or d2 == 'off') }}
             sequence:
@@ -2998,8 +2998,8 @@ automation:
               - condition: template
                 value_template: >
                   {% set ups = states('sensor.ups_status') | lower %}
-                  {% set d1 = states('select.eea1nen9n380978_gridoffmode') %}
-                  {% set d2 = states('select.eea1nen9n380024_gridoffmode') %}
+                  {% set d1 = states('select.HUB1_SERIAL_NUMBER_gridoffmode') %}
+                  {% set d2 = states('select.HUB2_SERIAL_NUMBER_gridoffmode') %}
                   {{ ('online' in ups or 'ol' in ups) and
                      (d1 == 'Normal mode' or d2 == 'Normal mode') }}
             sequence:
