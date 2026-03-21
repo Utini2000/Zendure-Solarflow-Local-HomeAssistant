@@ -1,5 +1,5 @@
 ################################################################################
-#                   ZENDURE SOLARFLOW CONTROL PACKAGE (V74)                    #
+#                   ZENDURE SOLARFLOW CONTROL PACKAGE (V75)                    #
 #             EDITION: THE HEARTBEAT (FORCE UPDATE & TRUE FRESHNESS)           #
 ################################################################################
 #
@@ -736,9 +736,12 @@ automation:
                         - condition: template
                           value_template: >
                             {% set last = states('input_number.zendure_last_sent_1')|int(0) %}
-                            {% set s = states.sensor.solarflow_1_status_raw %}
-                            {% set online = s.state|upper not in ['UNAVAILABLE','UNKNOWN','FAULT','ERROR'] %}
-                            {% set fresh = (as_timestamp(now()) - as_timestamp(s.last_reported, default=0)) < 120 %}
+                            {% set pwr = states.sensor.solarflow_1_output_power %}
+                            {% set stat = states.sensor.solarflow_1_status_raw %}
+                            {% set t1 = as_timestamp(pwr.last_reported, 0) if pwr else 0 %}
+                            {% set t2 = as_timestamp(stat.last_reported, 0) if stat else 0 %}
+                            {% set online = stat and stat.state|upper not in ['UNAVAILABLE','UNKNOWN','FAULT','ERROR'] %}
+                            {% set fresh = (as_timestamp(now()) - [t1, t2]|max) < 600 %}
                             {{ online and fresh and last != 0 }}
                       then:
                         - action: input_number.set_value
@@ -765,9 +768,12 @@ automation:
                         - condition: template
                           value_template: >
                             {% set last = states('input_number.zendure_last_sent_2')|int(0) %}
-                            {% set s = states.sensor.solarflow_2_status_raw %}
-                            {% set online = s.state|upper not in ['UNAVAILABLE','UNKNOWN','FAULT','ERROR'] %}
-                            {% set fresh = (as_timestamp(now()) - as_timestamp(s.last_reported, default=0)) < 120 %}
+                            {% set pwr = states.sensor.solarflow_2_output_power %}
+                            {% set stat = states.sensor.solarflow_2_status_raw %}
+                            {% set t1 = as_timestamp(pwr.last_reported, 0) if pwr else 0 %}
+                            {% set t2 = as_timestamp(stat.last_reported, 0) if stat else 0 %}
+                            {% set online = stat and stat.state|upper not in ['UNAVAILABLE','UNKNOWN','FAULT','ERROR'] %}
+                            {% set fresh = (as_timestamp(now()) - [t1, t2]|max) < 600 %}
                             {{ online and fresh and last != 0 }}
                       then:
                         - action: input_number.set_value
@@ -1019,12 +1025,30 @@ automation:
             {{ s is not none and is_number(s.state) and (as_timestamp(now()) - as_timestamp(s.last_reported, 0)) < 25 }}
 
           s1_fresh: >-
-            {% set s = states.sensor.solarflow_1_output_limit %}
-            {{ s is not none and is_number(s.state) and (as_timestamp(now()) - as_timestamp(s.last_reported, 0)) < 180 }}
+            {% set pwr = states.sensor.solarflow_1_output_power %}
+            {% set sol = states.sensor.solarflow_1_solar_input %}
+            {% set bat = states.sensor.solarflow_1_battery_level %}
+            {% set stat = states.sensor.solarflow_1_status_raw %}
+            {% set t1 = as_timestamp(pwr.last_reported, 0) if pwr else 0 %}
+            {% set t2 = as_timestamp(sol.last_reported, 0) if sol else 0 %}
+            {% set t3 = as_timestamp(bat.last_reported, 0) if bat else 0 %}
+            {% set t4 = as_timestamp(stat.last_reported, 0) if stat else 0 %}
+            {% set latest = [t1, t2, t3, t4] | max %}
+            {% set stat_val = stat.state | upper if stat else 'UNKNOWN' %}
+            {{ (as_timestamp(now()) - latest) < 600 and stat_val not in ['UNAVAILABLE', 'UNKNOWN', 'FAULT', 'ERROR'] }}
 
           s2_fresh: >-
-            {% set s = states.sensor.solarflow_2_output_limit %}
-            {{ s is not none and is_number(s.state) and (as_timestamp(now()) - as_timestamp(s.last_reported, 0)) < 180 }}
+            {% set pwr = states.sensor.solarflow_2_output_power %}
+            {% set sol = states.sensor.solarflow_2_solar_input %}
+            {% set bat = states.sensor.solarflow_2_battery_level %}
+            {% set stat = states.sensor.solarflow_2_status_raw %}
+            {% set t1 = as_timestamp(pwr.last_reported, 0) if pwr else 0 %}
+            {% set t2 = as_timestamp(sol.last_reported, 0) if sol else 0 %}
+            {% set t3 = as_timestamp(bat.last_reported, 0) if bat else 0 %}
+            {% set t4 = as_timestamp(stat.last_reported, 0) if stat else 0 %}
+            {% set latest = [t1, t2, t3, t4] | max %}
+            {% set stat_val = stat.state | upper if stat else 'UNKNOWN' %}
+            {{ (as_timestamp(now()) - latest) < 600 and stat_val not in ['UNAVAILABLE', 'UNKNOWN', 'FAULT', 'ERROR'] }}
 
           v1_min: "{{ states('sensor.solarflow_1_cell_min_vol') | float(3.3) }}"
           v2_min: "{{ states('sensor.solarflow_2_cell_min_vol') | float(3.3) }}"
