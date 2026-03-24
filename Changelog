@@ -1376,4 +1376,18 @@
 # CHANGES V75:
 # - Fixing a logic flaw tha twas introduced in V73
 #
+# CHANGES V76:
+# - Centralize and deduplicate repeated MQTT and reset sequences for Zendure units to improve maintainability and reduce risk of inconsistent behavior.
+# - Add an automated AC-mode fallback to improve reliability of calibration sequences when PV conditions change.
+# - Fix small sensor/logic issues: preserve power-consumption precision and correct capacity threshold logic.
+# - Introduce scripts: section with four new scripts: zendure_set_u1_outputlimit_zero, zendure_set_u2_outputlimit_zero, zendure_reset_u1_output_safe and zendure_reset_u2_output_safe that centralize MQTT publishes and safe-reset logic for each unit.
+# - Replaced many duplicated inline action sequences in automations (boot/online, kill-switch, sag-confirm, calibration, emergency flows, etc.) with calls to the new scripts and simplified the automations accordingly.
+# - Added new automation Zendure: Calibration AC Fallback Manager to switch AC mode and input/output limits based on PV/SoC thresholds while calibration is active.
+# - Adjusted capacity calculation templates (cap_u1 and cap_u2) to use |min in a few threshold branches (previously |max) to enforce lower caps when conditions require it.
+# - Improve calibration behavior by adding an isolation toggle to prevent the other unit from interfering and by adding PV-based AC fallback thresholds to reliably switch calibration between Input mode and Output mode.
+# - Add an AC fallback manager to make automatic calibration more robust when PV availability fluctuates.
+# - Add pragmatic calibration fallback behavior to handle PV/AC transitions and optional isolation of calibration between units.
+# - Added new configuration helpers: input_boolean.zendure_conf_calib_isolation and input_numbers zendure_conf_calib_pv_low / zendure_conf_calib_pv_high plus template variable calib_isolation to optionally pause calibration on the other unit.
+# - Monitoring of correct adMode selection has been adapted to also send notifications if an automatic correction has occured
+#
 ################################################################################
