@@ -366,8 +366,6 @@
 #    "resetting" itself during rapid changes.
 # 3. SEPARATED HEALING: Drift check moved to separate automation.
 #
-################################################################################
-#
 # MERGE OF V16.3 (Energy) AND SNIPER LOGIC:
 # 1. Dashboard Ready: Includes kWh sensors for Energy Dashboard.
 # 2. Stability: Includes 4s Delay in Control Loop to prevent "Integral Windup".
@@ -974,7 +972,7 @@
 #     -> smartMode is 'switch' (Payload: "ON").
 # - MATH FIX: 'target_clamped' references 'global_max' (Ghost Load Logic Fix).
 # - SCALING: Scales only ACTIVE units to fit remaining capacity.
-# - LOGIC: 
+# - LOGIC:
 #     -> Spillover disabled if unit is busy/calibrating.
 #     -> 'min_change' slider used for Sport (x1) and Zen (x4).
 #     -> Emergency Stop trigger added (2 min stable).
@@ -987,7 +985,7 @@
 # - MATH PERFECTION: Clean separation of 'target_total' vs 'target_online'.
 #   Ghost loads are subtracted from the target, ensuring online units only
 #   fill the remaining gap up to global_max.
-# - ROBUSTNESS: 
+# - ROBUSTNESS:
 #     -> 's1_ok' now blacklists 'FAULT'/'ERROR' explicitly.
 #     -> Watchdog timing tightened (120s expire + 3min trigger = 5min total).
 #     -> Input Numbers now have explicit 'step' to satisfy HA 2026 checks.
@@ -1312,40 +1310,40 @@
 #   "Stuck in Charging" IoT bug.
 #
 # CHANGES V69.2 (Deep Cycle & Voltage Guard):
-# - HARDWARE PROTECTION (Voltage Guard): The bypass is no longer triggered solely by the 
-#   calculated SoC value, but also directly by the physical cell voltage. If a cell drops 
-#   below 3.15V, the hub is immediately forced into "passthrough" mode (0W discharge) 
+# - HARDWARE PROTECTION (Voltage Guard): The bypass is no longer triggered solely by the
+#   calculated SoC value, but also directly by the physical cell voltage. If a cell drops
+#   below 3.15V, the hub is immediately forced into "passthrough" mode (0W discharge)
 #   to prevent a sudden SoC drop (SOC jump) caused by BMS miscalculations.
-# - DYNAMIC CALIBRATION (Bottom-to-Top): The script now utilizes the 14-day timer for a 
-#   natural calibration cycle. Once the timer expires, the script temporarily lowers the 
-#   discharge limit to the 5% hardware limit. It then waits until the house has naturally 
-#   drained the battery below 10% during normal operation. Only at this true low point 
+# - DYNAMIC CALIBRATION (Bottom-to-Top): The script now utilizes the 14-day timer for a
+#   natural calibration cycle. Once the timer expires, the script temporarily lowers the
+#   discharge limit to the 5% hardware limit. It then waits until the house has naturally
+#   drained the battery below 10% during normal operation. Only at this true low point
 #   does the calibration start, perfectly retraining the BMS from 0 to 100% (Deep Cycle).
-# - CALIBRATION FALLBACK: If the battery fails to drop below 10% within 21 days 
-#   (14 days regular + 7 days grace period) due to excess solar energy, the script 
+# - CALIBRATION FALLBACK: If the battery fails to drop below 10% within 21 days
+#   (14 days regular + 7 days grace period) due to excess solar energy, the script
 #   forces the usual time-triggered calibration at 13:00 (1:00 PM) as a fallback.
 #
 # CHANGES V69.3 (Top-Balancing & Sensor Polish):
-# - BATTERY HEALTH (Top-Balancing): Reverted the forced 5% deep discharge from V69.2. 
-#   LiFePO4 (LFP) cells balance at the top (100%), and forcing deep discharges every 14 days 
+# - BATTERY HEALTH (Top-Balancing): Reverted the forced 5% deep discharge from V69.2.
+#   LiFePO4 (LFP) cells balance at the top (100%), and forcing deep discharges every 14 days
 #   causes unnecessary wear. The 14-day cycle now strictly performs Top-Balancing at 13:00.
-# - EMERGENCY CALIBRATION: The Voltage Guard (< 3.15V) now acts as a symptom-based safety net. 
-#   If a cell drops below 3.15V unexpectedly (indicating BMS zero-point drift), it immediately 
+# - EMERGENCY CALIBRATION: The Voltage Guard (< 3.15V) now acts as a symptom-based safety net.
+#   If a cell drops below 3.15V unexpectedly (indicating BMS zero-point drift), it immediately
 #   triggers a safety calibration to catch the fall and relearn the bottom limit.
-# - SOFT-LANDING (Discharge): Added a discharge throttle to prevent sudden voltage drops 
-#   (the LFP cliff). When the SoC approaches the cutoff limit (soc_off + 5%), the maximum 
+# - SOFT-LANDING (Discharge): Added a discharge throttle to prevent sudden voltage drops
+#   (the LFP cliff). When the SoC approaches the cutoff limit (soc_off + 5%), the maximum
 #   discharge power is smoothly throttled to 150W to allow the BMS to track voltage accurately.
-# - MQTT PATH FIX (Critical): Corrected the state topics for battery-specific sensors 
-#   (minVol, maxVol, maxTemp). The Zendure API repeats the battery serial number in the topic path 
+# - MQTT PATH FIX (Critical): Corrected the state topics for battery-specific sensors
+#   (minVol, maxVol, maxTemp). The Zendure API repeats the battery serial number in the topic path
 #   (e.g., .../SN/SN_maxVol). This resolves the issue where these sensors remained 'unknown'.
-# - DASHBOARD UI: Added new optional telemetry sensors including Battery Heater status 
+# - DASHBOARD UI: Added new optional telemetry sensors including Battery Heater status
 #   (heatState), Bypass status (pass), and direct BMS Power for advanced dashboard visualization.
 #
 # CHANGES V69.4 (Top-Balancing):
 # - Change floor_1 and floor_2 from 98 to 100 so that the battery charges fully before forcing a specific output power.
 #
 # CHANGES V69.5 (Calibration / BMS Failure optimization):
-# - Voltage Guard optimized for day/night mode. During the night it will not instantly start a calibration (if required) but instead 
+# - Voltage Guard optimized for day/night mode. During the night it will not instantly start a calibration (if required) but instead
 #   start emergency charging and postpone a calibration for the next day at 13:00h.
 #
 # CHANGES V69.6 (Calibration fixes):
@@ -1380,14 +1378,158 @@
 # - Centralize and deduplicate repeated MQTT and reset sequences for Zendure units to improve maintainability and reduce risk of inconsistent behavior.
 # - Add an automated AC-mode fallback to improve reliability of calibration sequences when PV conditions change.
 # - Fix small sensor/logic issues: preserve power-consumption precision and correct capacity threshold logic.
-# - Introduce scripts: section with four new scripts: zendure_set_u1_outputlimit_zero, zendure_set_u2_outputlimit_zero, zendure_reset_u1_output_safe and zendure_reset_u2_output_safe that centralize MQTT publishes and safe-reset logic for each unit.
+# - Introduce scripts: section with four new scripts: zendure_set_u1_outputlimit_zero, zendure_set_u2_outputlimit_zero, zendure_reset_u1_output_safe and zendure_reset_u2_output_safe
+#   that centralize MQTT publishes and safe-reset logic for each unit.
 # - Replaced many duplicated inline action sequences in automations (boot/online, kill-switch, sag-confirm, calibration, emergency flows, etc.) with calls to the new scripts and simplified the automations accordingly.
 # - Added new automation Zendure: Calibration AC Fallback Manager to switch AC mode and input/output limits based on PV/SoC thresholds while calibration is active.
 # - Adjusted capacity calculation templates (cap_u1 and cap_u2) to use |min in a few threshold branches (previously |max) to enforce lower caps when conditions require it.
 # - Improve calibration behavior by adding an isolation toggle to prevent the other unit from interfering and by adding PV-based AC fallback thresholds to reliably switch calibration between Input mode and Output mode.
 # - Add an AC fallback manager to make automatic calibration more robust when PV availability fluctuates.
 # - Add pragmatic calibration fallback behavior to handle PV/AC transitions and optional isolation of calibration between units.
-# - Added new configuration helpers: input_boolean.zendure_conf_calib_isolation and input_numbers zendure_conf_calib_pv_low / zendure_conf_calib_pv_high plus template variable calib_isolation to optionally pause calibration on the other unit.
+# - Added new configuration helpers: input_boolean.zendure_conf_calib_isolation and input_numbers zendure_conf_calib_pv_low / zendure_conf_calib_pv_high plus template variable calib_isolation
+#   to optionally pause calibration on the other unit.
 # - Monitoring of correct adMode selection has been adapted to also send notifications if an automatic correction has occured
+#
+# Changes V77 (Audit & Reliability Patch):
+# - Fixed night emergency guard: now checks elapsed seconds since last full charge
+#   instead of absolute epoch timestamp (prevents unintended repeated night emergency starts).
+# - Bypass latch hysteresis tuned from +5% to +2% above entry threshold,
+#   so units resume discharge earlier (reduces "stuck in bypass" around ~28% SoC in winter profile).
+# - Removed the temporary "Rapid SoC Drop Detector" Telegram alarm to avoid noise
+#   when short SoC step changes are non-critical.
+# - Reduced hard cut-off in control loop from cell_min <3.15V to <3.12V (both units)
+#   to avoid immediate 0W shutdown on short voltage dips around ~3.15V at mid SoC.
+# - Added per-unit Voltage Guard latch (set <=3.15V for 1m, release >3.25V for 10m
+#   and SoC above bypass-exit) to prevent re-discharge immediately after a sag event.
+# - Tightened control-loop freshness gating: SoC, cell_min, solar_input, output_power
+#   and status must each be fresh (<180s), otherwise no power ramp-up.
+# - Clarification: Season Manager remains always active and will overwrite strategy helper
+#   values daily/on-start by design.
+#
+# Changes V78:
+# - Some fixes from the previous newly introduced features. Because AI becomes smarter each day.
+#
+# Changes V79 to V98:
+# - New: Per-unit diagnostic sensors `solarflow_1_output_block_reason` and
+#   `solarflow_2_output_block_reason`. They now show the active blocking/capping
+#   reason (e.g., vguard, bypass, emergency, calibration, heartbeat_stale,
+#   vmin_softcap, soc_softcap_window, temp_guard, data_invalid).
+# - New: Per-unit Voltage Guard (VGuard) as a latched protection path.
+#   * Dedicated helpers `zendure_vguard_u1/u2`
+#   * Only sets with a fresh/real voltage value and actual activity
+#   * Hard-floor protection for severe undervoltage
+#   * Controlled release instead of immediate re-discharge
+# - New: Dedicated Force Calibration helpers `zendure_force_calib_u1/u2`.
+#   Because of this, `last_full_charge_*` is used as a real timestamp again
+#   and is no longer misused as a special/error flag.
+# - New: Reboot/restore robustness significantly improved.
+#   * Restore-capable state helpers for Calibration / VGuard / Force-Calib / AC-Mode
+#   * Boot checks for Emergency and Calibration continuation
+#   * Reconstruction of internal setpoints (`last_sent_*`) at startup
+#   * Anti-drift/sync paths to prevent diverging target/actual states
+# - New: Manual emergency charging implemented as real start scripts rather than
+#   just status helpers. Starting it manually now actually sets the
+#   AC-Mode/Input-Limit and not just a flag.
+# - New: VGuard -> Emergency Bridge.
+#   If a unit is stuck in VGuard and the situation tilts towards a real
+#   Low-SoC/Low-Vmin emergency, it is transferred to the Emergency path in a
+#   controlled manner instead of remaining stuck in a "protected, but without
+#   active charge" state.
+# - New: Configurable minimum VGuard set output
+#   (`input_number.zendure_conf_vguard_set_min_output`) to reduce false latching
+#   from residual/retention effects right after reboots or on inactive units.
+# - New in V98: Hybrid control for export cases.
+#   In the event of persistent export + significant command lag, the target value
+#   calculation temporarily switches back to `cmd_total`/`last_sent`. This gives
+#   V98 the former aggressiveness of V21/V76 specifically during these problem
+#   windows, without blindly trusting only target values during normal operation.
+# - New: `force_zero_u1/u2` and `stale_force_zero_u1/u2`.
+#   This ensures true 0W cases are cleanly pushed through, even if small
+#   residual power or stale states would otherwise be left behind due to
+#   min_change/hysteresis.
+# - New: Added high-SoC guard for vguard/emergency low-voltage paths:
+#   low-voltage-only escalation now requires SoC below emergency stop + 5%.
+# - New: Added hard-floor override (<=3.00V) that still triggers vguard/emergency
+#   regardless of SoC.
+# - New: Added stale heartbeat export safety path: when a unit is stale, last command
+#   is >0, and grid export is strong (`grid < -80W`), a best-effort 0W clamp publish
+#   is sent.
+# - New: Added explicit helper initials (`vguard/emergency/calib/bypass` off and
+#   `last_sent` 0) to reduce restored stale states after HA restart.
+#
+# - Changed: Auto-Emergency is significantly more precise.
+#   * SoC and voltage paths are separated
+#   * Severe low-voltage cases remain secured
+#   * Soft false triggers on healthy units have been reduced
+#   * Emergency limits are unified across the auto path, bridge, and manual starts
+# - Changed: Sag-Confirm / voltage drop detection is more selective and robust.
+#   It no longer reacts prematurely to harmless, brief voltage drops, but
+#   continues to account for genuine critical low-voltage events.
+# - Changed: Low-voltage caps are no longer as raw as in V21/V76.
+#   Instead of an early, immediate 0W cut during moderate voltage drops, V98
+#   works with softer caps and a true hard-floor. This results in fewer false
+#   shutdowns on healthy units without sacrificing hard protection.
+# - Changed: Bypass/Low-SoC behavior reworked.
+#   * The old "softcap collapsing to 0W at night" path has been eliminated
+#   * Bypass is retained as an intentional PV-only passthrough
+#   * Hysteresis/release adjusted so units don't get stuck unnecessarily long
+# - Changed: The control loop normally calculates with real actual power
+#   (`actual_total`) instead of just the last setpoint.
+#   This improves control quality in normal operation.
+# - Changed: Freshness/Heartbeat logic cleaned up.
+#   * `status_raw` is the central heartbeat
+#   * Non-heartbeat sensors are no longer unnecessarily tied to `last_reported`
+#   * Diagnostic and control paths use more consistent freshness limits
+#   * `heartbeat_stale` becomes visible in the diagnostics
+# - Changed: Calibration start and AC/PV fallback reworked.
+#   * 13:00 start path is cleaner
+#   * AC/PV decision logically separated
+#   * Continuation across reboots is significantly more robust
+#   * Low-SoC calibration starts more gently than in early versions
+# - Changed: AC-Mode-Reconcile is more robust.
+#   * Internal AC-Mode helpers are more restart/restore capable
+#   * Reconcile no longer blindly fights detected device-side protective charging
+# - Cleanup: `-2` sentinel completely removed from `last_sent_*`.
+#   Busy/special modes now rely exclusively on genuine state helpers
+#   (calibration, emergency, vguard, bypass).
+# - Cleanup: Several former duplicate/legacy paths and inconsistent interim
+#   solutions removed or merged:
+#   * No more epoch-based special calibration flags
+#   * No more hidden `last_sent` modes
+#   * Diagnostic paths and control paths are more consistent
+#   * Fewer misleading intermediate states after HA reboots
+# - Fix: Night/calibration logic now correctly checks the elapsed time since the
+#   last full charge. The old epoch/timestamp bug from previous versions has
+#   been eliminated.
+# - Changed: Bypass latch hysteresis tuned from +5% to +2% above entry threshold,
+#   so units resume discharge earlier.
+# - Changed: Reduced hard cut-off in control loop from cell_min <3.15V to <3.12V
+#   to avoid immediate 0W shutdown on short voltage dips.
+# - Changed: Added per-unit Voltage Guard latch specifics (set <=3.15V for 1m,
+#   release >3.25V for 10m and SoC above bypass-exit).
+# - Changed: Tightened control-loop freshness gating: SoC, cell_min, solar_input,
+#   output_power and status must each be fresh (<180s).
+# - Changed: VGuard clear softened: release allowed at vmin > 3.20V (or with small
+#   PV support and higher SoC buffer).
+# - Cleanup: Removed unused control-loop variable `delta`.
+# - Changed: HA-start VGuard handling is now conditional: clear stale latch normally,
+#   but re-arm immediately when hard low-voltage + low-SoC conditions are present.
+# - Changed: Anti-flap tuning: reduced low-voltage guard sensitivity for normal
+#   operation (vmin guard/cap now 3.00V, vguard set threshold 3.05V).
+# - Changed: Balancing fairness tightened (`weight_1` clamp 35..65%) so one unit
+#   is less likely to remain at near-zero output.
+# - Changed: Emergency start threshold consistency: regular SoC start paths now use
+#   `soc <= soc_emerg_start` (inclusive).
+#
+# - TLDR comparison V78 to V98:
+#   * Significantly higher restart/state robustness
+#   * Better diagnostics and traceability
+#   * Softer, more everyday-suitable protection logic for healthy units
+#   * Simultaneously targeted hard intervention paths for genuine low-voltage/emergency cases
+#   * Export correction is more aggressive again, but only where truly necessary
+#   * Removed unused code and further optimized the usage of scripts to be more code efficient
+#
+# Upcoming changes:
+# - Add option to use 3 Solarflow Units instead of only 2 (or 1)
 #
 ################################################################################
