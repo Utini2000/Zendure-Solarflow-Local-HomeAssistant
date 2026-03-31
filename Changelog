@@ -1532,4 +1532,7 @@
 # Upcoming changes:
 # - Add option to use 3 Solarflow Units instead of only 2 (or 1)
 #
+# Changes V103:
+# - Bugfixes and slight adjustments in safety values
+#
 ################################################################################
