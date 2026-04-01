@@ -31,11 +31,11 @@ It focuses on maximizing battery lifespan and achieving near-perfect zero‑expo
 # Prerequisites
 * Home Assistant (HA)
 * Shelly 3EM Pro
-* Shelly 3EM Pro Total Active Power entity (see energy_monitoring.yaml as an example)
-* HA Integration: Mosquitto Broker
+* Shelly 3EM Pro Total Active Power entity (see [energy_monitoring.yaml](energy_monitoring.yaml) as an example)
+* Home Assistant App: [Mosquitto broker](https://github.com/home-assistant/addons/blob/master/mosquitto/DOCS.md)
 * MQTT configured for each SolarFlow in the app to the local HA MQTT IP address
-* Optional: HA Integration Forecast.Solar
-* Optional: Telegram Bot for notifications in Telegram
+* Optional: HA Integration [Forecast.Solar](https://www.home-assistant.io/integrations/forecast_solar/)
+* Optional: HA Integration [Notifications](https://www.home-assistant.io/integrations/notify/), e.g. Telegram Bot for notifications
 
 
 # Installation
@@ -82,7 +82,8 @@ logbook:
 
 6. Restart Home Assistant (No Quick reload)
 
-Optional:
+**Optional:**
+
 7. Block internet access for your Zendure devices via your router or firewall
 8. Disable cloud access for the Shelly 3EM Pro
 
