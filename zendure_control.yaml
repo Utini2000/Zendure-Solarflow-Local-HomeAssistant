@@ -1,5 +1,5 @@
 ################################################################################
-#                   ZENDURE SOLARFLOW CONTROL PACKAGE (V103)                    #
+#                   ZENDURE SOLARFLOW CONTROL PACKAGE (V109)                    #
 ################################################################################
 #
 # DESCRIPTION:
@@ -82,6 +82,15 @@ input_text:
     name: "Intern: AC Mode U1"
   zendure_ac_mode_u2:
     name: "Intern: AC Mode U2"
+  zendure_power_meter_total_consumption:
+    name: "Zendure: Power Meter Entity"
+    initial: !secret power_meter_total_consumption
+  zendure_gridoffmode_entity_u1:
+    name: "Zendure: GridOffMode Entity U1"
+    initial: !secret zendure_gridoffmode_entity_u1
+  zendure_gridoffmode_entity_u2:
+    name: "Zendure: GridOffMode Entity U2"
+    initial: !secret zendure_gridoffmode_entity_u2
 
 input_datetime:
   zendure_last_full_charge_1:
@@ -229,7 +238,7 @@ mqtt:
     - name: "SolarFlow 1 Solar Input Total"
       unique_id: solarflow_1_solar_input_mqtt
       default_entity_id: sensor.solarflow_1_solar_input
-      state_topic: "Zendure/sensor/HUB1_SERIAL_NUMBER/solarInputPower"
+      state_topic: !secret zendure_topic_u1_sensor_solarInputPower
       unit_of_measurement: "W"
       device_class: power
       state_class: measurement
@@ -237,7 +246,7 @@ mqtt:
     - name: "SolarFlow 1 Grid Input Power"
       unique_id: solarflow_1_grid_input_mqtt
       default_entity_id: sensor.solarflow_1_grid_input_power
-      state_topic: "Zendure/sensor/HUB1_SERIAL_NUMBER/gridInputPower"
+      state_topic: !secret zendure_topic_u1_sensor_gridInputPower
       unit_of_measurement: "W"
       device_class: power
       state_class: measurement
@@ -245,7 +254,7 @@ mqtt:
     - name: "SolarFlow 1 Battery Level Hub"
       unique_id: solarflow_1_battery_level_mqtt
       default_entity_id: sensor.solarflow_1_battery_level_hub
-      state_topic: "Zendure/sensor/HUB1_SERIAL_NUMBER/electricLevel"
+      state_topic: !secret zendure_topic_u1_sensor_electricLevel
       unit_of_measurement: "%"
       device_class: battery
       state_class: measurement
@@ -253,7 +262,7 @@ mqtt:
     - name: "SolarFlow 1 Output Power"
       unique_id: solarflow_1_output_power_mqtt
       default_entity_id: sensor.solarflow_1_output_power
-      state_topic: "Zendure/sensor/HUB1_SERIAL_NUMBER/outputHomePower"
+      state_topic: !secret zendure_topic_u1_sensor_outputHomePower
       unit_of_measurement: "W"
       device_class: power
       state_class: measurement
@@ -261,7 +270,7 @@ mqtt:
     - name: "SolarFlow 1 Output Limit"
       unique_id: solarflow_1_output_limit_mqtt
       default_entity_id: sensor.solarflow_1_output_limit
-      state_topic: "Zendure/number/HUB1_SERIAL_NUMBER/outputLimit"
+      state_topic: !secret zendure_topic_u1_number_outputLimit
       unit_of_measurement: "W"
       device_class: power
       entity_category: diagnostic
@@ -269,27 +278,27 @@ mqtt:
     - name: "SolarFlow 1 AC Mode"
       unique_id: solarflow_1_ac_mode_mqtt
       default_entity_id: sensor.solarflow_1_ac_mode
-      state_topic: "Zendure/select/HUB1_SERIAL_NUMBER/acMode"
+      state_topic: !secret zendure_topic_u1_select_acMode
       entity_category: diagnostic
 
     - name: "SolarFlow 1 Setting MinSoC"
       unique_id: solarflow_1_setting_minsoc
       default_entity_id: sensor.solarflow_1_setting_minsoc
-      state_topic: "Zendure/number/HUB1_SERIAL_NUMBER/minSoc"
+      state_topic: !secret zendure_topic_u1_number_minSoc
       unit_of_measurement: "%"
       entity_category: diagnostic
 
     - name: "SolarFlow 1 Setting ChargeLimit"
       unique_id: solarflow_1_setting_chargelimit
       default_entity_id: sensor.solarflow_1_setting_chargelimit
-      state_topic: "Zendure/number/HUB1_SERIAL_NUMBER/chargeMaxLimit"
+      state_topic: !secret zendure_topic_u1_number_chargeMaxLimit
       unit_of_measurement: "W"
       entity_category: diagnostic
 
     - name: "SolarFlow 1 Temp"
       unique_id: solarflow_1_temp_mqtt
       default_entity_id: sensor.solarflow_1_temp
-      state_topic: "Zendure/sensor/HUB1_SERIAL_NUMBER/hyperTmp"
+      state_topic: !secret zendure_topic_u1_sensor_hyperTmp
       unit_of_measurement: "°C"
       device_class: temperature
       state_class: measurement
@@ -302,7 +311,7 @@ mqtt:
     - name: "SolarFlow 1 Heizung"
       unique_id: solarflow_1_heat_state
       default_entity_id: sensor.solarflow_1_heizung
-      state_topic: "Zendure/sensor/HUB1_SERIAL_NUMBER/heatState"
+      state_topic: !secret zendure_topic_u1_sensor_heatState
       icon: mdi:radiator
       value_template: >
         {% if value == 'not_heating' %} Inaktiv
@@ -310,7 +319,7 @@ mqtt:
 
     - name: "SolarFlow 1 Bypass Status"
       unique_id: solarflow_1_pass_state
-      state_topic: "Zendure/sensor/HUB1_SERIAL_NUMBER/pass"
+      state_topic: !secret zendure_topic_u1_sensor_pass
       icon: mdi:arrow-split-vertical
       value_template: >
         {% if value == 'yes' %} Aktiv
@@ -318,7 +327,7 @@ mqtt:
 
     - name: "SolarFlow 1 BMS Leistung"
       unique_id: solarflow_1_bms_power
-      state_topic: "Zendure/sensor/BAT1_SERIAL_NUMBER/BAT1_SERIAL_NUMBER_power"
+      state_topic: "Zendure/sensor/CO4EENJJN380824/CO4EENJJN380824_power"
       unit_of_measurement: "W"
       device_class: power
       state_class: measurement
@@ -326,7 +335,7 @@ mqtt:
     - name: "SolarFlow 1 Battery Max Temp"
       unique_id: solarflow_1_batt_max_temp
       default_entity_id: sensor.solarflow_1_batt_max_temp
-      state_topic: "Zendure/sensor/BAT1_SERIAL_NUMBER/BAT1_SERIAL_NUMBER_maxTemp"
+      state_topic: "Zendure/sensor/CO4EENJJN380824/CO4EENJJN380824_maxTemp"
       unit_of_measurement: "°C"
       device_class: temperature
       state_class: measurement
@@ -339,7 +348,7 @@ mqtt:
     - name: "SolarFlow 1 Cell Max Vol"
       unique_id: solarflow_1_cell_max_vol
       default_entity_id: sensor.solarflow_1_cell_max_vol
-      state_topic: "Zendure/sensor/BAT1_SERIAL_NUMBER/BAT1_SERIAL_NUMBER_maxVol"
+      state_topic: "Zendure/sensor/CO4EENJJN380824/CO4EENJJN380824_maxVol"
       unit_of_measurement: "V"
       device_class: voltage
       state_class: measurement
@@ -354,7 +363,7 @@ mqtt:
     - name: "SolarFlow 1 Cell Min Vol"
       unique_id: solarflow_1_cell_min_vol
       default_entity_id: sensor.solarflow_1_cell_min_vol
-      state_topic: "Zendure/sensor/BAT1_SERIAL_NUMBER/BAT1_SERIAL_NUMBER_minVol"
+      state_topic: "Zendure/sensor/CO4EENJJN380824/CO4EENJJN380824_minVol"
       unit_of_measurement: "V"
       device_class: voltage
       state_class: measurement
@@ -371,7 +380,7 @@ mqtt:
     - name: "SolarFlow 2 Solar Input Total"
       unique_id: solarflow_2_solar_input_mqtt
       default_entity_id: sensor.solarflow_2_solar_input
-      state_topic: "Zendure/sensor/HUB2_SERIAL_NUMBER/solarInputPower"
+      state_topic: !secret zendure_topic_u2_sensor_solarInputPower
       unit_of_measurement: "W"
       device_class: power
       state_class: measurement
@@ -379,7 +388,7 @@ mqtt:
     - name: "SolarFlow 2 Grid Input Power"
       unique_id: solarflow_2_grid_input_mqtt
       default_entity_id: sensor.solarflow_2_grid_input_power
-      state_topic: "Zendure/sensor/HUB2_SERIAL_NUMBER/gridInputPower"
+      state_topic: !secret zendure_topic_u2_sensor_gridInputPower
       unit_of_measurement: "W"
       device_class: power
       state_class: measurement
@@ -387,7 +396,7 @@ mqtt:
     - name: "SolarFlow 2 Battery Level Hub"
       unique_id: solarflow_2_battery_level_mqtt
       default_entity_id: sensor.solarflow_2_battery_level_hub
-      state_topic: "Zendure/sensor/HUB2_SERIAL_NUMBER/electricLevel"
+      state_topic: !secret zendure_topic_u2_sensor_electricLevel
       unit_of_measurement: "%"
       device_class: battery
       state_class: measurement
@@ -395,7 +404,7 @@ mqtt:
     - name: "SolarFlow 2 Output Power"
       unique_id: solarflow_2_output_power_mqtt
       default_entity_id: sensor.solarflow_2_output_power
-      state_topic: "Zendure/sensor/HUB2_SERIAL_NUMBER/outputHomePower"
+      state_topic: !secret zendure_topic_u2_sensor_outputHomePower
       unit_of_measurement: "W"
       device_class: power
       state_class: measurement
@@ -403,7 +412,7 @@ mqtt:
     - name: "SolarFlow 2 Output Limit"
       unique_id: solarflow_2_output_limit_mqtt
       default_entity_id: sensor.solarflow_2_output_limit
-      state_topic: "Zendure/number/HUB2_SERIAL_NUMBER/outputLimit"
+      state_topic: !secret zendure_topic_u2_number_outputLimit
       unit_of_measurement: "W"
       device_class: power
       entity_category: diagnostic
@@ -411,27 +420,27 @@ mqtt:
     - name: "SolarFlow 2 AC Mode"
       unique_id: solarflow_2_ac_mode_mqtt
       default_entity_id: sensor.solarflow_2_ac_mode
-      state_topic: "Zendure/select/HUB2_SERIAL_NUMBER/acMode"
+      state_topic: !secret zendure_topic_u2_select_acMode
       entity_category: diagnostic
 
     - name: "SolarFlow 2 Setting MinSoC"
       unique_id: solarflow_2_setting_minsoc
       default_entity_id: sensor.solarflow_2_setting_minsoc
-      state_topic: "Zendure/number/HUB2_SERIAL_NUMBER/minSoc"
+      state_topic: !secret zendure_topic_u2_number_minSoc
       unit_of_measurement: "%"
       entity_category: diagnostic
 
     - name: "SolarFlow 2 Setting ChargeLimit"
       unique_id: solarflow_2_setting_chargelimit
       default_entity_id: sensor.solarflow_2_setting_chargelimit
-      state_topic: "Zendure/number/HUB2_SERIAL_NUMBER/chargeMaxLimit"
+      state_topic: !secret zendure_topic_u2_number_chargeMaxLimit
       unit_of_measurement: "W"
       entity_category: diagnostic
 
     - name: "SolarFlow 2 Temp"
       unique_id: solarflow_2_temp_mqtt
       default_entity_id: sensor.solarflow_2_temp
-      state_topic: "Zendure/sensor/HUB2_SERIAL_NUMBER/hyperTmp"
+      state_topic: !secret zendure_topic_u2_sensor_hyperTmp
       unit_of_measurement: "°C"
       device_class: temperature
       state_class: measurement
@@ -444,7 +453,7 @@ mqtt:
     - name: "SolarFlow 2 Heizung"
       unique_id: solarflow_2_heat_state
       default_entity_id: sensor.solarflow_2_heizung
-      state_topic: "Zendure/sensor/HUB2_SERIAL_NUMBER/heatState"
+      state_topic: !secret zendure_topic_u2_sensor_heatState
       icon: mdi:radiator
       value_template: >
         {% if value == 'not_heating' %} Inaktiv
@@ -452,7 +461,7 @@ mqtt:
 
     - name: "SolarFlow 2 Bypass Status"
       unique_id: solarflow_2_pass_state
-      state_topic: "Zendure/sensor/HUB2_SERIAL_NUMBER/pass"
+      state_topic: !secret zendure_topic_u2_sensor_pass
       icon: mdi:arrow-split-vertical
       value_template: >
         {% if value == 'yes' %} Aktiv
@@ -460,7 +469,7 @@ mqtt:
 
     - name: "SolarFlow 2 BMS Leistung"
       unique_id: solarflow_2_bms_power
-      state_topic: "Zendure/sensor/BAT2_SERIAL_NUMBER/BAT2_SERIAL_NUMBER_power"
+      state_topic: "Zendure/sensor/CO4EENJJN380119/CO4EENJJN380119_power"
       unit_of_measurement: "W"
       device_class: power
       state_class: measurement
@@ -468,7 +477,7 @@ mqtt:
     - name: "SolarFlow 2 Battery Max Temp"
       unique_id: solarflow_2_batt_max_temp
       default_entity_id: sensor.solarflow_2_batt_max_temp
-      state_topic: "Zendure/sensor/BAT2_SERIAL_NUMBER/BAT2_SERIAL_NUMBER_maxTemp"
+      state_topic: "Zendure/sensor/CO4EENJJN380119/CO4EENJJN380119_maxTemp"
       unit_of_measurement: "°C"
       device_class: temperature
       state_class: measurement
@@ -481,7 +490,7 @@ mqtt:
     - name: "SolarFlow 2 Cell Max Vol"
       unique_id: solarflow_2_cell_max_vol
       default_entity_id: sensor.solarflow_2_cell_max_vol
-      state_topic: "Zendure/sensor/BAT2_SERIAL_NUMBER/BAT2_SERIAL_NUMBER_maxVol"
+      state_topic: "Zendure/sensor/CO4EENJJN380119/CO4EENJJN380119_maxVol"
       unit_of_measurement: "V"
       device_class: voltage
       state_class: measurement
@@ -496,7 +505,7 @@ mqtt:
     - name: "SolarFlow 2 Cell Min Vol"
       unique_id: solarflow_2_cell_min_vol
       default_entity_id: sensor.solarflow_2_cell_min_vol
-      state_topic: "Zendure/sensor/BAT2_SERIAL_NUMBER/BAT2_SERIAL_NUMBER_minVol"
+      state_topic: "Zendure/sensor/CO4EENJJN380119/CO4EENJJN380119_minVol"
       unit_of_measurement: "V"
       device_class: voltage
       state_class: measurement
@@ -512,7 +521,7 @@ mqtt:
     - name: "SolarFlow 1 Status Raw"
       unique_id: solarflow_1_status_mqtt
       default_entity_id: sensor.solarflow_1_status_raw
-      state_topic: "Zendure/sensor/HUB1_SERIAL_NUMBER/packState"
+      state_topic: !secret zendure_topic_u1_sensor_packState
       value_template: "{{ value }}"
       force_update: true
       expire_after: 300
@@ -520,7 +529,7 @@ mqtt:
     - name: "SolarFlow 2 Status Raw"
       unique_id: solarflow_2_status_mqtt
       default_entity_id: sensor.solarflow_2_status_raw
-      state_topic: "Zendure/sensor/HUB2_SERIAL_NUMBER/packState"
+      state_topic: !secret zendure_topic_u2_sensor_packState
       value_template: "{{ value }}"
       force_update: true
       expire_after: 300
@@ -529,7 +538,7 @@ mqtt:
     - name: "SolarFlow 1 Off-Grid Leistung"
       unique_id: solarflow_1_offgrid_power
       default_entity_id: sensor.solarflow_1_offgrid_power
-      state_topic: "Zendure/sensor/HUB1_SERIAL_NUMBER/gridOffPower"
+      state_topic: !secret zendure_topic_u1_sensor_gridOffPower
       unit_of_measurement: "W"
       device_class: power
       state_class: measurement
@@ -538,7 +547,7 @@ mqtt:
     - name: "SolarFlow 2 Off-Grid Leistung"
       unique_id: solarflow_2_offgrid_power
       default_entity_id: sensor.solarflow_2_offgrid_power
-      state_topic: "Zendure/sensor/HUB2_SERIAL_NUMBER/gridOffPower"
+      state_topic: !secret zendure_topic_u2_sensor_gridOffPower
       unit_of_measurement: "W"
       device_class: power
       state_class: measurement
@@ -688,7 +697,7 @@ template:
         state: >
           {% set status = states('sensor.solarflow_1_status_raw') | upper %}
           {% set hb = states.sensor.solarflow_1_status_raw %}
-          {% set hb_fresh = hb is not none and (as_timestamp(now()) - as_timestamp(hb.last_reported, 0)) < 120 %}
+          {% set hb_fresh = hb is not none and (as_timestamp(now()) - as_timestamp(hb.last_reported, 0)) < 180 %}
           {% set soc = states('sensor.solarflow_1_battery_level') | float(-1) %}
           {% set soc_off = states('input_number.zendure_conf_soc_off') | float(20) %}
           {% set vmin = states('sensor.solarflow_1_cell_min_vol') | float(0) %}
@@ -715,7 +724,7 @@ template:
         state: >
           {% set status = states('sensor.solarflow_2_status_raw') | upper %}
           {% set hb = states.sensor.solarflow_2_status_raw %}
-          {% set hb_fresh = hb is not none and (as_timestamp(now()) - as_timestamp(hb.last_reported, 0)) < 120 %}
+          {% set hb_fresh = hb is not none and (as_timestamp(now()) - as_timestamp(hb.last_reported, 0)) < 180 %}
           {% set soc = states('sensor.solarflow_2_battery_level') | float(-1) %}
           {% set soc_off = states('input_number.zendure_conf_soc_off') | float(20) %}
           {% set vmin = states('sensor.solarflow_2_cell_min_vol') | float(0) %}
@@ -800,14 +809,14 @@ script:
     mode: restart
     sequence:
       - action: mqtt.publish
-        data: { topic: "Zendure/number/HUB1_SERIAL_NUMBER/outputLimit/set", payload: "0", qos: 1 }
+        data: { topic: !secret zendure_topic_u1_number_outputLimit_set, payload: "0", qos: 1 }
 
   zendure_set_u2_outputlimit_zero:
     alias: "Zendure: U2 OutputLimit -> 0W"
     mode: restart
     sequence:
       - action: mqtt.publish
-        data: { topic: "Zendure/number/HUB2_SERIAL_NUMBER/outputLimit/set", payload: "0", qos: 1 }
+        data: { topic: !secret zendure_topic_u2_number_outputLimit_set, payload: "0", qos: 1 }
 
   zendure_start_emergency_u1_manual:
     alias: "Zendure: Manual Emergency Start U1"
@@ -833,20 +842,20 @@ script:
           ss1: "{{ 300 if soc1 < 12 else 800 }}"
           limit_emerg_u1: "{{ [300, cl1|int, ss1|int]|min }}"
       - action: mqtt.publish
-        data: { topic: "Zendure/select/HUB1_SERIAL_NUMBER/acMode/set", payload: "Input mode", qos: 1 }
+        data: { topic: !secret zendure_topic_u1_select_acMode_set, payload: "Input mode", qos: 1 }
       - delay: "00:00:00.500"
       - action: mqtt.publish
-        data: { topic: "Zendure/select/HUB1_SERIAL_NUMBER/acMode/set", payload: "Input mode", qos: 1 }
+        data: { topic: !secret zendure_topic_u1_select_acMode_set, payload: "Input mode", qos: 1 }
       - delay: "00:00:01"
       - action: script.zendure_set_u1_outputlimit_zero
       - action: mqtt.publish
-        data: { topic: "Zendure/number/HUB1_SERIAL_NUMBER/inputLimit/set", payload: "{{ limit_emerg_u1 }}", qos: 1 }
+        data: { topic: !secret zendure_topic_u1_number_inputLimit_set, payload: "{{ limit_emerg_u1 }}", qos: 1 }
       - action: input_number.set_value
         target: { entity_id: input_number.zendure_last_sent_1 }
         data: { value: 0 }
       - action: notify.send_message
         target:
-          entity_id: notify.telegram_bot_YOUR_TELEGRAM_SERVICE
+          entity_id: !secret telegram_id1
         data:
           message: "🛠️ *Manuelle Notladung U1*\nGestartet (Input mode, InputLimit {{ limit_emerg_u1|int }}W)."
 
@@ -874,20 +883,20 @@ script:
           ss2: "{{ 300 if soc2 < 12 else 800 }}"
           limit_emerg_u2: "{{ [300, cl2|int, ss2|int]|min }}"
       - action: mqtt.publish
-        data: { topic: "Zendure/select/HUB2_SERIAL_NUMBER/acMode/set", payload: "Input mode", qos: 1 }
+        data: { topic: !secret zendure_topic_u2_select_acMode_set, payload: "Input mode", qos: 1 }
       - delay: "00:00:00.500"
       - action: mqtt.publish
-        data: { topic: "Zendure/select/HUB2_SERIAL_NUMBER/acMode/set", payload: "Input mode", qos: 1 }
+        data: { topic: !secret zendure_topic_u2_select_acMode_set, payload: "Input mode", qos: 1 }
       - delay: "00:00:01"
       - action: script.zendure_set_u2_outputlimit_zero
       - action: mqtt.publish
-        data: { topic: "Zendure/number/HUB2_SERIAL_NUMBER/inputLimit/set", payload: "{{ limit_emerg_u2 }}", qos: 1 }
+        data: { topic: !secret zendure_topic_u2_number_inputLimit_set, payload: "{{ limit_emerg_u2 }}", qos: 1 }
       - action: input_number.set_value
         target: { entity_id: input_number.zendure_last_sent_2 }
         data: { value: 0 }
       - action: notify.send_message
         target:
-          entity_id: notify.telegram_bot_YOUR_TELEGRAM_SERVICE
+          entity_id: !secret telegram_id1
         data:
           message: "🛠️ *Manuelle Notladung U2*\nGestartet (Input mode, InputLimit {{ limit_emerg_u2|int }}W)."
 
@@ -907,10 +916,10 @@ script:
                 value_template: "{{ states('sensor.solarflow_1_ac_mode') != 'Output mode' }}"
             then:
               - action: mqtt.publish
-                data: { topic: "Zendure/select/HUB1_SERIAL_NUMBER/acMode/set", payload: "Output mode", qos: 1 }
+                data: { topic: !secret zendure_topic_u1_select_acMode_set, payload: "Output mode", qos: 1 }
               - delay: "00:00:00.500"
               - action: mqtt.publish
-                data: { topic: "Zendure/select/HUB1_SERIAL_NUMBER/acMode/set", payload: "Output mode", qos: 1 }
+                data: { topic: !secret zendure_topic_u1_select_acMode_set, payload: "Output mode", qos: 1 }
               - delay: "00:00:01"
           - action: script.zendure_set_u1_outputlimit_zero
           - if:
@@ -919,7 +928,7 @@ script:
                   {% set last = states('input_number.zendure_last_sent_1')|int(0) %}
                   {% set s = states.sensor.solarflow_1_status_raw %}
                   {% set online = s.state|upper not in ['UNAVAILABLE','UNKNOWN','FAULT','ERROR'] %}
-                  {% set fresh = (as_timestamp(now()) - as_timestamp(s.last_reported, default=0)) < 120 %}
+                  {% set fresh = (as_timestamp(now()) - as_timestamp(s.last_reported, default=0)) < 180 %}
                   {{ online and fresh and last > 0 }}
             then:
               - action: input_number.set_value
@@ -942,10 +951,10 @@ script:
                 value_template: "{{ states('sensor.solarflow_2_ac_mode') != 'Output mode' }}"
             then:
               - action: mqtt.publish
-                data: { topic: "Zendure/select/HUB2_SERIAL_NUMBER/acMode/set", payload: "Output mode", qos: 1 }
+                data: { topic: !secret zendure_topic_u2_select_acMode_set, payload: "Output mode", qos: 1 }
               - delay: "00:00:00.500"
               - action: mqtt.publish
-                data: { topic: "Zendure/select/HUB2_SERIAL_NUMBER/acMode/set", payload: "Output mode", qos: 1 }
+                data: { topic: !secret zendure_topic_u2_select_acMode_set, payload: "Output mode", qos: 1 }
               - delay: "00:00:01"
           - action: script.zendure_set_u2_outputlimit_zero
           - if:
@@ -954,7 +963,7 @@ script:
                   {% set last = states('input_number.zendure_last_sent_2')|int(0) %}
                   {% set s = states.sensor.solarflow_2_status_raw %}
                   {% set online = s.state|upper not in ['UNAVAILABLE','UNKNOWN','FAULT','ERROR'] %}
-                  {% set fresh = (as_timestamp(now()) - as_timestamp(s.last_reported, default=0)) < 120 %}
+                  {% set fresh = (as_timestamp(now()) - as_timestamp(s.last_reported, default=0)) < 180 %}
                   {{ online and fresh and last > 0 }}
             then:
               - action: input_number.set_value
@@ -1295,14 +1304,16 @@ automation:
     max_exceeded: silent
     triggers:
       - trigger: time_pattern
-        seconds: "/5"
-      - trigger: numeric_state
-        entity_id: sensor.shellypro3em_SHELLY_ID_total_active_power
-        above: 150
+        seconds: "/2"
+      - trigger: template
+        value_template: >
+          {% set meter = states('input_text.zendure_power_meter_total_consumption') %}
+          {{ meter|length > 0 and (states(meter) | float(0)) > 150 }}
         for: "00:00:01"
-      - trigger: numeric_state
-        entity_id: sensor.shellypro3em_SHELLY_ID_total_active_power
-        below: -30
+      - trigger: template
+        value_template: >
+          {% set meter = states('input_text.zendure_power_meter_total_consumption') %}
+          {{ meter|length > 0 and (states(meter) | float(0)) < -30 }}
         for: "00:00:01"
       - trigger: state
         entity_id:
@@ -1326,27 +1337,25 @@ automation:
           - stop: "Auto Mode is OFF - Loop aborted."
 
       - variables:
+          power_meter_entity: "{{ states('input_text.zendure_power_meter_total_consumption') }}"
           shelly_ok: >-
-            {% set s = states.sensor.shellypro3em_SHELLY_ID_total_active_power %}
-            {% set val = s.state if s is not none else 'unknown' %}
-            {% set ts_reported = as_timestamp(s.last_reported, 0) if s is not none and s.last_reported is defined else 0 %}
-            {% set ts_changed = as_timestamp(s.last_changed, 0) if s is not none else 0 %}
-            {% set fresh = (as_timestamp(now()) - ts_reported) < 25 or (as_timestamp(now()) - ts_changed) < 25 %}
-            {{ s is not none and val|upper not in ['UNAVAILABLE','UNKNOWN','NONE'] and is_number(val) and fresh }}
+            {% set meter = power_meter_entity %}
+            {% set val = states(meter) if meter|length > 0 else 'unknown' %}
+            {{ meter|length > 0 and val|upper not in ['UNAVAILABLE','UNKNOWN','NONE'] and is_number(val) }}
 
           s1_fresh: >-
             {% set stat = states.sensor.solarflow_1_status_raw %}
             {% set age = (as_timestamp(now()) - as_timestamp(stat.last_reported, 0)) if stat is not none else 9999 %}
             {{ stat is not none
                and stat.state|upper not in ['UNAVAILABLE', 'UNKNOWN', 'FAULT', 'ERROR']
-               and age < 120 }}
+               and age < 180 }}
 
           s2_fresh: >-
             {% set stat = states.sensor.solarflow_2_status_raw %}
             {% set age = (as_timestamp(now()) - as_timestamp(stat.last_reported, 0)) if stat is not none else 9999 %}
             {{ stat is not none
                and stat.state|upper not in ['UNAVAILABLE', 'UNKNOWN', 'FAULT', 'ERROR']
-               and age < 120 }}
+               and age < 180 }}
 
           v1_min_ok: "{{ has_value('sensor.solarflow_1_cell_min_vol') }}"
           v2_min_ok: "{{ has_value('sensor.solarflow_2_cell_min_vol') }}"
@@ -1388,11 +1397,11 @@ automation:
           time_since_1: "{{ as_timestamp(now()) - last_sent_1_ts }}"
           time_since_2: "{{ as_timestamp(now()) - last_sent_2_ts }}"
 
-          ack_pending_1: "{{ time_since_1 < 8 and s1_out_val >= 0 and s1_out_val != s1_base }}"
-          drift_recovery_1: "{{ time_since_1 >= 8 and time_since_1 < 60 and s1_out_val >= 0 and s1_out_val != s1_base }}"
+          ack_pending_1: "{{ time_since_1 < 5 and s1_out_val >= 0 and s1_out_val != s1_base }}"
+          drift_recovery_1: "{{ time_since_1 >= 5 and time_since_1 < 30 and s1_out_val >= 0 and s1_out_val != s1_base }}"
 
-          ack_pending_2: "{{ time_since_2 < 8 and s2_out_val >= 0 and s2_out_val != s2_base }}"
-          drift_recovery_2: "{{ time_since_2 >= 8 and time_since_2 < 60 and s2_out_val >= 0 and s2_out_val != s2_base }}"
+          ack_pending_2: "{{ time_since_2 < 5 and s2_out_val >= 0 and s2_out_val != s2_base }}"
+          drift_recovery_2: "{{ time_since_2 >= 5 and time_since_2 < 30 and s2_out_val >= 0 and s2_out_val != s2_base }}"
 
           soc_off: "{{ states('input_number.zendure_conf_soc_off') | int(20) }}"
           hysteresis: "{{ states('input_number.zendure_conf_hysteresis') | int(10) }}"
@@ -1479,12 +1488,17 @@ automation:
           safety_override: "{{ override_u1 or override_u2 }}"
 
 
-          grid: "{{ (states('sensor.shellypro3em_SHELLY_ID_total_active_power') | float(0)) if shelly_ok | bool else 0 }}"
+          grid: "{{ (states(power_meter_entity) | float(0)) if shelly_ok | bool else 0 }}"
           stale_force_zero_u1: "{{ (not s1_fresh|bool) and (s1_base|int(0) > 0) and ((grid|float(0)) < -80) }}"
           stale_force_zero_u2: "{{ (not s2_fresh|bool) and (s2_base|int(0) > 0) and ((grid|float(0)) < -80) }}"
           actual_1: "{{ states('sensor.solarflow_1_output_power') | float(0) if s1_ok | bool else 0 }}"
           actual_2: "{{ states('sensor.solarflow_2_output_power') | float(0) if s2_ok | bool else 0 }}"
           actual_total: "{{ (actual_1 | int(0)) + (actual_2 | int(0)) }}"
+
+          busy_actual_1: "{{ actual_1 | int(0) if busy_u1 | bool else 0 }}"
+          busy_actual_2: "{{ actual_2 | int(0) if busy_u2 | bool else 0 }}"
+          busy_actual_total: "{{ (busy_actual_1 | int(0)) + (busy_actual_2 | int(0)) }}"
+
           cmd_total: "{{ (s1_base|int(0)) + (s2_base|int(0)) }}"
           cmd_lag: "{{ (actual_total|int(0)) > ((cmd_total|int(0)) + 120) }}"
           export_persist: "{{ (grid|float(0)) < -100 }}"
@@ -1521,10 +1535,10 @@ automation:
              or rebalance_needed }}
 
       - variables:
-          target_online: "{{ [[(target_total|int(0) - ghost_total|int(0)), 0]|max, available_capacity|int(0)]|min }}"
+          target_online: "{{ [[(target_total|int(0) - ghost_total|int(0) - busy_actual_total|int(0)), 0]|max, available_capacity|int(0)]|min }}"
 
-          active_1: "{{ s1_ok | bool }}"
-          active_2: "{{ s2_ok | bool }}"
+          active_1: "{{ s1_ok | bool and not (busy_u1 | bool) }}"
+          active_2: "{{ s2_ok | bool and not (busy_u2 | bool) }}"
 
           weight_1_base: >-
             {% if soc1_valid and soc2_valid and (soc1_val + soc2_val) > 0 %}
@@ -1643,13 +1657,13 @@ automation:
                     target: { entity_id: input_text.zendure_ac_mode_u1 }
                     data: { value: "Output mode" }
                   - action: mqtt.publish
-                    data: { topic: "Zendure/select/HUB1_SERIAL_NUMBER/acMode/set", payload: "Output mode", qos: 1 }
+                    data: { topic: !secret zendure_topic_u1_select_acMode_set, payload: "Output mode", qos: 1 }
                   - delay: "00:00:00.500"
                   - action: mqtt.publish
-                    data: { topic: "Zendure/select/HUB1_SERIAL_NUMBER/acMode/set", payload: "Output mode", qos: 1 }
+                    data: { topic: !secret zendure_topic_u1_select_acMode_set, payload: "Output mode", qos: 1 }
                   - delay: "00:00:01"
               - action: mqtt.publish
-                data: { topic: "Zendure/number/HUB1_SERIAL_NUMBER/outputLimit/set", payload: "{{ final_1|int }}", qos: 1 }
+                data: { topic: !secret zendure_topic_u1_number_outputLimit_set, payload: "{{ final_1|int }}", qos: 1 }
               - action: input_number.set_value
                 target: { entity_id: input_number.zendure_last_sent_1 }
                 data: { value: "{{ final_1|int }}" }
@@ -1677,13 +1691,13 @@ automation:
                     target: { entity_id: input_text.zendure_ac_mode_u2 }
                     data: { value: "Output mode" }
                   - action: mqtt.publish
-                    data: { topic: "Zendure/select/HUB2_SERIAL_NUMBER/acMode/set", payload: "Output mode", qos: 1 }
+                    data: { topic: !secret zendure_topic_u2_select_acMode_set, payload: "Output mode", qos: 1 }
                   - delay: "00:00:00.500"
                   - action: mqtt.publish
-                    data: { topic: "Zendure/select/HUB2_SERIAL_NUMBER/acMode/set", payload: "Output mode", qos: 1 }
+                    data: { topic: !secret zendure_topic_u2_select_acMode_set, payload: "Output mode", qos: 1 }
                   - delay: "00:00:01"
               - action: mqtt.publish
-                data: { topic: "Zendure/number/HUB2_SERIAL_NUMBER/outputLimit/set", payload: "{{ final_2|int }}", qos: 1 }
+                data: { topic: !secret zendure_topic_u2_number_outputLimit_set, payload: "{{ final_2|int }}", qos: 1 }
               - action: input_number.set_value
                 target: { entity_id: input_number.zendure_last_sent_2 }
                 data: { value: "{{ final_2|int }}" }
@@ -1694,7 +1708,7 @@ automation:
                 value_template: "{{ stale_force_zero_u1|bool }}"
             then:
               - action: mqtt.publish
-                data: { topic: "Zendure/number/HUB1_SERIAL_NUMBER/outputLimit/set", payload: "0", qos: 1 }
+                data: { topic: !secret zendure_topic_u1_number_outputLimit_set, payload: "0", qos: 1 }
               - action: input_number.set_value
                 target: { entity_id: input_number.zendure_last_sent_1 }
                 data: { value: 0 }
@@ -1705,7 +1719,7 @@ automation:
                 value_template: "{{ stale_force_zero_u2|bool }}"
             then:
               - action: mqtt.publish
-                data: { topic: "Zendure/number/HUB2_SERIAL_NUMBER/outputLimit/set", payload: "0", qos: 1 }
+                data: { topic: !secret zendure_topic_u2_number_outputLimit_set, payload: "0", qos: 1 }
               - action: input_number.set_value
                 target: { entity_id: input_number.zendure_last_sent_2 }
                 data: { value: 0 }
@@ -1816,13 +1830,13 @@ automation:
                       value_template: "{{ states('sensor.solarflow_1_status_raw')|upper not in ['UNAVAILABLE', 'UNKNOWN', 'FAULT', 'ERROR'] }}"
                   then:
                     - action: mqtt.publish
-                      data: { topic: "Zendure/switch/HUB1_SERIAL_NUMBER/smartMode/set", payload: "ON", qos: 1 }
+                      data: { topic: !secret zendure_topic_u1_switch_smartMode_set, payload: "ON", qos: 1 }
                 - if:
                     - condition: template
                       value_template: "{{ states('sensor.solarflow_2_status_raw')|upper not in ['UNAVAILABLE', 'UNKNOWN', 'FAULT', 'ERROR'] }}"
                   then:
                     - action: mqtt.publish
-                      data: { topic: "Zendure/switch/HUB2_SERIAL_NUMBER/smartMode/set", payload: "ON", qos: 1 }
+                      data: { topic: !secret zendure_topic_u2_switch_smartMode_set, payload: "ON", qos: 1 }
               - delay: "00:00:02"
               - parallel:
                 - if:
@@ -1830,13 +1844,13 @@ automation:
                       value_template: "{{ states('sensor.solarflow_1_status_raw')|upper not in ['UNAVAILABLE', 'UNKNOWN', 'FAULT', 'ERROR'] }}"
                   then:
                     - action: mqtt.publish
-                      data: { topic: "Zendure/switch/HUB1_SERIAL_NUMBER/smartMode/set", payload: "ON", qos: 1 }
+                      data: { topic: !secret zendure_topic_u1_switch_smartMode_set, payload: "ON", qos: 1 }
                 - if:
                     - condition: template
                       value_template: "{{ states('sensor.solarflow_2_status_raw')|upper not in ['UNAVAILABLE', 'UNKNOWN', 'FAULT', 'ERROR'] }}"
                   then:
                     - action: mqtt.publish
-                      data: { topic: "Zendure/switch/HUB2_SERIAL_NUMBER/smartMode/set", payload: "ON", qos: 1 }
+                      data: { topic: !secret zendure_topic_u2_switch_smartMode_set, payload: "ON", qos: 1 }
 
               - wait_template: "{{ is_state('input_boolean.zendure_auto_mode','off') }}"
                 timeout: "00:00:02"
@@ -1857,13 +1871,13 @@ automation:
                       value_template: "{{ states('sensor.solarflow_1_status_raw')|upper not in ['UNAVAILABLE', 'UNKNOWN', 'FAULT', 'ERROR'] }}"
                   then:
                     - action: mqtt.publish
-                      data: { topic: "Zendure/switch/HUB1_SERIAL_NUMBER/smartMode/set", payload: "ON", qos: 1 }
+                      data: { topic: !secret zendure_topic_u1_switch_smartMode_set, payload: "ON", qos: 1 }
                 - if:
                     - condition: template
                       value_template: "{{ states('sensor.solarflow_2_status_raw')|upper not in ['UNAVAILABLE', 'UNKNOWN', 'FAULT', 'ERROR'] }}"
                   then:
                     - action: mqtt.publish
-                      data: { topic: "Zendure/switch/HUB2_SERIAL_NUMBER/smartMode/set", payload: "ON", qos: 1 }
+                      data: { topic: !secret zendure_topic_u2_switch_smartMode_set, payload: "ON", qos: 1 }
 
               - if:
                   - condition: template
@@ -1929,17 +1943,17 @@ automation:
                   value_template: "{{ online1 and (curr_min_soc_1 != min_soc|int or curr_charge_1 != charge_limit_u1|int) }}"
               then:
                 - action: mqtt.publish
-                  data: { topic: "Zendure/number/HUB1_SERIAL_NUMBER/minSoc/set", payload: "{{ min_soc }}", qos: 1 }
+                  data: { topic: !secret zendure_topic_u1_number_minSoc_set, payload: "{{ min_soc }}", qos: 1 }
                 - action: mqtt.publish
-                  data: { topic: "Zendure/number/HUB1_SERIAL_NUMBER/chargeMaxLimit/set", payload: "{{ charge_limit_u1 }}", qos: 1 }
+                  data: { topic: !secret zendure_topic_u1_number_chargeMaxLimit_set, payload: "{{ charge_limit_u1 }}", qos: 1 }
             - if:
                 - condition: template
                   value_template: "{{ online2 and (curr_min_soc_2 != min_soc|int or curr_charge_2 != charge_limit_u2|int) }}"
               then:
                 - action: mqtt.publish
-                  data: { topic: "Zendure/number/HUB2_SERIAL_NUMBER/minSoc/set", payload: "{{ min_soc }}", qos: 1 }
+                  data: { topic: !secret zendure_topic_u2_number_minSoc_set, payload: "{{ min_soc }}", qos: 1 }
                 - action: mqtt.publish
-                  data: { topic: "Zendure/number/HUB2_SERIAL_NUMBER/chargeMaxLimit/set", payload: "{{ charge_limit_u2 }}", qos: 1 }
+                  data: { topic: !secret zendure_topic_u2_number_chargeMaxLimit_set, payload: "{{ charge_limit_u2 }}", qos: 1 }
 
 
   # --- 6.6a SAG CONFIRM U1 ---
@@ -2031,10 +2045,10 @@ automation:
                         target: { entity_id: input_text.zendure_ac_mode_u1 }
                         data: { value: "Output mode" }
                       - action: mqtt.publish
-                        data: { topic: "Zendure/select/HUB1_SERIAL_NUMBER/acMode/set", payload: "Output mode", qos: 1 }
+                        data: { topic: !secret zendure_topic_u1_select_acMode_set, payload: "Output mode", qos: 1 }
                       - delay: "00:00:00.500"
                       - action: mqtt.publish
-                        data: { topic: "Zendure/select/HUB1_SERIAL_NUMBER/acMode/set", payload: "Output mode", qos: 1 }
+                        data: { topic: !secret zendure_topic_u1_select_acMode_set, payload: "Output mode", qos: 1 }
                       - delay: "00:00:01"
                       - action: script.zendure_set_u1_outputlimit_zero
                     else:
@@ -2042,20 +2056,20 @@ automation:
                         target: { entity_id: input_text.zendure_ac_mode_u1 }
                         data: { value: "Input mode" }
                       - action: mqtt.publish
-                        data: { topic: "Zendure/select/HUB1_SERIAL_NUMBER/acMode/set", payload: "Input mode", qos: 1 }
+                        data: { topic: !secret zendure_topic_u1_select_acMode_set, payload: "Input mode", qos: 1 }
                       - delay: "00:00:00.500"
                       - action: mqtt.publish
-                        data: { topic: "Zendure/select/HUB1_SERIAL_NUMBER/acMode/set", payload: "Input mode", qos: 1 }
+                        data: { topic: !secret zendure_topic_u1_select_acMode_set, payload: "Input mode", qos: 1 }
                       - delay: "00:00:01"
                       - action: script.zendure_set_u1_outputlimit_zero
                       - action: mqtt.publish
-                        data: { topic: "Zendure/number/HUB1_SERIAL_NUMBER/inputLimit/set", payload: "{{ limit_calib_u1 }}", qos: 1 }
+                        data: { topic: !secret zendure_topic_u1_number_inputLimit_set, payload: "{{ limit_calib_u1 }}", qos: 1 }
                   - action: input_number.set_value
                     target: { entity_id: input_number.zendure_last_sent_1 }
                     data: { value: 0 }
                   - action: notify.send_message
                     target:
-                      entity_id: notify.telegram_bot_YOUR_TELEGRAM_SERVICE
+                      entity_id: !secret telegram_id1
                     data:
                       message: >
                         📉 *Sicherheits-Kalibrierung U1 (Tag)*
@@ -2077,20 +2091,20 @@ automation:
                     target: { entity_id: input_text.zendure_ac_mode_u1 }
                     data: { value: "Input mode" }
                   - action: mqtt.publish
-                    data: { topic: "Zendure/select/HUB1_SERIAL_NUMBER/acMode/set", payload: "Input mode", qos: 1 }
+                    data: { topic: !secret zendure_topic_u1_select_acMode_set, payload: "Input mode", qos: 1 }
                   - delay: "00:00:00.500"
                   - action: mqtt.publish
-                    data: { topic: "Zendure/select/HUB1_SERIAL_NUMBER/acMode/set", payload: "Input mode", qos: 1 }
+                    data: { topic: !secret zendure_topic_u1_select_acMode_set, payload: "Input mode", qos: 1 }
                   - delay: "00:00:01"
                   - action: script.zendure_set_u1_outputlimit_zero
                   - action: mqtt.publish
-                    data: { topic: "Zendure/number/HUB1_SERIAL_NUMBER/inputLimit/set", payload: "{{ limit_emerg_u1 }}", qos: 1 }
+                    data: { topic: !secret zendure_topic_u1_number_inputLimit_set, payload: "{{ limit_emerg_u1 }}", qos: 1 }
                   - action: input_number.set_value
                     target: { entity_id: input_number.zendure_last_sent_1 }
                     data: { value: 0 }
                   - action: notify.send_message
                     target:
-                      entity_id: notify.telegram_bot_YOUR_TELEGRAM_SERVICE
+                      entity_id: !secret telegram_id1
                     data:
                       message: >
                         📉 *Spannungseinbruch U1 (Nacht)*
@@ -2187,10 +2201,10 @@ automation:
                         target: { entity_id: input_text.zendure_ac_mode_u2 }
                         data: { value: "Output mode" }
                       - action: mqtt.publish
-                        data: { topic: "Zendure/select/HUB2_SERIAL_NUMBER/acMode/set", payload: "Output mode", qos: 1 }
+                        data: { topic: !secret zendure_topic_u2_select_acMode_set, payload: "Output mode", qos: 1 }
                       - delay: "00:00:00.500"
                       - action: mqtt.publish
-                        data: { topic: "Zendure/select/HUB2_SERIAL_NUMBER/acMode/set", payload: "Output mode", qos: 1 }
+                        data: { topic: !secret zendure_topic_u2_select_acMode_set, payload: "Output mode", qos: 1 }
                       - delay: "00:00:01"
                       - action: script.zendure_set_u2_outputlimit_zero
                     else:
@@ -2198,20 +2212,20 @@ automation:
                         target: { entity_id: input_text.zendure_ac_mode_u2 }
                         data: { value: "Input mode" }
                       - action: mqtt.publish
-                        data: { topic: "Zendure/select/HUB2_SERIAL_NUMBER/acMode/set", payload: "Input mode", qos: 1 }
+                        data: { topic: !secret zendure_topic_u2_select_acMode_set, payload: "Input mode", qos: 1 }
                       - delay: "00:00:00.500"
                       - action: mqtt.publish
-                        data: { topic: "Zendure/select/HUB2_SERIAL_NUMBER/acMode/set", payload: "Input mode", qos: 1 }
+                        data: { topic: !secret zendure_topic_u2_select_acMode_set, payload: "Input mode", qos: 1 }
                       - delay: "00:00:01"
                       - action: script.zendure_set_u2_outputlimit_zero
                       - action: mqtt.publish
-                        data: { topic: "Zendure/number/HUB2_SERIAL_NUMBER/inputLimit/set", payload: "{{ limit_calib_u2 }}", qos: 1 }
+                        data: { topic: !secret zendure_topic_u2_number_inputLimit_set, payload: "{{ limit_calib_u2 }}", qos: 1 }
                   - action: input_number.set_value
                     target: { entity_id: input_number.zendure_last_sent_2 }
                     data: { value: 0 }
                   - action: notify.send_message
                     target:
-                      entity_id: notify.telegram_bot_YOUR_TELEGRAM_SERVICE
+                      entity_id: !secret telegram_id1
                     data:
                       message: >
                         📉 *Sicherheits-Kalibrierung U2 (Tag)*
@@ -2233,20 +2247,20 @@ automation:
                     target: { entity_id: input_text.zendure_ac_mode_u2 }
                     data: { value: "Input mode" }
                   - action: mqtt.publish
-                    data: { topic: "Zendure/select/HUB2_SERIAL_NUMBER/acMode/set", payload: "Input mode", qos: 1 }
+                    data: { topic: !secret zendure_topic_u2_select_acMode_set, payload: "Input mode", qos: 1 }
                   - delay: "00:00:00.500"
                   - action: mqtt.publish
-                    data: { topic: "Zendure/select/HUB2_SERIAL_NUMBER/acMode/set", payload: "Input mode", qos: 1 }
+                    data: { topic: !secret zendure_topic_u2_select_acMode_set, payload: "Input mode", qos: 1 }
                   - delay: "00:00:01"
                   - action: script.zendure_set_u2_outputlimit_zero
                   - action: mqtt.publish
-                    data: { topic: "Zendure/number/HUB2_SERIAL_NUMBER/inputLimit/set", payload: "{{ limit_emerg_u2 }}", qos: 1 }
+                    data: { topic: !secret zendure_topic_u2_number_inputLimit_set, payload: "{{ limit_emerg_u2 }}", qos: 1 }
                   - action: input_number.set_value
                     target: { entity_id: input_number.zendure_last_sent_2 }
                     data: { value: 0 }
                   - action: notify.send_message
                     target:
-                      entity_id: notify.telegram_bot_YOUR_TELEGRAM_SERVICE
+                      entity_id: !secret telegram_id1
                     data:
                       message: >
                         📉 *Spannungseinbruch U2 (Nacht)*
@@ -2508,7 +2522,7 @@ automation:
                 target: { entity_id: input_boolean.zendure_force_calib_u1 }
               - action: notify.send_message
                 target:
-                  entity_id: notify.telegram_bot_YOUR_TELEGRAM_SERVICE
+                  entity_id: !secret telegram_id1
                 data:
                   message: >
                     🧭 *Calibration U1 scheduled for tomorrow 13:00*
@@ -2524,7 +2538,7 @@ automation:
                 target: { entity_id: input_boolean.zendure_force_calib_u2 }
               - action: notify.send_message
                 target:
-                  entity_id: notify.telegram_bot_YOUR_TELEGRAM_SERVICE
+                  entity_id: !secret telegram_id1
                 data:
                   message: >
                     🧭 *Calibration U2 scheduled for tomorrow 13:00*
@@ -2680,10 +2694,10 @@ automation:
                 target: { entity_id: input_text.zendure_ac_mode_u1 }
                 data: { value: "Output mode" }
               - action: mqtt.publish
-                data: { topic: "Zendure/select/HUB1_SERIAL_NUMBER/acMode/set", payload: "Output mode", qos: 1 }
+                data: { topic: !secret zendure_topic_u1_select_acMode_set, payload: "Output mode", qos: 1 }
               - delay: "00:00:00.500"
               - action: mqtt.publish
-                data: { topic: "Zendure/select/HUB1_SERIAL_NUMBER/acMode/set", payload: "Output mode", qos: 1 }
+                data: { topic: !secret zendure_topic_u1_select_acMode_set, payload: "Output mode", qos: 1 }
               - delay: "00:00:01"
               - action: script.zendure_set_u1_outputlimit_zero
             else:
@@ -2691,20 +2705,20 @@ automation:
                 target: { entity_id: input_text.zendure_ac_mode_u1 }
                 data: { value: "Input mode" }
               - action: mqtt.publish
-                data: { topic: "Zendure/select/HUB1_SERIAL_NUMBER/acMode/set", payload: "Input mode", qos: 1 }
+                data: { topic: !secret zendure_topic_u1_select_acMode_set, payload: "Input mode", qos: 1 }
               - delay: "00:00:00.500"
               - action: mqtt.publish
-                data: { topic: "Zendure/select/HUB1_SERIAL_NUMBER/acMode/set", payload: "Input mode", qos: 1 }
+                data: { topic: !secret zendure_topic_u1_select_acMode_set, payload: "Input mode", qos: 1 }
               - delay: "00:00:01"
               - action: script.zendure_set_u1_outputlimit_zero
               - action: mqtt.publish
-                data: { topic: "Zendure/number/HUB1_SERIAL_NUMBER/inputLimit/set", payload: "{{ limit_calib_u1 }}", qos: 1 }
+                data: { topic: !secret zendure_topic_u1_number_inputLimit_set, payload: "{{ limit_calib_u1 }}", qos: 1 }
           - action: input_number.set_value
             target: { entity_id: input_number.zendure_last_sent_1 }
             data: { value: 0 }
           - action: notify.send_message
             target:
-              entity_id: notify.telegram_bot_YOUR_TELEGRAM_SERVICE
+              entity_id: !secret telegram_id1
             data:
               message: >
                 {% if force_u1 %}
@@ -2757,10 +2771,10 @@ automation:
                 target: { entity_id: input_text.zendure_ac_mode_u2 }
                 data: { value: "Output mode" }
               - action: mqtt.publish
-                data: { topic: "Zendure/select/HUB2_SERIAL_NUMBER/acMode/set", payload: "Output mode", qos: 1 }
+                data: { topic: !secret zendure_topic_u2_select_acMode_set, payload: "Output mode", qos: 1 }
               - delay: "00:00:00.500"
               - action: mqtt.publish
-                data: { topic: "Zendure/select/HUB2_SERIAL_NUMBER/acMode/set", payload: "Output mode", qos: 1 }
+                data: { topic: !secret zendure_topic_u2_select_acMode_set, payload: "Output mode", qos: 1 }
               - delay: "00:00:01"
               - action: script.zendure_set_u2_outputlimit_zero
             else:
@@ -2768,20 +2782,20 @@ automation:
                 target: { entity_id: input_text.zendure_ac_mode_u2 }
                 data: { value: "Input mode" }
               - action: mqtt.publish
-                data: { topic: "Zendure/select/HUB2_SERIAL_NUMBER/acMode/set", payload: "Input mode", qos: 1 }
+                data: { topic: !secret zendure_topic_u2_select_acMode_set, payload: "Input mode", qos: 1 }
               - delay: "00:00:00.500"
               - action: mqtt.publish
-                data: { topic: "Zendure/select/HUB2_SERIAL_NUMBER/acMode/set", payload: "Input mode", qos: 1 }
+                data: { topic: !secret zendure_topic_u2_select_acMode_set, payload: "Input mode", qos: 1 }
               - delay: "00:00:01"
               - action: script.zendure_set_u2_outputlimit_zero
               - action: mqtt.publish
-                data: { topic: "Zendure/number/HUB2_SERIAL_NUMBER/inputLimit/set", payload: "{{ limit_calib_u2 }}", qos: 1 }
+                data: { topic: !secret zendure_topic_u2_number_inputLimit_set, payload: "{{ limit_calib_u2 }}", qos: 1 }
           - action: input_number.set_value
             target: { entity_id: input_number.zendure_last_sent_2 }
             data: { value: 0 }
           - action: notify.send_message
             target:
-              entity_id: notify.telegram_bot_YOUR_TELEGRAM_SERVICE
+              entity_id: !secret telegram_id1
             data:
               message: >
                 {% if force_u2 %}
@@ -2806,10 +2820,10 @@ automation:
             target: { entity_id: input_text.zendure_ac_mode_u1 }
             data: { value: "Output mode" }
           - action: mqtt.publish
-            data: { topic: "Zendure/select/HUB1_SERIAL_NUMBER/acMode/set", payload: "Output mode", qos: 1 }
+            data: { topic: !secret zendure_topic_u1_select_acMode_set, payload: "Output mode", qos: 1 }
           - delay: "00:00:00.500"
           - action: mqtt.publish
-            data: { topic: "Zendure/select/HUB1_SERIAL_NUMBER/acMode/set", payload: "Output mode", qos: 1 }
+            data: { topic: !secret zendure_topic_u1_select_acMode_set, payload: "Output mode", qos: 1 }
           - delay: "00:00:01"
           - action: script.zendure_set_u1_outputlimit_zero
           - action: input_number.set_value
@@ -2823,7 +2837,7 @@ automation:
                 target: { entity_id: input_boolean.zendure_force_calib_u1 }
           - action: notify.send_message
             target:
-              entity_id: notify.telegram_bot_YOUR_TELEGRAM_SERVICE
+              entity_id: !secret telegram_id1
             data:
               message: >
                 {% if trigger.id == 'stop_u1' %}
@@ -2849,10 +2863,10 @@ automation:
             target: { entity_id: input_text.zendure_ac_mode_u2 }
             data: { value: "Output mode" }
           - action: mqtt.publish
-            data: { topic: "Zendure/select/HUB2_SERIAL_NUMBER/acMode/set", payload: "Output mode", qos: 1 }
+            data: { topic: !secret zendure_topic_u2_select_acMode_set, payload: "Output mode", qos: 1 }
           - delay: "00:00:00.500"
           - action: mqtt.publish
-            data: { topic: "Zendure/select/HUB2_SERIAL_NUMBER/acMode/set", payload: "Output mode", qos: 1 }
+            data: { topic: !secret zendure_topic_u2_select_acMode_set, payload: "Output mode", qos: 1 }
           - delay: "00:00:01"
           - action: script.zendure_set_u2_outputlimit_zero
           - action: input_number.set_value
@@ -2866,7 +2880,7 @@ automation:
                 target: { entity_id: input_boolean.zendure_force_calib_u2 }
           - action: notify.send_message
             target:
-              entity_id: notify.telegram_bot_YOUR_TELEGRAM_SERVICE
+              entity_id: !secret telegram_id1
             data:
               message: >
                 {% if trigger.id == 'stop_u2' %}
@@ -2896,7 +2910,7 @@ automation:
           imb2_raw: "{{ states('sensor.solarflow_2_cell_imbalance') }}"
       - action: notify.send_message
         target:
-          entity_id: notify.telegram_bot_YOUR_TELEGRAM_SERVICE
+          entity_id: !secret telegram_id1
         data:
           message: |
             ℹ️ *Zendure Wochenbericht*
@@ -2974,28 +2988,32 @@ automation:
                         target: { entity_id: input_text.zendure_ac_mode_u1 }
                         data: { value: "Input mode" }
                       - action: mqtt.publish
-                        data: { topic: "Zendure/select/HUB1_SERIAL_NUMBER/acMode/set", payload: "Input mode", qos: 1 }
+                        data: { topic: !secret zendure_topic_u1_select_acMode_set, payload: "Input mode", qos: 1 }
                       - delay: "00:00:00.500"
                       - action: mqtt.publish
-                        data: { topic: "Zendure/select/HUB1_SERIAL_NUMBER/acMode/set", payload: "Input mode", qos: 1 }
+                        data: { topic: !secret zendure_topic_u1_select_acMode_set, payload: "Input mode", qos: 1 }
                       - delay: "00:00:01"
                       - action: script.zendure_set_u1_outputlimit_zero
                   - action: mqtt.publish
-                    data: { topic: "Zendure/number/HUB1_SERIAL_NUMBER/inputLimit/set", payload: "{{ limit_calib_u1|int }}", qos: 1 }
+                    data: { topic: !secret zendure_topic_u1_number_inputLimit_set, payload: "{{ limit_calib_u1|int }}", qos: 1 }
               - conditions:
                   - condition: template
                     value_template: >
                       {{ calib1 and online1 and soc1 < 100 and s1_solar >= (pv_high|float(70))
-                         and states('input_text.zendure_ac_mode_u1') != 'Output mode' }}
+                      and (
+                          states('input_text.zendure_ac_mode_u1') != 'Output mode'
+                          or states('sensor.solarflow_1_output_limit')|int(-1) != 0
+                          or states('input_number.zendure_last_sent_1')|int(-1) != 0
+                      ) }}
                 sequence:
                   - action: input_text.set_value
                     target: { entity_id: input_text.zendure_ac_mode_u1 }
                     data: { value: "Output mode" }
                   - action: mqtt.publish
-                    data: { topic: "Zendure/select/HUB1_SERIAL_NUMBER/acMode/set", payload: "Output mode", qos: 1 }
+                    data: { topic: !secret zendure_topic_u1_select_acMode_set, payload: "Output mode", qos: 1 }
                   - delay: "00:00:00.500"
                   - action: mqtt.publish
-                    data: { topic: "Zendure/select/HUB1_SERIAL_NUMBER/acMode/set", payload: "Output mode", qos: 1 }
+                    data: { topic: !secret zendure_topic_u1_select_acMode_set, payload: "Output mode", qos: 1 }
                   - delay: "00:00:01"
                   - action: script.zendure_set_u1_outputlimit_zero
 
@@ -3015,28 +3033,32 @@ automation:
                         target: { entity_id: input_text.zendure_ac_mode_u2 }
                         data: { value: "Input mode" }
                       - action: mqtt.publish
-                        data: { topic: "Zendure/select/HUB2_SERIAL_NUMBER/acMode/set", payload: "Input mode", qos: 1 }
+                        data: { topic: !secret zendure_topic_u2_select_acMode_set, payload: "Input mode", qos: 1 }
                       - delay: "00:00:00.500"
                       - action: mqtt.publish
-                        data: { topic: "Zendure/select/HUB2_SERIAL_NUMBER/acMode/set", payload: "Input mode", qos: 1 }
+                        data: { topic: !secret zendure_topic_u2_select_acMode_set, payload: "Input mode", qos: 1 }
                       - delay: "00:00:01"
                       - action: script.zendure_set_u2_outputlimit_zero
                   - action: mqtt.publish
-                    data: { topic: "Zendure/number/HUB2_SERIAL_NUMBER/inputLimit/set", payload: "{{ limit_calib_u2|int }}", qos: 1 }
+                    data: { topic: !secret zendure_topic_u2_number_inputLimit_set, payload: "{{ limit_calib_u2|int }}", qos: 1 }
               - conditions:
                   - condition: template
                     value_template: >
                       {{ calib2 and online2 and soc2 < 100 and s2_solar >= (pv_high|float(70))
-                         and states('input_text.zendure_ac_mode_u2') != 'Output mode' }}
+                      and (
+                          states('input_text.zendure_ac_mode_u2') != 'Output mode'
+                          or states('sensor.solarflow_2_output_limit')|int(-1) != 0
+                          or states('input_number.zendure_last_sent_2')|int(-1) != 0
+                      ) }}
                 sequence:
                   - action: input_text.set_value
                     target: { entity_id: input_text.zendure_ac_mode_u2 }
                     data: { value: "Output mode" }
                   - action: mqtt.publish
-                    data: { topic: "Zendure/select/HUB2_SERIAL_NUMBER/acMode/set", payload: "Output mode", qos: 1 }
+                    data: { topic: !secret zendure_topic_u2_select_acMode_set, payload: "Output mode", qos: 1 }
                   - delay: "00:00:00.500"
                   - action: mqtt.publish
-                    data: { topic: "Zendure/select/HUB2_SERIAL_NUMBER/acMode/set", payload: "Output mode", qos: 1 }
+                    data: { topic: !secret zendure_topic_u2_select_acMode_set, payload: "Output mode", qos: 1 }
                   - delay: "00:00:01"
                   - action: script.zendure_set_u2_outputlimit_zero
 
@@ -3104,20 +3126,20 @@ automation:
                 target: { entity_id: input_text.zendure_ac_mode_u1 }
                 data: { value: "Input mode" }
               - action: mqtt.publish
-                data: { topic: "Zendure/select/HUB1_SERIAL_NUMBER/acMode/set", payload: "Input mode", qos: 1 }
+                data: { topic: !secret zendure_topic_u1_select_acMode_set, payload: "Input mode", qos: 1 }
               - delay: "00:00:00.500"
               - action: mqtt.publish
-                data: { topic: "Zendure/select/HUB1_SERIAL_NUMBER/acMode/set", payload: "Input mode", qos: 1 }
+                data: { topic: !secret zendure_topic_u1_select_acMode_set, payload: "Input mode", qos: 1 }
               - delay: "00:00:01"
               - action: script.zendure_set_u1_outputlimit_zero
               - action: mqtt.publish
-                data: { topic: "Zendure/number/HUB1_SERIAL_NUMBER/inputLimit/set", payload: "{{ limit_emerg_u1 }}", qos: 1 }
+                data: { topic: !secret zendure_topic_u1_number_inputLimit_set, payload: "{{ limit_emerg_u1 }}", qos: 1 }
               - action: input_number.set_value
                 target: { entity_id: input_number.zendure_last_sent_1 }
                 data: { value: 0 }
               - action: notify.send_message
                 target:
-                  entity_id: notify.telegram_bot_YOUR_TELEGRAM_SERVICE
+                  entity_id: !secret telegram_id1
                 data:
                   message: "🔋 *VGuard→Emergency U1*\nKritischer Low-SoC erkannt, VGuard freigegeben und Notladung mit {{ limit_emerg_u1|int }}W gestartet."
           - conditions:
@@ -3155,20 +3177,20 @@ automation:
                 target: { entity_id: input_text.zendure_ac_mode_u2 }
                 data: { value: "Input mode" }
               - action: mqtt.publish
-                data: { topic: "Zendure/select/HUB2_SERIAL_NUMBER/acMode/set", payload: "Input mode", qos: 1 }
+                data: { topic: !secret zendure_topic_u2_select_acMode_set, payload: "Input mode", qos: 1 }
               - delay: "00:00:00.500"
               - action: mqtt.publish
-                data: { topic: "Zendure/select/HUB2_SERIAL_NUMBER/acMode/set", payload: "Input mode", qos: 1 }
+                data: { topic: !secret zendure_topic_u2_select_acMode_set, payload: "Input mode", qos: 1 }
               - delay: "00:00:01"
               - action: script.zendure_set_u2_outputlimit_zero
               - action: mqtt.publish
-                data: { topic: "Zendure/number/HUB2_SERIAL_NUMBER/inputLimit/set", payload: "{{ limit_emerg_u2 }}", qos: 1 }
+                data: { topic: !secret zendure_topic_u2_number_inputLimit_set, payload: "{{ limit_emerg_u2 }}", qos: 1 }
               - action: input_number.set_value
                 target: { entity_id: input_number.zendure_last_sent_2 }
                 data: { value: 0 }
               - action: notify.send_message
                 target:
-                  entity_id: notify.telegram_bot_YOUR_TELEGRAM_SERVICE
+                  entity_id: !secret telegram_id1
                 data:
                   message: "🔋 *VGuard→Emergency U2*\nKritischer Low-SoC erkannt, VGuard freigegeben und Notladung mit {{ limit_emerg_u2|int }}W gestartet."
 
@@ -3418,20 +3440,20 @@ automation:
                 target: { entity_id: input_text.zendure_ac_mode_u1 }
                 data: { value: "Input mode" }
               - action: mqtt.publish
-                data: { topic: "Zendure/select/HUB1_SERIAL_NUMBER/acMode/set", payload: "Input mode", qos: 1 }
+                data: { topic: !secret zendure_topic_u1_select_acMode_set, payload: "Input mode", qos: 1 }
               - delay: "00:00:00.500"
               - action: mqtt.publish
-                data: { topic: "Zendure/select/HUB1_SERIAL_NUMBER/acMode/set", payload: "Input mode", qos: 1 }
+                data: { topic: !secret zendure_topic_u1_select_acMode_set, payload: "Input mode", qos: 1 }
               - delay: "00:00:01"
               - action: script.zendure_set_u1_outputlimit_zero
               - action: mqtt.publish
-                data: { topic: "Zendure/number/HUB1_SERIAL_NUMBER/inputLimit/set", payload: "{{ limit_emerg_u1 }}", qos: 1 }
+                data: { topic: !secret zendure_topic_u1_number_inputLimit_set, payload: "{{ limit_emerg_u1 }}", qos: 1 }
               - action: input_number.set_value
                 target: { entity_id: input_number.zendure_last_sent_1 }
                 data: { value: 0 }
               - action: notify.send_message
                 target:
-                  entity_id: notify.telegram_bot_YOUR_TELEGRAM_SERVICE
+                  entity_id: !secret telegram_id1
                 data:
                   message: "🔋 *Zendure Notladung (Unit 1)*\nSofortstart nach HA-Neustart (kritischer Low-SoC erkannt)."
 
@@ -3445,20 +3467,20 @@ automation:
                 target: { entity_id: input_text.zendure_ac_mode_u1 }
                 data: { value: "Input mode" }
               - action: mqtt.publish
-                data: { topic: "Zendure/select/HUB1_SERIAL_NUMBER/acMode/set", payload: "Input mode", qos: 1 }
+                data: { topic: !secret zendure_topic_u1_select_acMode_set, payload: "Input mode", qos: 1 }
               - delay: "00:00:00.500"
               - action: mqtt.publish
-                data: { topic: "Zendure/select/HUB1_SERIAL_NUMBER/acMode/set", payload: "Input mode", qos: 1 }
+                data: { topic: !secret zendure_topic_u1_select_acMode_set, payload: "Input mode", qos: 1 }
               - delay: "00:00:01"
               - action: script.zendure_set_u1_outputlimit_zero
               - action: mqtt.publish
-                data: { topic: "Zendure/number/HUB1_SERIAL_NUMBER/inputLimit/set", payload: "{{ limit_emerg_u1 }}", qos: 1 }
+                data: { topic: !secret zendure_topic_u1_number_inputLimit_set, payload: "{{ limit_emerg_u1 }}", qos: 1 }
               - action: input_number.set_value
                 target: { entity_id: input_number.zendure_last_sent_1 }
                 data: { value: 0 }
               - action: notify.send_message
                 target:
-                  entity_id: notify.telegram_bot_YOUR_TELEGRAM_SERVICE
+                  entity_id: !secret telegram_id1
                 data:
                   message: "🔋 *Zendure Notladung (Unit 1)*\nGestartet (SoC < Limit oder Spannung <= 3.05V / Hard-Floor <= 3.00V)."
 
@@ -3472,10 +3494,10 @@ automation:
                 target: { entity_id: input_text.zendure_ac_mode_u1 }
                 data: { value: "Output mode" }
               - action: mqtt.publish
-                data: { topic: "Zendure/select/HUB1_SERIAL_NUMBER/acMode/set", payload: "Output mode", qos: 1 }
+                data: { topic: !secret zendure_topic_u1_select_acMode_set, payload: "Output mode", qos: 1 }
               - delay: "00:00:00.500"
               - action: mqtt.publish
-                data: { topic: "Zendure/select/HUB1_SERIAL_NUMBER/acMode/set", payload: "Output mode", qos: 1 }
+                data: { topic: !secret zendure_topic_u1_select_acMode_set, payload: "Output mode", qos: 1 }
               - delay: "00:00:01"
               - action: script.zendure_set_u1_outputlimit_zero
               - action: input_number.set_value
@@ -3483,7 +3505,7 @@ automation:
                 data: { value: 0 }
               - action: notify.send_message
                 target:
-                  entity_id: notify.telegram_bot_YOUR_TELEGRAM_SERVICE
+                  entity_id: !secret telegram_id1
                 data:
                   message: >
                     {% set bt = states.sensor.solarflow_1_batt_max_temp %}
@@ -3530,20 +3552,20 @@ automation:
                 target: { entity_id: input_text.zendure_ac_mode_u2 }
                 data: { value: "Input mode" }
               - action: mqtt.publish
-                data: { topic: "Zendure/select/HUB2_SERIAL_NUMBER/acMode/set", payload: "Input mode", qos: 1 }
+                data: { topic: !secret zendure_topic_u2_select_acMode_set, payload: "Input mode", qos: 1 }
               - delay: "00:00:00.500"
               - action: mqtt.publish
-                data: { topic: "Zendure/select/HUB2_SERIAL_NUMBER/acMode/set", payload: "Input mode", qos: 1 }
+                data: { topic: !secret zendure_topic_u2_select_acMode_set, payload: "Input mode", qos: 1 }
               - delay: "00:00:01"
               - action: script.zendure_set_u2_outputlimit_zero
               - action: mqtt.publish
-                data: { topic: "Zendure/number/HUB2_SERIAL_NUMBER/inputLimit/set", payload: "{{ limit_emerg_u2 }}", qos: 1 }
+                data: { topic: !secret zendure_topic_u2_number_inputLimit_set, payload: "{{ limit_emerg_u2 }}", qos: 1 }
               - action: input_number.set_value
                 target: { entity_id: input_number.zendure_last_sent_2 }
                 data: { value: 0 }
               - action: notify.send_message
                 target:
-                  entity_id: notify.telegram_bot_YOUR_TELEGRAM_SERVICE
+                  entity_id: !secret telegram_id1
                 data:
                   message: "🔋 *Zendure Notladung (Unit 2)*\nSofortstart nach HA-Neustart (kritischer Low-SoC erkannt)."
 
@@ -3557,20 +3579,20 @@ automation:
                 target: { entity_id: input_text.zendure_ac_mode_u2 }
                 data: { value: "Input mode" }
               - action: mqtt.publish
-                data: { topic: "Zendure/select/HUB2_SERIAL_NUMBER/acMode/set", payload: "Input mode", qos: 1 }
+                data: { topic: !secret zendure_topic_u2_select_acMode_set, payload: "Input mode", qos: 1 }
               - delay: "00:00:00.500"
               - action: mqtt.publish
-                data: { topic: "Zendure/select/HUB2_SERIAL_NUMBER/acMode/set", payload: "Input mode", qos: 1 }
+                data: { topic: !secret zendure_topic_u2_select_acMode_set, payload: "Input mode", qos: 1 }
               - delay: "00:00:01"
               - action: script.zendure_set_u2_outputlimit_zero
               - action: mqtt.publish
-                data: { topic: "Zendure/number/HUB2_SERIAL_NUMBER/inputLimit/set", payload: "{{ limit_emerg_u2 }}", qos: 1 }
+                data: { topic: !secret zendure_topic_u2_number_inputLimit_set, payload: "{{ limit_emerg_u2 }}", qos: 1 }
               - action: input_number.set_value
                 target: { entity_id: input_number.zendure_last_sent_2 }
                 data: { value: 0 }
               - action: notify.send_message
                 target:
-                  entity_id: notify.telegram_bot_YOUR_TELEGRAM_SERVICE
+                  entity_id: !secret telegram_id1
                 data:
                   message: "🔋 *Zendure Notladung (Unit 2)*\nGestartet (SoC < Limit oder Spannung <= 3.05V / Hard-Floor <= 3.00V)."
 
@@ -3584,10 +3606,10 @@ automation:
                 target: { entity_id: input_text.zendure_ac_mode_u2 }
                 data: { value: "Output mode" }
               - action: mqtt.publish
-                data: { topic: "Zendure/select/HUB2_SERIAL_NUMBER/acMode/set", payload: "Output mode", qos: 1 }
+                data: { topic: !secret zendure_topic_u2_select_acMode_set, payload: "Output mode", qos: 1 }
               - delay: "00:00:00.500"
               - action: mqtt.publish
-                data: { topic: "Zendure/select/HUB2_SERIAL_NUMBER/acMode/set", payload: "Output mode", qos: 1 }
+                data: { topic: !secret zendure_topic_u2_select_acMode_set, payload: "Output mode", qos: 1 }
               - delay: "00:00:01"
               - action: script.zendure_set_u2_outputlimit_zero
               - action: input_number.set_value
@@ -3595,7 +3617,7 @@ automation:
                 data: { value: 0 }
               - action: notify.send_message
                 target:
-                  entity_id: notify.telegram_bot_YOUR_TELEGRAM_SERVICE
+                  entity_id: !secret telegram_id1
                 data:
                   message: >
                     {% set bt = states.sensor.solarflow_2_batt_max_temp %}
@@ -3652,7 +3674,7 @@ automation:
                 data: { value: 10 }
               - action: input_number.set_value
                 target: { entity_id: input_number.zendure_conf_soc_bypass }
-                data: { value: 15 }
+                data: { value: 12 }
               - action: input_number.set_value
                 target: { entity_id: input_number.zendure_conf_soc_emerg_start }
                 data: { value: 7 }
@@ -3680,13 +3702,13 @@ automation:
               value_template: "{{ states('sensor.solarflow_1_status_raw')|upper not in ['UNAVAILABLE', 'UNKNOWN', 'FAULT', 'ERROR'] }}"
           then:
             - action: mqtt.publish
-              data: { topic: "Zendure/switch/HUB1_SERIAL_NUMBER/smartMode/set", payload: "ON", qos: 1 }
+              data: { topic: !secret zendure_topic_u1_switch_smartMode_set, payload: "ON", qos: 1 }
         - if:
             - condition: template
               value_template: "{{ states('sensor.solarflow_2_status_raw')|upper not in ['UNAVAILABLE', 'UNKNOWN', 'FAULT', 'ERROR'] }}"
           then:
             - action: mqtt.publish
-              data: { topic: "Zendure/switch/HUB2_SERIAL_NUMBER/smartMode/set", payload: "ON", qos: 1 }
+              data: { topic: !secret zendure_topic_u2_switch_smartMode_set, payload: "ON", qos: 1 }
       - delay: "00:00:02"
       - parallel:
         - if:
@@ -3694,13 +3716,13 @@ automation:
               value_template: "{{ states('sensor.solarflow_1_status_raw')|upper not in ['UNAVAILABLE', 'UNKNOWN', 'FAULT', 'ERROR'] }}"
           then:
             - action: mqtt.publish
-              data: { topic: "Zendure/switch/HUB1_SERIAL_NUMBER/smartMode/set", payload: "ON", qos: 1 }
+              data: { topic: !secret zendure_topic_u1_switch_smartMode_set, payload: "ON", qos: 1 }
         - if:
             - condition: template
               value_template: "{{ states('sensor.solarflow_2_status_raw')|upper not in ['UNAVAILABLE', 'UNKNOWN', 'FAULT', 'ERROR'] }}"
           then:
             - action: mqtt.publish
-              data: { topic: "Zendure/switch/HUB2_SERIAL_NUMBER/smartMode/set", payload: "ON", qos: 1 }
+              data: { topic: !secret zendure_topic_u2_switch_smartMode_set, payload: "ON", qos: 1 }
 
   # --- 6.10 MONITORING ---
   - alias: "Zendure: Monitoring"
@@ -3710,22 +3732,16 @@ automation:
       - trigger: template
         id: "shelly_fail"
         value_template: >-
-          {% set s = states.sensor.shellypro3em_SHELLY_ID_total_active_power %}
-          {% set val = s.state if s is not none else 'unknown' %}
-          {% set ts_reported = as_timestamp(s.last_reported, 0) if s is not none and s.last_reported is defined else 0 %}
-          {% set ts_changed = as_timestamp(s.last_changed, 0) if s is not none else 0 %}
-          {% set fresh = (as_timestamp(now()) - ts_reported) < 25 or (as_timestamp(now()) - ts_changed) < 25 %}
-          {{ not (s is not none and val|upper not in ['UNAVAILABLE','UNKNOWN','NONE'] and is_number(val) and fresh) }}
+          {% set meter = states('input_text.zendure_power_meter_total_consumption') %}
+          {% set val = states(meter) if meter|length > 0 else 'unknown' %}
+          {{ not (meter|length > 0 and val|upper not in ['UNAVAILABLE','UNKNOWN','NONE'] and is_number(val)) }}
         for: "00:00:30"
       - trigger: template
         id: "shelly_ok"
         value_template: >-
-          {% set s = states.sensor.shellypro3em_SHELLY_ID_total_active_power %}
-          {% set val = s.state if s is not none else 'unknown' %}
-          {% set ts_reported = as_timestamp(s.last_reported, 0) if s is not none and s.last_reported is defined else 0 %}
-          {% set ts_changed = as_timestamp(s.last_changed, 0) if s is not none else 0 %}
-          {% set fresh = (as_timestamp(now()) - ts_reported) < 25 or (as_timestamp(now()) - ts_changed) < 25 %}
-          {{ s is not none and val|upper not in ['UNAVAILABLE','UNKNOWN','NONE'] and is_number(val) and fresh }}
+          {% set meter = states('input_text.zendure_power_meter_total_consumption') %}
+          {% set val = states(meter) if meter|length > 0 else 'unknown' %}
+          {{ meter|length > 0 and val|upper not in ['UNAVAILABLE','UNKNOWN','NONE'] and is_number(val) }}
         for: "00:01:00"
 
       - trigger: state
@@ -3769,7 +3785,7 @@ automation:
             sequence:
               - action: notify.send_message
                 target:
-                  entity_id: notify.telegram_bot_YOUR_TELEGRAM_SERVICE
+                  entity_id: !secret telegram_id1
                 data:
                   message: "⚠️ *Zendure Warnung*\nUnit 1 ist offline/nicht erreichbar."
           - conditions:
@@ -3778,7 +3794,7 @@ automation:
             sequence:
               - action: notify.send_message
                 target:
-                  entity_id: notify.telegram_bot_YOUR_TELEGRAM_SERVICE
+                  entity_id: !secret telegram_id1
                 data:
                   message: "⚠️ *Zendure Warnung*\nUnit 2 ist offline/nicht erreichbar."
 
@@ -3788,7 +3804,7 @@ automation:
             sequence:
               - action: notify.send_message
                 target:
-                  entity_id: notify.telegram_bot_YOUR_TELEGRAM_SERVICE
+                  entity_id: !secret telegram_id1
                 data:
                   message: "❌ *Zendure Fehler*\nUnit 1 meldet Fehlerstatus (FAULT/ERROR)!"
           - conditions:
@@ -3797,7 +3813,7 @@ automation:
             sequence:
               - action: notify.send_message
                 target:
-                  entity_id: notify.telegram_bot_YOUR_TELEGRAM_SERVICE
+                  entity_id: !secret telegram_id1
                 data:
                   message: "❌ *Zendure Fehler*\nUnit 2 meldet Fehlerstatus (FAULT/ERROR)!"
 
@@ -3894,7 +3910,7 @@ automation:
             sequence:
               - action: notify.send_message
                 target:
-                  entity_id: notify.telegram_bot_YOUR_TELEGRAM_SERVICE
+                  entity_id: !secret telegram_id2
                 data:
                   message: >
                     Der PV Speicher ({{ soc | round(0) }}%) wird heute um **{{ full_time }} Uhr** voll sein.
@@ -3907,7 +3923,7 @@ automation:
             sequence:
               - action: notify.send_message
                 target:
-                  entity_id: notify.telegram_bot_YOUR_TELEGRAM_SERVICE
+                  entity_id: !secret telegram_id2
                 data:
                   message: >
                     Die PV Energie reicht, um den Akku ({{ soc | round(0) }}%) heute bis {{ target_soc }}% zu laden.
@@ -3932,7 +3948,7 @@ automation:
     actions:
       - action: notify.send_message
         target:
-          entity_id: notify.telegram_bot_YOUR_TELEGRAM_SERVICE
+          entity_id: !secret telegram_id1
         data:
           message: >
             🔥 *Zendure Temperatur-Warnung!*
@@ -3979,24 +3995,24 @@ automation:
               - condition: template
                 value_template: >
                   {% set ups = states('sensor.ups_status') | lower %}
-                  {% set d1 = states('select.HUB1_SERIAL_NUMBER_gridoffmode') %}
-                  {% set d2 = states('select.HUB2_SERIAL_NUMBER_gridoffmode') %}
+                  {% set d1 = states(states('input_text.zendure_gridoffmode_entity_u1')) %}
+                  {% set d2 = states(states('input_text.zendure_gridoffmode_entity_u2')) %}
                   {{ ('on battery' in ups or 'ob' in ups or 'discharging' in ups) and
                      (d1 == 'off' or d2 == 'off') }}
             sequence:
               - action: mqtt.publish
                 data:
-                  topic: "Zendure/select/HUB1_SERIAL_NUMBER/gridOffMode/set"
+                  topic: !secret zendure_topic_u1_select_gridOffMode_set
                   payload: "Normal mode"
                   qos: 1
               - action: mqtt.publish
                 data:
-                  topic: "Zendure/select/HUB2_SERIAL_NUMBER/gridOffMode/set"
+                  topic: !secret zendure_topic_u2_select_gridOffMode_set
                   payload: "Normal mode"
                   qos: 1
               - action: notify.send_message
                 target:
-                  entity_id: notify.telegram_bot_YOUR_TELEGRAM_SERVICE
+                  entity_id: !secret telegram_id1
                 data:
                   message: >
                     🚨 *ACHTUNG: STROMAUSFALL!*
@@ -4010,24 +4026,24 @@ automation:
               - condition: template
                 value_template: >
                   {% set ups = states('sensor.ups_status') | lower %}
-                  {% set d1 = states('select.HUB1_SERIAL_NUMBER_gridoffmode') %}
-                  {% set d2 = states('select.HUB2_SERIAL_NUMBER_gridoffmode') %}
+                  {% set d1 = states(states('input_text.zendure_gridoffmode_entity_u1')) %}
+                  {% set d2 = states(states('input_text.zendure_gridoffmode_entity_u2')) %}
                   {{ ('online' in ups or 'ol' in ups) and
                      (d1 == 'Normal mode' or d2 == 'Normal mode') }}
             sequence:
               - action: mqtt.publish
                 data:
-                  topic: "Zendure/select/HUB1_SERIAL_NUMBER/gridOffMode/set"
+                  topic: !secret zendure_topic_u1_select_gridOffMode_set
                   payload: "OFF"
                   qos: 1
               - action: mqtt.publish
                 data:
-                  topic: "Zendure/select/HUB2_SERIAL_NUMBER/gridOffMode/set"
+                  topic: !secret zendure_topic_u2_select_gridOffMode_set
                   payload: "OFF"
                   qos: 1
               - action: notify.send_message
                 target:
-                  entity_id: notify.telegram_bot_YOUR_TELEGRAM_SERVICE
+                  entity_id: !secret telegram_id1
                 data:
                   message: >
                     ✅ *STROM WIEDER DA!*
@@ -4067,7 +4083,7 @@ automation:
                 data: { value: "Input mode" }
               - action: notify.send_message
                 target:
-                  entity_id: notify.telegram_bot_YOUR_TELEGRAM_SERVICE
+                  entity_id: !secret telegram_id1
                 data:
                   message: >
                     ℹ️ *AC-Reconcile U1 übersprungen (Schutzladung erkannt)*\n
@@ -4095,18 +4111,18 @@ automation:
                   ac1_should: "{{ states('input_text.zendure_ac_mode_u1') }}"
               - action: mqtt.publish
                 data:
-                  topic: "Zendure/select/HUB1_SERIAL_NUMBER/acMode/set"
+                  topic: !secret zendure_topic_u1_select_acMode_set
                   payload: "{{ ac1_should }}"
                   qos: 1
               - delay: "00:00:00.500"
               - action: mqtt.publish
                 data:
-                  topic: "Zendure/select/HUB1_SERIAL_NUMBER/acMode/set"
+                  topic: !secret zendure_topic_u1_select_acMode_set
                   payload: "{{ ac1_should }}"
                   qos: 1
               - action: notify.send_message
                 target:
-                  entity_id: notify.telegram_bot_YOUR_TELEGRAM_SERVICE
+                  entity_id: !secret telegram_id1
                 data:
                   message: >
                     ⚠️ *AC-Mode war falsch (U1) – Re-Sync ausgeführt*\n
@@ -4132,7 +4148,7 @@ automation:
                 data: { value: "Input mode" }
               - action: notify.send_message
                 target:
-                  entity_id: notify.telegram_bot_YOUR_TELEGRAM_SERVICE
+                  entity_id: !secret telegram_id1
                 data:
                   message: >
                     ℹ️ *AC-Reconcile U2 übersprungen (Schutzladung erkannt)*\n
@@ -4160,18 +4176,18 @@ automation:
                   ac2_should: "{{ states('input_text.zendure_ac_mode_u2') }}"
               - action: mqtt.publish
                 data:
-                  topic: "Zendure/select/HUB2_SERIAL_NUMBER/acMode/set"
+                  topic: !secret zendure_topic_u2_select_acMode_set
                   payload: "{{ ac2_should }}"
                   qos: 1
               - delay: "00:00:00.500"
               - action: mqtt.publish
                 data:
-                  topic: "Zendure/select/HUB2_SERIAL_NUMBER/acMode/set"
+                  topic: !secret zendure_topic_u2_select_acMode_set
                   payload: "{{ ac2_should }}"
                   qos: 1
               - action: notify.send_message
                 target:
-                  entity_id: notify.telegram_bot_YOUR_TELEGRAM_SERVICE
+                  entity_id: !secret telegram_id1
                 data:
                   message: >
                     ⚠️ *AC-Mode war falsch (U2) – Re-Sync ausgeführt*\n
