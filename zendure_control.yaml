@@ -26,6 +26,7 @@
 
 
 
+
 # ==============================================================================
 # 1. KONFIGURATION (Input Helpers)
 # ==============================================================================
@@ -327,7 +328,7 @@ mqtt:
 
     - name: "SolarFlow 1 BMS Leistung"
       unique_id: solarflow_1_bms_power
-      state_topic: "Zendure/sensor/CO4EENJJN380824/CO4EENJJN380824_power"
+      state_topic: !secret zendure_topic_battery1_sensor_power
       unit_of_measurement: "W"
       device_class: power
       state_class: measurement
@@ -335,7 +336,7 @@ mqtt:
     - name: "SolarFlow 1 Battery Max Temp"
       unique_id: solarflow_1_batt_max_temp
       default_entity_id: sensor.solarflow_1_batt_max_temp
-      state_topic: "Zendure/sensor/CO4EENJJN380824/CO4EENJJN380824_maxTemp"
+      state_topic: !secret zendure_topic_battery1_sensor_maxTemp
       unit_of_measurement: "°C"
       device_class: temperature
       state_class: measurement
@@ -348,7 +349,7 @@ mqtt:
     - name: "SolarFlow 1 Cell Max Vol"
       unique_id: solarflow_1_cell_max_vol
       default_entity_id: sensor.solarflow_1_cell_max_vol
-      state_topic: "Zendure/sensor/CO4EENJJN380824/CO4EENJJN380824_maxVol"
+      state_topic: !secret zendure_topic_battery1_sensor_maxVol
       unit_of_measurement: "V"
       device_class: voltage
       state_class: measurement
@@ -363,7 +364,7 @@ mqtt:
     - name: "SolarFlow 1 Cell Min Vol"
       unique_id: solarflow_1_cell_min_vol
       default_entity_id: sensor.solarflow_1_cell_min_vol
-      state_topic: "Zendure/sensor/CO4EENJJN380824/CO4EENJJN380824_minVol"
+      state_topic: !secret zendure_topic_battery1_sensor_minVol
       unit_of_measurement: "V"
       device_class: voltage
       state_class: measurement
@@ -469,7 +470,7 @@ mqtt:
 
     - name: "SolarFlow 2 BMS Leistung"
       unique_id: solarflow_2_bms_power
-      state_topic: "Zendure/sensor/CO4EENJJN380119/CO4EENJJN380119_power"
+      state_topic: !secret zendure_topic_battery2_sensor_power
       unit_of_measurement: "W"
       device_class: power
       state_class: measurement
@@ -477,7 +478,7 @@ mqtt:
     - name: "SolarFlow 2 Battery Max Temp"
       unique_id: solarflow_2_batt_max_temp
       default_entity_id: sensor.solarflow_2_batt_max_temp
-      state_topic: "Zendure/sensor/CO4EENJJN380119/CO4EENJJN380119_maxTemp"
+      state_topic: !secret zendure_topic_battery2_sensor_maxTemp
       unit_of_measurement: "°C"
       device_class: temperature
       state_class: measurement
@@ -490,7 +491,7 @@ mqtt:
     - name: "SolarFlow 2 Cell Max Vol"
       unique_id: solarflow_2_cell_max_vol
       default_entity_id: sensor.solarflow_2_cell_max_vol
-      state_topic: "Zendure/sensor/CO4EENJJN380119/CO4EENJJN380119_maxVol"
+      state_topic: !secret zendure_topic_battery2_sensor_maxVol
       unit_of_measurement: "V"
       device_class: voltage
       state_class: measurement
@@ -505,7 +506,7 @@ mqtt:
     - name: "SolarFlow 2 Cell Min Vol"
       unique_id: solarflow_2_cell_min_vol
       default_entity_id: sensor.solarflow_2_cell_min_vol
-      state_topic: "Zendure/sensor/CO4EENJJN380119/CO4EENJJN380119_minVol"
+      state_topic: !secret zendure_topic_battery2_sensor_minVol
       unit_of_measurement: "V"
       device_class: voltage
       state_class: measurement
@@ -4194,3 +4195,4 @@ automation:
                     Ist (vor Re-Sync): {{ ac2_is }}\n
                     Soll (vor Re-Sync): {{ ac2_should }}\n
                     Der Fehler wurde erkannt und via MQTT korrigiert.
+
