@@ -1,0 +1,458 @@
+# ==============================================================================
+# Zendure v104 - Dynamic Local Extension
+# ==============================================================================
+# This file is intentionally separated from zendure_v104.yaml to keep the base
+# package stable and to avoid duplicate top-level YAML keys.
+#
+# Goals (local-only, no external network):
+# - Flexible device changes / expansion / detection
+# - Dynamic device onboarding from local MQTT traffic
+# - Persistent local fallback (registry in restored helpers)
+# - Native N-device fusegroup dispatch logic
+#
+# Usage:
+# 1) Include this file as a second package next to zendure_v104.yaml.
+# 2) input_boolean.zendure_dynamic_mode is enabled by default (set to off only if needed).
+# 3) Optionally configure input_text.zendure_fusegroups JSON.
+#
+# Example fusegroups JSON:
+# {"group_a":{"max_w":1200,"devices":["EEA1...","EEA2..."]},"group_b":{"max_w":800,"devices":["EEA3..."]}}
+
+input_boolean:
+  zendure_dynamic_mode:
+    name: "Zendure Dynamic Mode (Local)"
+    icon: mdi:lan
+    initial: on
+  zendure_dynamic_autocontrol:
+    name: "Zendure Dynamic Auto Control"
+    icon: mdi:chart-timeline-variant
+    initial: on
+  zendure_dynamic_adaptive_step:
+    name: "Zendure Dynamic Adaptive Min-Step"
+    icon: mdi:tune-variant
+    initial: on
+
+input_text:
+  zendure_device_registry:
+    name: "Zendure Device Registry (JSON)"
+    max: 1024
+    initial: "[]"
+
+  zendure_fusegroups:
+    name: "Zendure Fusegroups (JSON)"
+    max: 1024
+    initial: "{}"
+
+  zendure_device_capacity_kwh:
+    name: "Zendure Device Capacity kWh (JSON)"
+    max: 1024
+    # Example: {"EEA1...":3.84,"EEA2...":5.76}
+    # Fallback without entry: 1.92 * packNum (or 1.92 if packNum is missing)
+    initial: "{}"
+
+  zendure_grid_power_entity:
+    name: "Zendure Grid Power Entity Id"
+    max: 255
+    initial: "sensor.power_actual"
+
+  zendure_last_dispatch_map:
+    name: "Zendure Last Dispatch Map (JSON)"
+    max: 1024
+    initial: "{}"
+
+input_number:
+  zendure_dynamic_global_max:
+    name: "Zendure Dynamic Global Max Output"
+    min: 0
+    max: 10000
+    step: 10
+    unit_of_measurement: "W"
+    initial: 1200
+  zendure_dynamic_grid_bias:
+    name: "Zendure Dynamic Grid Bias"
+    min: -300
+    max: 300
+    step: 1
+    unit_of_measurement: "W"
+    initial: 10
+  zendure_dynamic_min_step:
+    name: "Zendure Dynamic Min Step"
+    min: 0
+    max: 200
+    step: 1
+    unit_of_measurement: "W"
+    initial: 0
+
+template:
+  - sensor:
+      - name: "Zendure Registered Device Count"
+        unique_id: zendure_registered_device_count
+        state: >
+          {% set reg = states('input_text.zendure_device_registry') %}
+          {% set arr = reg | from_json(default=[]) %}
+          {{ arr | count }}
+
+      - name: "Zendure Registered Devices"
+        unique_id: zendure_registered_devices
+        state: >
+          {% set reg = states('input_text.zendure_device_registry') %}
+          {% set arr = reg | from_json(default=[]) %}
+          {{ arr | join(',') if arr | count > 0 else 'none' }}
+
+script:
+  zendure_publish_device_discovery:
+    alias: "Zendure: Publish MQTT Discovery for Device"
+    mode: parallel
+    fields:
+      device_id:
+        description: "Zendure device ID"
+    sequence:
+      - variables:
+          did: "{{ device_id | string }}"
+          did_l: "{{ (device_id | string) | lower }}"
+      - if:
+          - condition: template
+            value_template: "{{ did | length > 4 }}"
+        then:
+          - action: mqtt.publish
+            data:
+              topic: "homeassistant/sensor/zendure_{{ did_l }}_packstate/config"
+              payload: >-
+                {{ {
+                  "name":"Zendure " ~ did ~ " PackState",
+                  "unique_id":"zendure_" ~ did_l ~ "_packstate",
+                  "object_id":"zendure_" ~ did_l ~ "_packstate",
+                  "state_topic":"Zendure/sensor/" ~ did ~ "/packState"
+                } | to_json }}
+              retain: true
+          - action: mqtt.publish
+            data:
+              topic: "homeassistant/sensor/zendure_{{ did_l }}_electriclevel/config"
+              payload: >-
+                {{ {
+                  "name":"Zendure " ~ did ~ " ElectricLevel",
+                  "unique_id":"zendure_" ~ did_l ~ "_electriclevel",
+                  "object_id":"zendure_" ~ did_l ~ "_electriclevel",
+                  "state_topic":"Zendure/sensor/" ~ did ~ "/electricLevel",
+                  "unit_of_measurement":"%",
+                  "device_class":"battery"
+                } | to_json }}
+              retain: true
+          - action: mqtt.publish
+            data:
+              topic: "homeassistant/sensor/zendure_{{ did_l }}_outputhomepower/config"
+              payload: >-
+                {{ {
+                  "name":"Zendure " ~ did ~ " OutputHomePower",
+                  "unique_id":"zendure_" ~ did_l ~ "_outputhomepower",
+                  "object_id":"zendure_" ~ did_l ~ "_outputhomepower",
+                  "state_topic":"Zendure/sensor/" ~ did ~ "/outputHomePower",
+                  "unit_of_measurement":"W",
+                  "device_class":"power",
+                  "state_class":"measurement"
+                } | to_json }}
+              retain: true
+          - action: mqtt.publish
+            data:
+              topic: "homeassistant/sensor/zendure_{{ did_l }}_outputlimit/config"
+              payload: >-
+                {{ {
+                  "name":"Zendure " ~ did ~ " OutputLimit",
+                  "unique_id":"zendure_" ~ did_l ~ "_outputlimit",
+                  "object_id":"zendure_" ~ did_l ~ "_outputlimit",
+                  "state_topic":"Zendure/number/" ~ did ~ "/outputLimit",
+                  "unit_of_measurement":"W"
+                } | to_json }}
+              retain: true
+          - action: mqtt.publish
+            data:
+              topic: "homeassistant/sensor/zendure_{{ did_l }}_packnum/config"
+              payload: >-
+                {{ {
+                  "name":"Zendure " ~ did ~ " PackNum",
+                  "unique_id":"zendure_" ~ did_l ~ "_packnum",
+                  "object_id":"zendure_" ~ did_l ~ "_packnum",
+                  "state_topic":"Zendure/sensor/" ~ did ~ "/packNum"
+                } | to_json }}
+              retain: true
+
+  zendure_registry_add_device:
+    alias: "Zendure: Registry Add Device"
+    mode: parallel
+    fields:
+      device_id:
+        description: "Zendure device ID"
+    sequence:
+      - variables:
+          did: "{{ device_id | string }}"
+          reg_raw: "{{ states('input_text.zendure_device_registry') }}"
+          reg: "{{ reg_raw | from_json(default=[]) }}"
+          merged: >
+            {% set out = reg | list %}
+            {% if did not in out and did | length > 4 %}
+              {% set out = out + [did] %}
+            {% endif %}
+            {{ out }}
+      - action: input_text.set_value
+        target: { entity_id: input_text.zendure_device_registry }
+        data:
+          value: "{{ merged | to_json }}"
+      - action: script.zendure_publish_device_discovery
+        data:
+          device_id: "{{ did }}"
+
+  zendure_registry_gc:
+    alias: "Zendure: Registry Garbage Collect"
+    mode: single
+    sequence:
+      - variables:
+          reg: "{{ states('input_text.zendure_device_registry') | from_json(default=[]) }}"
+          keep: >
+            {% set ns = namespace(out=[]) %}
+            {% for did in reg %}
+              {% set s = states('sensor.zendure_' ~ did|lower ~ '_packstate') %}
+              {% if s not in ['unknown','unavailable','none'] %}
+                {% set ns.out = ns.out + [did] %}
+              {% endif %}
+            {% endfor %}
+            {{ ns.out }}
+      - action: input_text.set_value
+        target: { entity_id: input_text.zendure_device_registry }
+        data:
+          value: "{{ keep | to_json }}"
+
+  zendure_n_device_fusegroup_dispatch:
+    alias: "Zendure: N-Device Fusegroup Dispatch"
+    mode: queued
+    fields:
+      total_target_w:
+        description: "Requested total output in W"
+    sequence:
+      - if:
+          - condition: state
+            entity_id: input_boolean.zendure_dynamic_mode
+            state: "on"
+        then:
+          - variables:
+              target: "{{ total_target_w | int(0) }}"
+              reg: "{{ states('input_text.zendure_device_registry') | from_json(default=[]) }}"
+              fgs: "{{ states('input_text.zendure_fusegroups') | from_json(default={}) }}"
+              cap_map: "{{ states('input_text.zendure_device_capacity_kwh') | from_json(default={}) }}"
+              base_step: "{{ states('input_number.zendure_dynamic_min_step') | int(0) }}"
+              adaptive_step: "{{ is_state('input_boolean.zendure_dynamic_adaptive_step', 'on') }}"
+              grid_entity: "{{ states('input_text.zendure_grid_power_entity') }}"
+              grid: "{{ states(grid_entity) | float(0) }}"
+              min_step: >-
+                {% if base_step | int(0) <= 0 %}
+                  0
+                {% elif adaptive_step and (grid | abs) > 150 %}
+                  1
+                {% elif adaptive_step and (grid | abs) > 80 %}
+                  2
+                {% else %}
+                  {{ base_step | int(0) }}
+                {% endif %}
+              prev_map: "{{ states('input_text.zendure_last_dispatch_map') | from_json(default={}) }}"
+              active: >
+                {% set ns = namespace(out=[]) %}
+                {% for did in reg %}
+                  {% set st = states('sensor.zendure_' ~ did|lower ~ '_packstate') | upper %}
+                  {% if st not in ['UNAVAILABLE','UNKNOWN','NONE','FAULT','ERROR'] %}
+                    {% set ns.out = ns.out + [did] %}
+                  {% endif %}
+                {% endfor %}
+                {{ ns.out }}
+              weights: >
+                {% set ns = namespace(map={}) %}
+                {% for did in active %}
+                  {% set soc = states('sensor.zendure_' ~ did|lower ~ '_electriclevel') | float(50) %}
+                  {% set pack_num = states('sensor.zendure_' ~ did|lower ~ '_packnum') | float(1) %}
+                  {% set cap = cap_map.get(did, (1.92 * [pack_num, 1] | max)) | float(1.92) %}
+                  {% set avail = (soc / 100) * cap %}
+                  {% set ns.map = dict(ns.map, **{did: [avail, 0.1] | max }) %}
+                {% endfor %}
+                {{ ns.map }}
+              weight_sum: >
+                {% set s = 0 %}
+                {% for did in active %}
+                  {% set s = s + (weights.get(did, 50) | float(50)) %}
+                {% endfor %}
+                {{ s }}
+          - repeat:
+              for_each: "{{ active }}"
+              sequence:
+                - variables:
+                    did: "{{ repeat.item }}"
+                    w: "{{ weights.get(did, 50) | float(50) }}"
+                    base: >
+                      {% if weight_sum | float(0) > 0 %}
+                        {{ ((target | int(0)) * w / (weight_sum | float(1))) | int(0) }}
+                      {% else %}
+                        0
+                      {% endif %}
+                    fg_cap: >
+                      {% set cap = 800 %}
+                      {% for g, data in fgs.items() %}
+                        {% set devs = data.get('devices', []) %}
+                        {% if did in devs %}
+                          {% set cap = [cap, data.get('max_w', 800) | int(800)] | min %}
+                        {% endif %}
+                      {% endfor %}
+                      {{ cap }}
+                    final: "{{ [[base, 0] | max, fg_cap | int(800)] | min }}"
+                    prev: "{{ prev_map.get(did, -9999) | int(-9999) }}"
+                - if:
+                    - condition: template
+                      value_template: "{{ prev == -9999 or (min_step | int(0)) == 0 or ((final | int(0)) - (prev | int(0))) | abs >= (min_step | int(0)) }}"
+                  then:
+                    - action: mqtt.publish
+                      data:
+                        topic: "Zendure/number/{{ did }}/outputLimit/set"
+                        payload: "{{ final }}"
+                        qos: 1
+          - variables:
+              dispatch_map: >-
+                {% set ns = namespace(map={}) %}
+                {% for did in active %}
+                  {% set w = weights.get(did, 1) | float(1) %}
+                  {% set base = ((target | int(0)) * w / (weight_sum | float(1))) | int(0) if (weight_sum | float(0)) > 0 else 0 %}
+                  {% set cap = 800 %}
+                  {% for g, data in fgs.items() %}
+                    {% set devs = data.get('devices', []) %}
+                    {% if did in devs %}
+                      {% set cap = [cap, data.get('max_w', 800) | int(800)] | min %}
+                    {% endif %}
+                  {% endfor %}
+                  {% set final = [[base, 0] | max, cap | int(800)] | min %}
+                  {% set ns.map = dict(ns.map, **{did: final}) %}
+                {% endfor %}
+                {{ ns.map }}
+          - action: input_text.set_value
+            target: { entity_id: input_text.zendure_last_dispatch_map }
+            data:
+              value: "{{ dispatch_map | to_json }}"
+
+  zendure_dynamic_autocontrol_tick:
+    alias: "Zendure: Dynamic AutoControl Tick"
+    mode: single
+    sequence:
+      - if:
+          - condition: state
+            entity_id: input_boolean.zendure_dynamic_mode
+            state: "on"
+          - condition: state
+            entity_id: input_boolean.zendure_dynamic_autocontrol
+            state: "on"
+        then:
+          - variables:
+              reg: "{{ states('input_text.zendure_device_registry') | from_json(default=[]) }}"
+              grid_entity: "{{ states('input_text.zendure_grid_power_entity') }}"
+              grid_bias: "{{ states('input_number.zendure_dynamic_grid_bias') | int(10) }}"
+              gmax: "{{ states('input_number.zendure_dynamic_global_max') | int(1200) }}"
+              grid: "{{ states(grid_entity) | float(0) }}"
+              current_total: >-
+                {% set ns = namespace(v=0) %}
+                {% for did in reg %}
+                  {% set ns.v = ns.v + (states('sensor.zendure_' ~ did|lower ~ '_outputhomepower') | float(0)) %}
+                {% endfor %}
+                {{ ns.v | int(0) }}
+              target: "{{ [[(current_total | int(0)) + (grid | int(0)) - (grid_bias | int(0)), 0] | max, gmax | int(1200)] | min }}"
+          - action: script.zendure_n_device_fusegroup_dispatch
+            data:
+              total_target_w: "{{ target | int(0) }}"
+
+automation:
+  - alias: "Zendure: Dynamic/Base Mode Arbitration"
+    id: "zendure_dynamic_base_mode_arbitration"
+    mode: restart
+    initial_state: true
+    triggers:
+      - trigger: homeassistant
+        event: start
+      - trigger: state
+        entity_id: input_boolean.zendure_dynamic_mode
+        to: "on"
+    conditions:
+      - condition: state
+        entity_id: input_boolean.zendure_dynamic_mode
+        state: "on"
+    actions:
+      - if:
+          - condition: state
+            entity_id: input_boolean.zendure_auto_mode
+            state: "on"
+        then:
+          - action: input_boolean.turn_off
+            target:
+              entity_id: input_boolean.zendure_auto_mode
+
+  - alias: "Zendure: Dynamic Registry Bootstrap Discovery"
+    id: "zendure_dynamic_registry_bootstrap_discovery"
+    mode: queued
+    initial_state: true
+    triggers:
+      - trigger: homeassistant
+        event: start
+    conditions:
+      - condition: state
+        entity_id: input_boolean.zendure_dynamic_mode
+        state: "on"
+    actions:
+      - variables:
+          reg: "{{ states('input_text.zendure_device_registry') | from_json(default=[]) }}"
+      - repeat:
+          for_each: "{{ reg }}"
+          sequence:
+            - action: script.zendure_publish_device_discovery
+              data:
+                device_id: "{{ repeat.item }}"
+
+  - alias: "Zendure: Dynamic Registry Listener (Local MQTT)"
+    id: "zendure_dynamic_registry_listener"
+    mode: queued
+    initial_state: true
+    triggers:
+      - trigger: mqtt
+        topic: "Zendure/sensor/+/packState"
+      - trigger: mqtt
+        topic: "Zendure/sensor/+/electricLevel"
+      - trigger: mqtt
+        topic: "Zendure/sensor/+/outputHomePower"
+    conditions:
+      - condition: state
+        entity_id: input_boolean.zendure_dynamic_mode
+        state: "on"
+    actions:
+      - variables:
+          parts: "{{ trigger.topic.split('/') }}"
+          did: "{{ parts[2] if parts | count > 2 else '' }}"
+      - if:
+          - condition: template
+            value_template: "{{ did | length > 4 }}"
+        then:
+          - action: script.zendure_registry_add_device
+            data: { device_id: "{{ did }}" }
+
+  - alias: "Zendure: Dynamic Registry GC"
+    id: "zendure_dynamic_registry_gc"
+    mode: single
+    initial_state: true
+    triggers:
+      - trigger: time_pattern
+        minutes: "/30"
+    conditions:
+      - condition: state
+        entity_id: input_boolean.zendure_dynamic_mode
+        state: "on"
+    actions:
+      - action: script.zendure_registry_gc
+
+  - alias: "Zendure: Dynamic AutoControl Scheduler"
+    id: "zendure_dynamic_autocontrol_scheduler"
+    mode: restart
+    initial_state: true
+    triggers:
+      - trigger: time_pattern
+        seconds: "/5"
+    actions:
+      - action: script.zendure_dynamic_autocontrol_tick
