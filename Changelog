@@ -1535,4 +1535,30 @@
 # Changes V103:
 # - Bugfixes and slight adjustments in safety values
 #
+# Changes V104:
+# - Set hb_fresh (for heartbeat_stale) from 120 to 180 because 120 seems to be too short
+#
+# Changes V105:
+# - Fixed an issue where calibration could have been startet but power output was not set to 0
+#
+# Changes V106:
+# - Set control loop from 5 seconds to 2 seconds for testing speed
+# - Made ACK/Drift Revovery fast (8 / 60 seconds and  5 / 30 seconds)
+# - Added hysteresis_dynamic for the actual grid deviation to be less chatty
+#
+# Changes V107:
+# - Replaced hard-coded Shelly_ID and Telegram_ID with parameters that you can set in secrets.yaml
+# - This makes it a lot less easier to maintain and setup.
+# - Please set your Shelly_ID (or any power meter entitiy) and telegram ID in secrets.yaml
+# - In secrets.yaml:
+#   telegram_id1: "notify.telegram_bot_1234_6789"
+#   telegram_id2: "notify.telegram_bot_1235_0987"
+#   power_meter_total_consumption: "sensor.shellypro3em_xyz1234_total_active_power"
+#
+# Changes V108:
+# - Removed hysteresis_dynamic because it actually make the performance worse
+#
+# Changes V109:
+# - Moved all hardcoded serial numbers to secrets.yaml for easier setup and maintaining
+#
 ################################################################################
