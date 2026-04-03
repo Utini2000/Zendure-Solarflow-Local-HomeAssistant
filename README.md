@@ -45,7 +45,7 @@ It focuses on maximizing battery lifespan and achieving near-perfect zero‑expo
 - Set **BMS minimum discharge** to **5%**
 - **Remove** the system from **HEMS** (Home Energy Management System)
 - Ensure **MQTT** is properly set up and connected to Home Assistant
-2. Upload the .yaml files into (zendure_control.yaml and optional energy_monitoring.yaml) `/homeassistant/packages/`
+2. Upload the .yaml files into (`zendure_control.yaml` and optional `energy_monitoring.yaml`) `/homeassistant/packages/`
 3. Modify the `/homeassistant/configuration.yaml`:
 
 ```yaml
@@ -65,7 +65,7 @@ logbook:
     entity_globs:
       - automation.zendure_*
 ```
-4. Upload secrets.yaml and replace the placeholders:
+4. Upload `secrets.yaml` and replace the placeholders:
 
 | Placeholder | Description |
 |-------------|--------------|
