@@ -1,5 +1,5 @@
 ################################################################################
-#                   ZENDURE SOLARFLOW CONTROL PACKAGE (V109)                    #
+#                   ZENDURE SOLARFLOW CONTROL PACKAGE (V110)                    #
 ################################################################################
 #
 # DESCRIPTION:
@@ -1306,15 +1306,13 @@ automation:
     triggers:
       - trigger: time_pattern
         seconds: "/2"
-      - trigger: template
-        value_template: >
-          {% set meter = states('input_text.zendure_power_meter_total_consumption') %}
-          {{ meter|length > 0 and (states(meter) | float(0)) > 150 }}
+      - trigger: numeric_state
+        entity_id: !secret power_meter_total_consumption
+        above: 150
         for: "00:00:01"
-      - trigger: template
-        value_template: >
-          {% set meter = states('input_text.zendure_power_meter_total_consumption') %}
-          {{ meter|length > 0 and (states(meter) | float(0)) < -30 }}
+      - trigger: numeric_state
+        entity_id: !secret power_meter_total_consumption
+        below: -30
         for: "00:00:01"
       - trigger: state
         entity_id:
@@ -1341,8 +1339,12 @@ automation:
           power_meter_entity: "{{ states('input_text.zendure_power_meter_total_consumption') }}"
           shelly_ok: >-
             {% set meter = power_meter_entity %}
-            {% set val = states(meter) if meter|length > 0 else 'unknown' %}
-            {{ meter|length > 0 and val|upper not in ['UNAVAILABLE','UNKNOWN','NONE'] and is_number(val) }}
+            {% set s = (expand(meter) | first) if meter|length > 0 else none %}
+            {% set val = s.state if s is not none else 'unknown' %}
+            {% set ts_reported = as_timestamp(s.last_reported, 0) if s is not none and s.last_reported is defined else 0 %}
+            {% set ts_changed = as_timestamp(s.last_changed, 0) if s is not none else 0 %}
+            {% set fresh = (as_timestamp(now()) - ts_reported) < 25 or (as_timestamp(now()) - ts_changed) < 25 %}
+            {{ s is not none and val|upper not in ['UNAVAILABLE','UNKNOWN','NONE'] and is_number(val) and fresh }}
 
           s1_fresh: >-
             {% set stat = states.sensor.solarflow_1_status_raw %}
@@ -1398,11 +1400,11 @@ automation:
           time_since_1: "{{ as_timestamp(now()) - last_sent_1_ts }}"
           time_since_2: "{{ as_timestamp(now()) - last_sent_2_ts }}"
 
-          ack_pending_1: "{{ time_since_1 < 5 and s1_out_val >= 0 and s1_out_val != s1_base }}"
-          drift_recovery_1: "{{ time_since_1 >= 5 and time_since_1 < 30 and s1_out_val >= 0 and s1_out_val != s1_base }}"
+          ack_pending_1: "{{ time_since_1 < 8 and s1_out_val >= 0 and s1_out_val != s1_base }}"
+          drift_recovery_1: "{{ time_since_1 >= 8 and time_since_1 < 60 and s1_out_val >= 0 and s1_out_val != s1_base }}"
 
-          ack_pending_2: "{{ time_since_2 < 5 and s2_out_val >= 0 and s2_out_val != s2_base }}"
-          drift_recovery_2: "{{ time_since_2 >= 5 and time_since_2 < 30 and s2_out_val >= 0 and s2_out_val != s2_base }}"
+          ack_pending_2: "{{ time_since_2 < 8 and s2_out_val >= 0 and s2_out_val != s2_base }}"
+          drift_recovery_2: "{{ time_since_2 >= 8 and time_since_2 < 60 and s2_out_val >= 0 and s2_out_val != s2_base }}"
 
           soc_off: "{{ states('input_number.zendure_conf_soc_off') | int(20) }}"
           hysteresis: "{{ states('input_number.zendure_conf_hysteresis') | int(10) }}"
@@ -3734,15 +3736,23 @@ automation:
         id: "shelly_fail"
         value_template: >-
           {% set meter = states('input_text.zendure_power_meter_total_consumption') %}
-          {% set val = states(meter) if meter|length > 0 else 'unknown' %}
-          {{ not (meter|length > 0 and val|upper not in ['UNAVAILABLE','UNKNOWN','NONE'] and is_number(val)) }}
+          {% set s = (expand(meter) | first) if meter|length > 0 else none %}
+          {% set val = s.state if s is not none else 'unknown' %}
+          {% set ts_reported = as_timestamp(s.last_reported, 0) if s is not none and s.last_reported is defined else 0 %}
+          {% set ts_changed = as_timestamp(s.last_changed, 0) if s is not none else 0 %}
+          {% set fresh = (as_timestamp(now()) - ts_reported) < 25 or (as_timestamp(now()) - ts_changed) < 25 %}
+          {{ not (s is not none and val|upper not in ['UNAVAILABLE','UNKNOWN','NONE'] and is_number(val) and fresh) }}
         for: "00:00:30"
       - trigger: template
         id: "shelly_ok"
         value_template: >-
           {% set meter = states('input_text.zendure_power_meter_total_consumption') %}
-          {% set val = states(meter) if meter|length > 0 else 'unknown' %}
-          {{ meter|length > 0 and val|upper not in ['UNAVAILABLE','UNKNOWN','NONE'] and is_number(val) }}
+          {% set s = (expand(meter) | first) if meter|length > 0 else none %}
+          {% set val = s.state if s is not none else 'unknown' %}
+          {% set ts_reported = as_timestamp(s.last_reported, 0) if s is not none and s.last_reported is defined else 0 %}
+          {% set ts_changed = as_timestamp(s.last_changed, 0) if s is not none else 0 %}
+          {% set fresh = (as_timestamp(now()) - ts_reported) < 25 or (as_timestamp(now()) - ts_changed) < 25 %}
+          {{ s is not none and val|upper not in ['UNAVAILABLE','UNKNOWN','NONE'] and is_number(val) and fresh }}
         for: "00:01:00"
 
       - trigger: state
@@ -4195,4 +4205,3 @@ automation:
                     Ist (vor Re-Sync): {{ ac2_is }}\n
                     Soll (vor Re-Sync): {{ ac2_should }}\n
                     Der Fehler wurde erkannt und via MQTT korrigiert.
-
