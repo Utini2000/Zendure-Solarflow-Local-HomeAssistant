@@ -99,5 +99,9 @@ The easiest way to check is to search for `solarflow` or `zendure` – if result
 Have you set `input_boolean.zendure_auto_mode` to `on`?  
 The automation will only run when this toggle is enabled.
 
+#### How to monitor and double-check the functionallity?
+Entities that are very helpfull are `SolarFlow 1 Output Block Reason` but also `SolarFlow 1 Output Power` or `SolarFlow Total Output Power`.  
+The Output Power entities show the real-time current set Output Power and **is different from Output Limit**!   
+
 
 
