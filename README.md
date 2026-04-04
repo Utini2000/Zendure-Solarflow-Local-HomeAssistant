@@ -4,8 +4,8 @@ This Home Assistant package provides **advanced, local control** for the Zendure
 It focuses on maximizing battery lifespan and achieving near-perfect zero‑export by leveraging local communication and smart balancing between two units.
 
 ✅ Also compatible with a **single unit**.  
-🔒 **Completely local** - no internet access required.
-✅ Works with **any powermeter** that measures the total active power consumption in real time (Shelly 3EM, Shelly 3EM Pro, Zendure Smart Meter 3CT,...)
+🔒 **Completely local** - no internet access required.  
+✅ Works with **any powermeter** that measures the total active power consumption in real time (Shelly 3EM, Shelly 3EM Pro, Zendure Smart Meter 3CT,...).
 
 # Key Features
 - **Smart Dual‑Unit Balancing:** Dynamically distributes load between two units based on their State of Charge (SoC) and current solar (PV) input to ensure batteries drain and charge evenly.
