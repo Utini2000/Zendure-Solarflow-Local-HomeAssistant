@@ -1561,4 +1561,8 @@
 # Changes V109:
 # - Moved all hardcoded serial numbers to secrets.yaml for easier setup and maintaining
 #
+# Changes V110:
+# - Fixed some issue from last updates but also improved performance
+#   Performance should be twice as fast now (with changes introduced in V107)
+#
 ################################################################################
