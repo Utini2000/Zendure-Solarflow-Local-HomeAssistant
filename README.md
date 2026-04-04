@@ -5,6 +5,7 @@ It focuses on maximizing battery lifespan and achieving near-perfect zero‑expo
 
 ✅ Also compatible with a **single unit**.  
 🔒 **Completely local** - no internet access required.
+✅ Works with **any powermeter** that measures the total active power consumption in real time (Shelly 3EM, Shelly 3EM Pro, Zendure Smart Meter 3CT,...)
 
 # Key Features
 - **Smart Dual‑Unit Balancing:** Dynamically distributes load between two units based on their State of Charge (SoC) and current solar (PV) input to ensure batteries drain and charge evenly.
@@ -30,10 +31,10 @@ It focuses on maximizing battery lifespan and achieving near-perfect zero‑expo
 
 # Prerequisites
 * Home Assistant (HA)
-* Shelly 3EM Pro
-* Shelly 3EM Pro Total Active Power entity (see [energy_monitoring.yaml](energy_monitoring.yaml) as an example)
+* Power Meter e.g. Shelly 3EM Pro or Zendure Smart Meter 3CT or similiar
 * Home Assistant App: [Mosquitto broker](https://github.com/home-assistant/addons/blob/master/mosquitto/DOCS.md)
 * MQTT configured for each SolarFlow in the app to the local HA MQTT IP address
+* Optional: Shelly 3EM Pro Total Active Power entity (see [energy_monitoring.yaml](energy_monitoring.yaml) as an example)
 * Optional: HA Integration [Forecast.Solar](https://www.home-assistant.io/integrations/forecast_solar/)
 * Optional: HA Integration [Notifications](https://www.home-assistant.io/integrations/notify/), e.g. Telegram Bot for notifications
 
@@ -73,7 +74,7 @@ logbook:
 | `BAT1_SERIAL_NUMBER` | Serial number of the battery on the 1st Hub (e.g., CO4...) |
 | `HUB2_SERIAL_NUMBER` | Serial number of the 2nd SolarFlow Hub — *leave as is if you only have one unit* |
 | `BAT2_SERIAL_NUMBER` | Serial number of the battery on the 2nd Hub — *leave as is if you only have one unit* |
-| `shellypro3em_SHELLY_ID` | Unique ID of the Shelly 3EM (the part following `shellypro3em_` in the entity ID) |
+| `shellypro3em_SHELLY_ID` | Unique ID of the Shelly 3EM (the part following `shellypro3em_` in the entity ID) or any other power meter entity |
 | `notify.YOUR_TELEGRAM_SERVICE` | Name of the notification service (Telegram, mobile app, etc.) |
 
 5. Adapt the person entries:
