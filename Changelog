@@ -1565,4 +1565,11 @@
 # - Fixed some issue from last updates but also improved performance
 #   Performance should be twice as fast now (with changes introduced in V107)
 #
+# Changes V133 (from V110):
+# - Implementing the best from official ZenSDK and the 3rd party HACS Zendure HA integration:
+#   More event driven scaling, gates for timefast and timezero, StdDev,..
+# - Control loop set to 3 because now we are event first and standard loop second in terms of priorization
+# - This greatly improves reaction times
+# - Greatly reduced MQTT write/read payload to make room for the new and faster script (which causes more communication)
+#
 ################################################################################
