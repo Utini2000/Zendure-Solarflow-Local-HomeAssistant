@@ -821,6 +821,7 @@ sensor:
   - platform: statistics
     entity_id: !secret power_meter_total_consumption
     name: "Zendure P1 Mean 30s"
+    unique_id: zendure_p1_mean_30s
     state_characteristic: mean
     sampling_size: 8
     max_age:
@@ -829,6 +830,7 @@ sensor:
   - platform: statistics
     entity_id: !secret power_meter_total_consumption
     name: "Zendure P1 Stddev 30s"
+    unique_id: zendure_p1_stddev_30s
     state_characteristic: standard_deviation
     sampling_size: 8
     max_age:
