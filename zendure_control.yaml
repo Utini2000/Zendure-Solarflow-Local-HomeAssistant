@@ -1,5 +1,5 @@
 ################################################################################
-#                   ZENDURE SOLARFLOW CONTROL PACKAGE (V133)                    #
+#                   ZENDURE SOLARFLOW CONTROL PACKAGE (V134)                    #
 ################################################################################
 #
 # DESCRIPTION:
@@ -2081,6 +2081,9 @@ automation:
             {% else %}
               {{ target }}
             {% endif %}
+          start_min_output: 30
+          final_1_eff: "{{ 0 if (final_1|int(0) < start_min_output|int(30)) else final_1|int(0) }}"
+          final_2_eff: "{{ 0 if (final_2|int(0) < start_min_output|int(30)) else final_2|int(0) }}"
 
       - parallel:
           # --- UNIT 1 OUTPUT UPDATE ---
@@ -2091,16 +2094,16 @@ automation:
                          fast_down_1|bool
                          or force_zero_u1|bool
                          or fast_push_1|bool
-                         or ((final_1|int(0) - s1_base|int(0))|abs >= (min_change|int(0)))
+                         or ((final_1_eff|int(0) - s1_base|int(0))|abs >= (min_change|int(0)))
                          or override_u1
                          or drift_recovery_1
                          or states('input_text.zendure_ac_mode_u1') != 'Output mode'
-                         or ((actual_total|int(0) > global_max|int(0)) and (s1_base|int(0) > final_1|int(0)))
+                         or ((actual_total|int(0) > global_max|int(0)) and (s1_base|int(0) > final_1_eff|int(0)))
                        ) }}
             then:
               - action: script.zendure_dispatch_u1_output
                 data:
-                  power: "{{ final_1|int }}"
+                  power: "{{ final_1_eff|int }}"
                   ensure_output_mode: true
 
           # --- UNIT 2 OUTPUT UPDATE ---
@@ -2111,16 +2114,16 @@ automation:
                          fast_down_2|bool
                          or force_zero_u2|bool
                          or fast_push_2|bool
-                         or ((final_2|int(0) - s2_base|int(0))|abs >= (min_change|int(0)))
+                         or ((final_2_eff|int(0) - s2_base|int(0))|abs >= (min_change|int(0)))
                          or override_u2
                          or drift_recovery_2
                          or states('input_text.zendure_ac_mode_u2') != 'Output mode'
-                         or ((actual_total|int(0) > global_max|int(0)) and (s2_base|int(0) > final_2|int(0)))
+                         or ((actual_total|int(0) > global_max|int(0)) and (s2_base|int(0) > final_2_eff|int(0)))
                        ) }}
             then:
               - action: script.zendure_dispatch_u2_output
                 data:
-                  power: "{{ final_2|int }}"
+                  power: "{{ final_2_eff|int }}"
                   ensure_output_mode: true
 
           # --- UNIT 1 STALE BEST-EFFORT 0W CLAMP ---
