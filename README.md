@@ -103,5 +103,13 @@ The automation will only run when this toggle is enabled.
 Entities that are very helpfull are `SolarFlow 1 Output Block Reason` but also `SolarFlow 1 Output Power` or `SolarFlow Total Output Power`.  
 The Output Power entities show the real-time current set Output Power and **is different from Output Limit**!   
 
+#### Spook found some unknown entities, what should I do?
+Check the following in order:
+1. Installation complete? Review the README – did you miss any steps?
+2. Secrets configured? Ensure you replaced the placeholder in secrets.yml
+3. Restarted properly? Full restart of Home Assistant is required – quick reload is not sufficient
+
+If all steps are checked and it's still not working, please [create an issue here](https://github.com/Utini2000/Zendure-Solarflow-Local-HomeAssistant/issues).
+
 
 
