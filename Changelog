@@ -1572,4 +1572,9 @@
 # - This greatly improves reaction times
 # - Greatly reduced MQTT write/read payload to make room for the new and faster script (which causes more communication)
 #
+# Changes V134:
+# - Added a hard minimum of 30W output power required to start. Anything below 30W will not start any output.
+#   This is because of efficiency reasons (inverter struggles below 30w, everything above 30w is most efficient in bypass mode or charging mode)
+# - Added some missing unique IDs
+#
 ################################################################################
