@@ -1615,7 +1615,7 @@ automation:
               entity_id: input_datetime.zendure_zero_next
             data:
               timestamp: >-
-                {% if (target_total | float(0)) < (actual_total | float(0)) %}
+                {% if (target_total | float(0)) < (out_total | float(0)) %}
                   {{ now_ts + 2.0 }}
                 {% else %}
                   {{ now_ts + 2.5 }}
@@ -1638,7 +1638,7 @@ automation:
           entity_id: input_datetime.zendure_zero_next
         data:
           timestamp: >-
-            {% if (target_total | float(0)) < (actual_total | float(0)) %}
+            {% if (target_total | float(0)) < (out_total | float(0)) %}
               {{ now_ts + 2.0 }}
             {% else %}
               {{ now_ts + 2.5 }}
@@ -2012,16 +2012,6 @@ automation:
           fast_push_2: "{{ fast_event and time_since_2 > 1.2 }}"
           min_change_base: "{{ (slider_change * 4) if zen_mode else slider_change }}"
           min_change: "{{ [5, ((min_change_base | int(0)) // 2)] | max if fast_event else min_change_base }}"
-          cmd_retry_s: >-
-            {% if fast_event %}
-              1.5
-            {% elif (target_total|int(0)) < (actual_total|int(0)) %}
-              2.0
-            {% else %}
-              2.5
-            {% endif %}
-          cmd_u1_cooldown_ok: "{{ (time_since_1 | float(0)) > cmd_retry_s }}"
-          cmd_u2_cooldown_ok: "{{ (time_since_2 | float(0)) > cmd_retry_s }}"
 
           override_margin: "{{ [min_change|int(0), 10] | max }}"
           spillover_override: "{{ (floor_1|int(0) > (s1_base|int(0) + override_margin|int(0))) or (floor_2|int(0) > (s2_base|int(0) + override_margin|int(0))) }}"
@@ -2110,6 +2100,17 @@ automation:
              or rebalance_needed }}
 
       - variables:
+          cmd_retry_s: >-
+            {% if fast_event %}
+              1.5
+            {% elif (target_total|int(0)) < (actual_total|int(0)) %}
+              2.0
+            {% else %}
+              2.5
+            {% endif %}
+          cmd_u1_cooldown_ok: "{{ (time_since_1 | float(0)) > cmd_retry_s }}"
+          cmd_u2_cooldown_ok: "{{ (time_since_2 | float(0)) > cmd_retry_s }}"
+
           target_online: "{{ [[(target_total|int(0) - ghost_total|int(0) - busy_actual_total|int(0)), 0]|max, available_capacity|int(0)]|min }}"
 
           active_1: "{{ s1_ok | bool and not (busy_u1 | bool) }}"
@@ -4217,16 +4218,16 @@ automation:
             sequence:
               - action: input_number.set_value
                 target: { entity_id: input_number.zendure_conf_soc_off }
-                data: { value: 10 }
+                data: { value: 15 }
               - action: input_number.set_value
                 target: { entity_id: input_number.zendure_conf_soc_bypass }
-                data: { value: 12 }
+                data: { value: 18 }
               - action: input_number.set_value
                 target: { entity_id: input_number.zendure_conf_soc_emerg_start }
-                data: { value: 7 }
+                data: { value: 10 }
               - action: input_number.set_value
                 target: { entity_id: input_number.zendure_conf_soc_emerg_stop }
-                data: { value: 9 }
+                data: { value: 13 }
               - action: input_number.set_value
                 target: { entity_id: input_number.zendure_conf_calib_days }
                 data: { value: 14 }
