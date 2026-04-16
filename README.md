@@ -59,6 +59,9 @@ recorder:
   exclude:
     entity_globs:
       - automation.zendure_*
+      - input_datetime.zendure_zero_next
+      - input_datetime.zendure_zero_fast_until
+      - input_number.zendure_target_total
       
 # Exclude certrain entities from spamming the Activity logbook    
 logbook:
