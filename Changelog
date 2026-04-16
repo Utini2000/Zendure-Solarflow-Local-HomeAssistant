@@ -1577,4 +1577,39 @@
 #   This is because of efficiency reasons (inverter struggles below 30w, everything above 30w is most efficient in bypass mode or charging mode)
 # - Added some missing unique IDs
 #
+# Changes V135:
+# - Made Stddev to be easily adjustable
+# - Re-did the hard floow output when battery is 100% and PV input is high enough becuase the original logic didn't work
+#   We now force a minimum of 150W output (this is adjustable) when a unit is fully charged
+#   Output will automatically increase when required
+#
+# Changes V136:
+# - Fixed issue with hard floow output when a unit is 100% charged.
+#
+# Changes V137:
+# - Change stop_u1_vol_soft from 3,10 to 3,15
+# - Change zendure_conf_min_change from 5W to 10W
+# - Hold battery at 100% for x hours whn calibrating (it seems this is required to correctly re-learn the BMS)
+#   sensor.solarflow_1_battery_level and sensor.solarflow_2_battery_level for 3 hours
+#
+# Changes V138:
+# - Change low pass filter: control_total: "{{ ((cmd_total | int(0)) * 0.50 + (out_total | int(0)) * 0.50) | int(0) }}"
+# - Change timestamp: "{{ now_ts + 4.0 }}" from 4.0 to 3.0
+# - Completely rework actual_1 and actual_2 to be quicker
+# - Change stddev_factor from 3.5 to 2.5
+#
+# Changes V139:
+# - Set down speed to 2 Seconds, set up speed to 2.5 seconds (from 3 seconds)
+#   Because it seems like ~2 seconds is the required reaction time of the SF800 Pro Hardware
+#   Down is mostly faster than 2 secs and up a bit slower than 2 secs
+# - Set Fast Gate to 1.5 Seconds
+# - Adapt cmd_retry_s to those new values as well
+# - Change soc_exit from bypass to 3 (instead of 1) to prevent frequent bypass switches
+# - Increased summer soc_off because 10% might just be too low for some hardware even if new
+# - Change time for smart calibration start from 13:00 to 12:00
+# - Probably best to exclude these entities from the recorder in config.yaml:
+#       - input_datetime.zendure_zero_next
+#       - input_datetime.zendure_zero_fast_until
+#       - input_number.zendure_target_total
+#
 ################################################################################
