@@ -1,5 +1,5 @@
 ################################################################################
-#                   ZENDURE SOLARFLOW CONTROL PACKAGE (V139)                    #
+#                   ZENDURE SOLARFLOW CONTROL PACKAGE (V145)                    #
 ################################################################################
 #
 # DESCRIPTION:
@@ -23,7 +23,6 @@
 
 # Complete Changelog:
 # https://github.com/Utini2000/Zendure-Solarflow-Local-HomeAssistant/blob/main/Changelog
-
 
 
 # ==============================================================================
@@ -118,14 +117,6 @@ input_datetime:
     name: "Intern: SoC-Drift Referenzzeit U2"
     has_date: true
     has_time: true
-  zendure_zero_next:
-    name: "Intern: Zero Next"
-    has_date: true
-    has_time: true
-  zendure_zero_fast_until:
-    name: "Intern: Zero Fast Until"
-    has_date: true
-    has_time: true
 input_number:
   zendure_last_sent_1:
     name: "System: Letzter Wert Unit 1"
@@ -141,14 +132,6 @@ input_number:
     step: 1
     mode: box
     initial: 0
-  zendure_target_total:
-    name: "Zendure: Fast-Target Gesamt"
-    min: 0
-    max: 1600
-    step: 1
-    mode: box
-    initial: 0
-    unit_of_measurement: "W"
   zendure_soc_drift_ref_u1:
     name: "Intern: SoC-Drift Referenz U1"
     min: 0
@@ -202,15 +185,6 @@ input_number:
     step: 1
     initial: 10
     unit_of_measurement: "W"
-
-  zendure_conf_stddev_min_w:
-    name: "Zendure: StdDev Mindestschwelle"
-    min: 5
-    max: 200
-    step: 1
-    initial: 15
-    unit_of_measurement: "W"
-
   zendure_conf_floor_u1_w:
     name: "Zendure: Hard Floor U1"
     min: 0
@@ -852,24 +826,6 @@ sensor:
       minutes: 1
 
   - platform: statistics
-    entity_id: !secret power_meter_total_consumption
-    name: "Zendure P1 Mean 30s"
-    unique_id: zendure_p1_mean_30s
-    state_characteristic: mean
-    sampling_size: 8
-    max_age:
-      seconds: 30
-
-  - platform: statistics
-    entity_id: !secret power_meter_total_consumption
-    name: "Zendure P1 Stddev 30s"
-    unique_id: zendure_p1_stddev_30s
-    state_characteristic: standard_deviation
-    sampling_size: 8
-    max_age:
-      seconds: 30
-
-  - platform: statistics
     entity_id: sensor.solarflow_1_solar_input
     name: "Zendure U1 PV Mean 20s"
     unique_id: zendure_u1_pv_mean_20s
@@ -922,6 +878,7 @@ script:
           target: "{{ [0, [power | int(0), 800] | min] | max }}"
           ensure_mode: "{{ ensure_output_mode | default(true) }}"
           base: "{{ states('input_number.zendure_last_sent_1') | int(0) }}"
+          actual: "{{ states('sensor.solarflow_1_output_limit') | int(-1) }}"
           ts_cmd: "{{ as_timestamp(states.input_number.zendure_last_sent_1.last_updated, 0) }}"
           since_cmd: "{{ as_timestamp(now()) - ts_cmd }}"
           cmd_ok: "{{ since_cmd > 1.5 }}"
@@ -940,7 +897,7 @@ script:
             data: { topic: !secret zendure_topic_u1_select_acMode_set, payload: "Output mode", qos: 1 }
       - if:
           - condition: template
-            value_template: "{{ target != base and cmd_ok }}"
+            value_template: "{{ (target != base or target != actual) and cmd_ok }}"
         then:
           - action: mqtt.publish
             data: { topic: !secret zendure_topic_u1_number_outputLimit_set, payload: "{{ target }}", qos: 1 }
@@ -961,12 +918,13 @@ script:
           target: "{{ [0, [power | int(0), 800] | min] | max }}"
           ensure_mode: "{{ ensure_output_mode | default(true) }}"
           base: "{{ states('input_number.zendure_last_sent_2') | int(0) }}"
+          actual: "{{ states('sensor.solarflow_2_output_limit') | int(-1) }}" # NEU: Prüft den echten Status am Hub
           ts_cmd: "{{ as_timestamp(states.input_number.zendure_last_sent_2.last_updated, 0) }}"
           since_cmd: "{{ as_timestamp(now()) - ts_cmd }}"
           cmd_ok: "{{ since_cmd > 1.5 }}"
           ts_mode: "{{ as_timestamp(states.input_text.zendure_ac_mode_u2.last_updated, 0) }}"
           since_mode: "{{ as_timestamp(now()) - ts_mode }}"
-          mode_ok: "{{ since_mode > 10 }}"
+          mode_ok: "{{ since_mode > 20 }}"
           mode_mismatch: "{{ states('sensor.solarflow_2_ac_mode') != 'Output mode' or states('input_text.zendure_ac_mode_u2') != 'Output mode' }}"
       - if:
           - condition: template
@@ -979,7 +937,8 @@ script:
             data: { topic: !secret zendure_topic_u2_select_acMode_set, payload: "Output mode", qos: 1 }
       - if:
           - condition: template
-            value_template: "{{ target != base and cmd_ok }}"
+            # GEÄNDERT: Sendet den Befehl auch nochmal, wenn der echte Hub-Wert vom Ziel abweicht
+            value_template: "{{ (target != base or target != actual) and cmd_ok }}"
         then:
           - action: mqtt.publish
             data: { topic: !secret zendure_topic_u2_number_outputLimit_set, payload: "{{ target }}", qos: 1 }
@@ -1546,135 +1505,6 @@ automation:
             target: { entity_id: input_boolean.zendure_bypass_u2 }
 
   # --- 6.4 CONTROL LOOP ---
-  - alias: "Zendure: Init Fast Gates"
-    id: "zendure_init_fast_gates"
-    mode: single
-    initial_state: true
-    triggers:
-      - trigger: homeassistant
-        event: start
-    actions:
-      - variables:
-          now_ts: "{{ as_timestamp(now()) | float(0) }}"
-      - action: input_datetime.set_datetime
-        target:
-          entity_id: input_datetime.zendure_zero_next
-        data:
-          timestamp: "{{ now_ts }}"
-      - action: input_datetime.set_datetime
-        target:
-          entity_id: input_datetime.zendure_zero_fast_until
-        data:
-          timestamp: "{{ now_ts }}"
-
-  - alias: "Zendure: YAML Master (Stddev FastGate)"
-    id: "zendure_yaml_master"
-    mode: restart
-    initial_state: true
-    max_exceeded: silent
-    triggers:
-      - trigger: state
-        entity_id: !secret power_meter_total_consumption
-        id: meter_step
-      - trigger: time_pattern
-        seconds: "/3"
-        id: periodic
-    actions:
-      - if:
-          - condition: state
-            entity_id: input_boolean.zendure_auto_mode
-            state: "off"
-        then:
-          - stop: "Auto mode off"
-
-      - variables:
-          now_ts: "{{ as_timestamp(now()) | float(0) }}"
-          zero_next_ts: "{{ as_timestamp(states('input_datetime.zendure_zero_next'), default=0) | float(0) }}"
-          zero_fast_until_ts: "{{ as_timestamp(states('input_datetime.zendure_zero_fast_until'), default=0) | float(0) }}"
-          meter_entity: !secret power_meter_total_consumption
-          grid: "{{ states(meter_entity) | float(0) }}"
-          p1_mean: "{{ states('sensor.zendure_p1_mean_30s') | float(grid) }}"
-          p1_stddev: "{{ states('sensor.zendure_p1_stddev_30s') | float(0) }}"
-          stddev_min: "{{ states('input_number.zendure_conf_stddev_min_w') | float(15) }}"
-          stddev_factor: 2.5
-          fast_threshold: "{{ (stddev_factor | float(2.5)) * ([stddev_min | float(15), p1_stddev | float(0)] | max) }}"
-          jump: >-
-            {% if trigger.id == 'meter_step' and trigger.from_state is not none and trigger.to_state is not none and is_number(trigger.from_state.state) and is_number(trigger.to_state.state) %}
-              {{ ((trigger.to_state.state | float(0)) - (trigger.from_state.state | float(0))) | abs }}
-            {% else %}
-              0
-            {% endif %}
-          is_fast: "{{ ((grid - p1_mean) | abs) > (fast_threshold | float(0)) or (jump | float(0)) >= 30 }}"
-
-      - if:
-          - condition: template
-            value_template: "{{ now_ts < zero_fast_until_ts }}"
-        then:
-          - stop: "Fast gate active"
-
-      - if:
-          - condition: template
-            value_template: "{{ (not is_fast) and (now_ts <= zero_next_ts) }}"
-        then:
-          - stop: "Normal gate active"
-
-      - variables:
-          cmd1: "{{ states('input_number.zendure_last_sent_1') | int(0) }}"
-          cmd2: "{{ states('input_number.zendure_last_sent_2') | int(0) }}"
-          cmd_total: "{{ (cmd1 | int(0)) + (cmd2 | int(0)) }}"
-          out_total: "{{ (states('sensor.solarflow_1_output_power')|int(0)) + (states('sensor.solarflow_2_output_power')|int(0)) }}"
-          control_total: "{{ ((cmd_total | int(0)) * 0.50 + (out_total | int(0)) * 0.50) | int(0) }}"
-          hysteresis_base: "{{ states('input_number.zendure_conf_hysteresis') | int(8) }}"
-          hysteresis: "{{ [2, ((hysteresis_base | int(0)) // 2)] | max if is_fast else hysteresis_base }}"
-          grid_bias: "{{ states('input_number.zendure_conf_grid_bias') | int(10) }}"
-          max_total: "{{ states('input_number.zendure_conf_max_output') | int(1000) }}"
-          target_raw: "{{ (control_total | int(0)) + (grid | int(0)) - (grid_bias | int(0)) }}"
-          target_total: "{{ [[target_raw | int(0), 0] | max, max_total | int(0)] | min }}"
-          current_target: "{{ states('input_number.zendure_target_total') | int(0) }}"
-
-      - if:
-          - condition: template
-            value_template: "{{ (not is_fast) and (((target_total|int(0) - current_target|int(0)) | abs) <= (hysteresis|int(0))) }}"
-        then:
-          - action: input_datetime.set_datetime
-            target:
-              entity_id: input_datetime.zendure_zero_next
-            data:
-              timestamp: >-
-                {% if (target_total | float(0)) < (out_total | float(0)) %}
-                  {{ now_ts + 2.0 }}
-                {% else %}
-                  {{ now_ts + 2.5 }}
-                {% endif %}
-          - action: input_datetime.set_datetime
-            target:
-              entity_id: input_datetime.zendure_zero_fast_until
-            data:
-              timestamp: "{{ now_ts + 1.5 }}"
-          - stop: "Inside deadband"
-
-      - action: input_number.set_value
-        target:
-          entity_id: input_number.zendure_target_total
-        data:
-          value: "{{ target_total }}"
-
-      - action: input_datetime.set_datetime
-        target:
-          entity_id: input_datetime.zendure_zero_next
-        data:
-          timestamp: >-
-            {% if (target_total | float(0)) < (out_total | float(0)) %}
-              {{ now_ts + 2.0 }}
-            {% else %}
-              {{ now_ts + 2.5 }}
-            {% endif %}
-      - action: input_datetime.set_datetime
-        target:
-          entity_id: input_datetime.zendure_zero_fast_until
-        data:
-          timestamp: "{{ now_ts + 1.5 }}"
-
   - alias: "Zendure: Floor Latch Manager"
     id: "zendure_floor_latch_manager"
     mode: restart
@@ -1949,6 +1779,7 @@ automation:
 
           busy_u1: "{{ calib1 or emerg_u1 or vguard_u1 }}"
           busy_u2: "{{ calib2 or emerg_u2 or vguard_u2 }}"
+
           stall_u1: >-
             {{ s1_ok | bool
                and not (busy_u1 | bool)
@@ -2005,19 +1836,6 @@ automation:
               {{ floor_cfg_u2 | int(150) }}
             {% else %} 0 {% endif %}
 
-          cap_dyn_u1: >-
-            {% if floor_latch_u1 and not floor_latch_u2 %}
-              {{ [cap_u1|int(0), ((s1_pv_est|float(0)) * 0.95) | int(0)] | min }}
-            {% else %}
-              {{ cap_u1|int(0) }}
-            {% endif %}
-          cap_dyn_u2: >-
-            {% if floor_latch_u2 and not floor_latch_u1 %}
-              {{ [cap_u2|int(0), ((s2_pv_est|float(0)) * 0.95) | int(0)] | min }}
-            {% else %}
-              {{ cap_u2|int(0) }}
-            {% endif %}
-
           global_max: "{{ states('input_number.zendure_conf_max_output') | int(1000) }}"
           available_capacity: "{{ [ (global_max|int(0) - ghost_total|int(0)), 0 ] | max }}"
 
@@ -2042,10 +1860,10 @@ automation:
           override_margin: "{{ [min_change|int(0), 10] | max }}"
           spillover_override: "{{ (floor_1|int(0) > (s1_base|int(0) + override_margin|int(0))) or (floor_2|int(0) > (s2_base|int(0) + override_margin|int(0))) }}"
 
-          override_u1: "{{ s1_ok | bool and (s1_base|int(0) > (cap_dyn_u1|int(0) + override_margin|int(0))) }}"
-          override_u2: "{{ s2_ok | bool and (s2_base|int(0) > (cap_dyn_u2|int(0) + override_margin|int(0))) }}"
-          force_zero_u1: "{{ s1_ok | bool and (cap_dyn_u1|int(0) == 0) and (s1_base|int(0) > 0) }}"
-          force_zero_u2: "{{ s2_ok | bool and (cap_dyn_u2|int(0) == 0) and (s2_base|int(0) > 0) }}"
+          override_u1: "{{ s1_ok | bool and (s1_base|int(0) > (cap_u1|int(0) + override_margin|int(0))) }}"
+          override_u2: "{{ s2_ok | bool and (s2_base|int(0) > (cap_u2|int(0) + override_margin|int(0))) }}"
+          force_zero_u1: "{{ s1_ok | bool and (cap_u1|int(0) == 0) and (s1_base|int(0) > 0) }}"
+          force_zero_u2: "{{ s2_ok | bool and (cap_u2|int(0) == 0) and (s2_base|int(0) > 0) }}"
           safety_override: "{{ override_u1 or override_u2 }}"
 
 
@@ -2095,7 +1913,18 @@ automation:
           target_raw: >-
             {{ ((control_total | int(0)) + (grid | float(0)) - (grid_bias | int(0)))
                if shelly_ok | bool else (failsafe | int(0)) }}
-          target_total: "{{ [[target_raw|int(0), 0]|max, global_max]|min }}"
+
+          target_total: >-
+            {% set raw = [[target_raw|int(0), 0]|max, global_max]|min %}
+            {% set current = actual_total|int(0) %}
+            {% set lowest_soc = [soc1_val|int(100), soc2_val|int(100)]|min %}
+            {% set max_step = 100 %}
+            {% if lowest_soc < 25 and raw > current and (raw - current) > max_step %}
+              {{ current + max_step }}
+            {% else %}
+              {{ raw }}
+            {% endif %}
+
           delta_effective: "{{ (target_total|int(0)) - (control_total|int(0)) }}"
           rebalance_needed: >-
             {% set both_ready = s1_ok|bool and s2_ok|bool and not busy_u1 and not busy_u2 and (actual_total|int(0)) > 100 and v1_min > 3.10 and v2_min > 3.10 %}
@@ -2161,27 +1990,27 @@ automation:
             {% endif %}
 
             {% if floor_latch_u1 and not floor_latch_u2 %}
-              {% set w = w + 0.15 %}
+              {% set w = w + 0.30 %}
             {% elif floor_latch_u2 and not floor_latch_u1 %}
-              {% set w = w - 0.15 %}
-            {% elif soc1_val >= 100 and soc2_val < 100 %}
-              {% set w = w + 0.12 %}
-            {% elif soc2_val >= 100 and soc1_val < 100 %}
-              {% set w = w - 0.12 %}
+              {% set w = w - 0.30 %}
+            {% elif soc1_val >= 99 and soc2_val < 99 %}
+              {% set w = w + 0.25 %}
+            {% elif soc2_val >= 99 and soc1_val < 99 %}
+              {% set w = w - 0.25 %}
             {% endif %}
 
             {% set solar_diff = s1_solar - s2_solar %}
             {% if floor_latch_u1 and floor_latch_u2 %}
               {% if solar_diff > 120 %}
-                {% set w = w + 0.10 %}
+                {% set w = w + 0.15 %}
               {% elif solar_diff < -120 %}
-                {% set w = w - 0.10 %}
+                {% set w = w - 0.15 %}
               {% endif %}
             {% else %}
               {% if solar_diff > 150 %}
-                {% set w = w + 0.05 %}
+                {% set w = w + 0.10 %}
               {% elif solar_diff < -150 %}
-                {% set w = w - 0.05 %}
+                {% set w = w - 0.10 %}
               {% endif %}
             {% endif %}
 
@@ -2206,19 +2035,19 @@ automation:
               {% endif %}
             {% endif %}
 
-            {{ [[w, 0.35]|max, 0.65]|min }}
+            {{ [[w, 0.0]|max, 1.0]|min }}
 
           req_1: "{{ ((target_online | int(0)) * (weight_1 | float(0))) | int(0) }}"
           req_2: "{{ (target_online | int(0)) - (req_1 | int(0)) }}"
 
           req_1_final: "{{ [req_1|int(0), floor_1|int(0)]|max }}"
           req_2_final: "{{ [req_2|int(0), floor_2|int(0)]|max }}"
-          final_1_init: "{{ [req_1_final|int(0), cap_dyn_u1|int(0)]|min }}"
+          final_1_init: "{{ [req_1_final|int(0), cap_u1|int(0)]|min }}"
 
           final_2_raw: >
             {% if active_2 %}
               {% set v = (req_2_final + (req_1_final - final_1_init)) | int(0) %}
-              {{ [[v, 0] | max, cap_dyn_u2 | int(0)] | min }}
+              {{ [[v, 0] | max, cap_u2 | int(0)] | min }}
             {% else %}
               0
             {% endif %}
@@ -2227,7 +2056,7 @@ automation:
             {% if active_1 %}
               {% set v = (target_online | int(0)) - (final_2_raw | int(0)) %}
               {% set v_safe = [v, floor_1|int(0)]|max %}
-              {{ [[v_safe, 0] | max, cap_dyn_u1 | int(0)] | min }}
+              {{ [[v_safe, 0] | max, cap_u1 | int(0)] | min }}
             {% else %}
               0
             {% endif %}
@@ -2538,8 +2367,20 @@ automation:
 
           cl1: "{% if t1 < 5 %} 100 {% elif t1 < 10 %} 300 {% else %} 800 {% endif %}"
           cl2: "{% if t2 < 5 %} 100 {% elif t2 < 10 %} 300 {% else %} 800 {% endif %}"
-          sl1: "{% if soc1 > 97 %} 100 {% elif soc1 >= 90 %} 200 {% else %} 800 {% endif %}"
-          sl2: "{% if soc2 > 97 %} 100 {% elif soc2 >= 90 %} 200 {% else %} 800 {% endif %}"
+          sl1: >
+            {% if soc1 >= 99 %} 100
+            {% elif soc1 >= 97 %} 150
+            {% elif soc1 >= 95 %} 200
+            {% elif soc1 >= 90 %} 400
+            {% else %} 800
+            {% endif %}
+          sl2: >
+            {% if soc2 >= 99 %} 100
+            {% elif soc2 >= 97 %} 150
+            {% elif soc2 >= 95 %} 200
+            {% elif soc2 >= 90 %} 400
+            {% else %} 800
+            {% endif %}
           ss1: "{% if soc1 < 12 %} 300 {% else %} 800 {% endif %}"
           ss2: "{% if soc2 < 12 %} 300 {% else %} 800 {% endif %}"
 
@@ -3189,14 +3030,14 @@ automation:
       - trigger: numeric_state
         entity_id: sensor.solarflow_1_battery_level
         above: 99.5
-        for: "03:00:00"
+        for: "00:05:00"
         id: "stop_u1"
         # Stoppt Kalibrierung rein auf SoC-Basis (input-unabhängig):
         # Greift sowohl bei PV-Ladung als auch bei AC-Input.
       - trigger: numeric_state
         entity_id: sensor.solarflow_2_battery_level
         above: 99.5
-        for: "03:00:00"
+        for: "00:05:00"
         id: "stop_u2"
         # Stoppt Kalibrierung rein auf SoC-Basis (input-unabhängig):
         # Greift sowohl bei PV-Ladung als auch bei AC-Input.
@@ -3240,8 +3081,12 @@ automation:
           last_u1: "{{ as_timestamp(states('input_datetime.zendure_last_full_charge_1'), default=0) }}"
           last_u2: "{{ as_timestamp(states('input_datetime.zendure_last_full_charge_2'), default=0) }}"
           days_cfg: "{{ states('input_number.zendure_conf_calib_days') | int(14) }}"
-          days_u1: "{{ ((as_timestamp(now()) - last_u1) / 86400) | int(0) }}"
-          days_u2: "{{ ((as_timestamp(now()) - last_u2) / 86400) | int(0) }}"
+          days_u1: >
+            {% set ts = as_timestamp(states('input_datetime.zendure_last_full_charge_1'), 0) %}
+            {{ 0 if ts == 0 else ((as_timestamp(now()) - ts) / 86400) | round(1) }}
+          days_u2: >
+            {% set ts = as_timestamp(states('input_datetime.zendure_last_full_charge_2'), 0) %}
+            {{ 0 if ts == 0 else ((as_timestamp(now()) - ts) / 86400) | round(1) }}
           force_u1: "{{ is_state('input_boolean.zendure_force_calib_u1', 'on') }}"
           force_u2: "{{ is_state('input_boolean.zendure_force_calib_u2', 'on') }}"
 
@@ -3505,8 +3350,12 @@ automation:
       - variables:
           last_u1: "{{ as_timestamp(states('input_datetime.zendure_last_full_charge_1'), default=0) }}"
           last_u2: "{{ as_timestamp(states('input_datetime.zendure_last_full_charge_2'), default=0) }}"
-          days_u1: "{{ ((as_timestamp(now()) - last_u1) / 86400) | int(0) }}"
-          days_u2: "{{ ((as_timestamp(now()) - last_u2) / 86400) | int(0) }}"
+          days_u1: >
+            {% set ts = as_timestamp(states('input_datetime.zendure_last_full_charge_1'), 0) %}
+            {{ 0 if ts == 0 else ((as_timestamp(now()) - ts) / 86400) | int(0) }}
+          days_u2: >
+            {% set ts = as_timestamp(states('input_datetime.zendure_last_full_charge_2'), 0) %}
+            {{ 0 if ts == 0 else ((as_timestamp(now()) - ts) / 86400) | int(0) }}
           imb1_raw: "{{ states('sensor.solarflow_1_cell_imbalance') }}"
           imb2_raw: "{{ states('sensor.solarflow_2_cell_imbalance') }}"
       - action: notify.send_message
