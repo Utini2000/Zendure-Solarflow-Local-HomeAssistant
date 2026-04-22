@@ -1612,4 +1612,32 @@
 #       - input_datetime.zendure_zero_fast_until
 #       - input_number.zendure_target_total
 #
+# Changes V140:
+# - Removed any code / variables / parameters that become obsolete due to the latest changes (V135-V139)
+#
+# Changes V141:
+# - Added "Low SoC Soft Start" because the scrip is now too fast and can cause false-alarm soc drops (voltage sag) when high output power spikes occur.
+#   Below 25% the output power will not be able to ramp up from 0% to 100% instantly.
+#   Instead it will slowly increase while the script monitors the cell voltage.
+#   If cell voltage guard (vguard) triggers, it will freeze the current output power and safely drain the battery to soc_off
+#
+# Changes V142:
+# - Fix an issue where calibration would start even when last calibration was less than 14 days ago
+# - Fix an issue where there was an active output during calibration (even though the battery was ont at 100% yet)
+#
+# Changes V143:
+# - Previous version tried to hold the battery at 100% for 3 houts during calibration
+# - This has been changed to 5min because the 3 hours period seems useless after all
+# - Removed the calibration bypass logic that we introduced in the last update (didn't work anyway)
+#
+# Changes V144:
+# - Changed priorization to fully prioritize a unit that is at 100% battery level when another unit is not (bugfix)
+# - Optimized power input during calibration at battery levels 95% to 100% to be faster while still as healthy as possible
+# - Fixed an issue where the unit would not set a output after calibration has finished
+#
+# Changes V145:
+# - Removed any dead variables (cap_dyn_*)
+# - Optimized code by centralizing the following:
+#   sensor.solarflow_1_operating_temp, sensor.solarflow_2_operating_temp, binary_sensor.solarflow_1_temp_mode_ok, binary_sensor.solarflow_2_temp_mode_ok
+#
 ################################################################################
