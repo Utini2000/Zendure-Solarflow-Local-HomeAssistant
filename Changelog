@@ -1640,4 +1640,19 @@
 # - Optimized code by centralizing the following:
 #   sensor.solarflow_1_operating_temp, sensor.solarflow_2_operating_temp, binary_sensor.solarflow_1_temp_mode_ok, binary_sensor.solarflow_2_temp_mode_ok
 #
+# Changes V146:
+# - Re-worked calibration mode by making a deep-cycle (discharge to 2,85V the night before charging to 100%)
+#   At 20:00h (the night before the next ful lcharge) the battery will be discharged to 2,85V (Phase 1)
+#   At the next day, the battery will charge to 100% with PV input or AC input if PV is too low (Phase 2)
+#   AC Input will be allowed to be used after 13:00h, until that point it is PV input only
+#   After 13:00h the script will dynamically switch between PV / AC input
+#
+# Changes V147:
+# - Additional fixes regarding new deep calibration
+# - New sensor "sensor.solarflow_remaining_time_5m_avg" to show the estimated remaining battery time left
+# - Completely removed hard_floor when the unit is at 100% because it is not possible to be used reliably with Zendure hardware
+#
+# Changes V148:
+# - Code cleanup / maintenance
+#
 ################################################################################
