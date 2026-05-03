@@ -1655,4 +1655,13 @@
 # Changes V148:
 # - Code cleanup / maintenance
 #
+# Changes V149 to V156:
+# - A lot of changes and fixes to make calibration more advanced
+#   We have seperate top balancing and bottom balancing
+#   It is more reliable now as well
+#   It will monitor cell imbalance to figure out how successful the balancing was
+# - Additional bug fixes
+# - Warning notifications now only occur when degrading has started due to high temp
+# - Emergency charging, fallbacks, reset and reboot paths are more robust now
+#
 ################################################################################
