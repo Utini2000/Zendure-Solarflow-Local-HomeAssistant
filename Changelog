@@ -1664,4 +1664,14 @@
 # - Warning notifications now only occur when degrading has started due to high temp
 # - Emergency charging, fallbacks, reset and reboot paths are more robust now
 #
+# Changes V157:
+# - Fixed an issue with the sensor for estimated remaining time
+#
+# Changes V158:
+# - Added Low SoC Softcap in normal operating mode to prevent voltage imbalance spikes
+#
+# Changes V159:
+# - Fixed an issue with natural full charging not being set
+# - Now also using the newly found MQTT Topic (thanks to Kenji242) "inputLimit" as read sensor
+#
 ################################################################################
