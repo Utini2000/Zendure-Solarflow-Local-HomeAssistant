@@ -1674,4 +1674,11 @@
 # - Fixed an issue with natural full charging not being set
 # - Now also using the newly found MQTT Topic (thanks to Kenji242) "inputLimit" as read sensor
 #
+# Changes V160:
+# - Replaced fixed person entities with entities from secrets.yaml (zendure_person.id1 & zendure_person.id2)
+#   Please update your secrets.yaml!
+#
+# Changes V161:
+# - Fix in calibration mode. Emergency charge and calibration mode could battle each other otherwise
+#
 ################################################################################
