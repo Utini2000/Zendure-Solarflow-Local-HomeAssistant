@@ -1,3 +1,14 @@
+################################################################################
+#                   ZENDURE SOLARFLOW CONTROL PACKAGE (V164)                    #
+################################################################################
+#
+# DESCRIPTION:
+# Advanced local control for Zendure SolarFlow with Shelly 3EM.
+# Features strict validation, safe math, and separate state/loop logic.
+#
+# Complete Changelog:
+# https://github.com/Utini2000/Zendure-Solarflow-Local-HomeAssistant/blob/main/Changelog
+
 
 # ==============================================================================
 # 1. KONFIGURATION (Input Helpers)
