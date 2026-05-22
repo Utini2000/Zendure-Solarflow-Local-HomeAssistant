@@ -1681,4 +1681,44 @@
 # Changes V161:
 # - Fix in calibration mode. Emergency charge and calibration mode could battle each other otherwise
 #
+# Changes V162:
+# - Fix an issue with remaining energy time left sensor.
+#   It requires sensor.power_consumption though. This sensor shows the current consumption NOT including any PV or Battery energy.
+#
+# Changes V163:
+# - Reworked Low-SoC / Bypass latch semantics:
+#   * `soc_off` is now the actual discharge stop threshold.
+#   * `soc_bypass` is now used as the restart / release threshold.
+#   * This replaces the previous implicit `soc_bypass + 3%` exit logic with
+#     clearer and more predictable stop/restart semantics.
+# - Added voltage-aware early-stop protection:
+#   * If cell_min voltage drops below 3.12V in the low-SoC window before
+#     `soc_off` is reached, the unit is stopped early and switched to PV-only.
+#   * Restart after a voltage early-stop requires both SoC recovery to
+#     `soc_bypass` and cell_min >= 3.20V.
+# - Improved diagnostics:
+#   * Added per-unit bypass reason helpers to distinguish between
+#     `soc_off_guard`, `vmin_early_stop`, `bypass_wait_restart`,
+#     and `vmin_pv_only_guard`.
+#   * Output block reason sensors now show whether discharge stopped because
+#     `soc_off` was reached or because cell voltage required an earlier stop.
+# - Updated remaining-time ETA logic:
+#   * ETA now calculates remaining usable output time down to `soc_off`
+#     instead of the old effective stop at `soc_bypass`.
+#   * If a unit is blocked by bypass, VGuard, emergency, calibration, or
+#     voltage early-stop, its remaining output energy is treated as 0Wh.
+# - Safety retained:
+#   * Low-SoC softcaps, VGuard, Emergency/Panic, calibration, and temperature
+#     protections remain unchanged.
+#   * The previous `+3%` anti-flap behavior is intentionally replaced by the
+#     explicit `soc_off` -> `soc_bypass` hysteresis. Summer hysteresis is now
+#     2% with the current season values; Winter hysteresis remains 5%.
+#
+# Changes V164:
+# - ETA sensor now uses max(house load, discharge means, current discharge, 80W)
+#   to avoid over-optimistic runtime estimates while PV reduces net battery draw.
+# - 15m load/discharge statistics use average_step for time-weighted smoothing.
+# - Low-SoC restart now uses max(soc_bypass, soc_off + 3) as a minimum
+#   anti-flap hysteresis while keeping soc_off as the actual discharge stop point.
+#
 ################################################################################
