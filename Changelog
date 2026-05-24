@@ -1721,4 +1721,28 @@
 # - Low-SoC restart now uses max(soc_bypass, soc_off + 3) as a minimum
 #   anti-flap hysteresis while keeping soc_off as the actual discharge stop point.
 #
+# Changes V165:
+# - It seems like we used the HUB Temperature Sensor for throttling based on battery limitations
+#   This is a bit too strict because the HUB is usually hotter than the battery and can usually handle higher temperatures
+#   The script now has two individual throttle parameters (#1 for HUB and #2 for Battery)
+#   It throttles individually and in dependence of the set parameters
+# - Split high-temperature derating into separate Battery-BMS and Hub/Inverter paths.
+# - Battery temperature uses sensor.solarflow_X_battery_max_temp.
+#   sensor.solarflow_X_battery_temp is intentionally ignored because it is unavailable/restored.
+# - Battery derating:
+#   * <50°C: no thermal derating
+#   * 50-53°C: PV +150W battery share, max 500W
+#   * 53-55°C: PV +75W battery share, max 300W
+#   * 55-58°C: PV-only / no intentional battery discharge
+#   * >=58°C: hard 0W cooldown until <=53°C for 10 minutes
+# - Hub/Inverter derating:
+#   * <55°C: no thermal derating
+#   * 55-58°C: max 600W
+#   * 58-60°C: max 400W
+#   * 60-62°C: max 200W
+#   * 62-65°C: max 100W
+#   * >=65°C: hard 0W cooldown until <=62°C for 10 minutes
+# - Final output cap is the most restrictive value: min(raw safety cap, battery_temp_cap, hub_temp_cap).
+# - Output block reason and ETA diagnostics now distinguish battery and hub temperature limits separately.
+#
 ################################################################################
