@@ -1,5 +1,5 @@
 ################################################################################
-#                   ZENDURE SOLARFLOW CONTROL PACKAGE (V164)                    #
+#                   ZENDURE SOLARFLOW CONTROL PACKAGE (V166)                    #
 ################################################################################
 #
 # DESCRIPTION:
@@ -2231,7 +2231,7 @@ automation:
           hub1: "{{ states('sensor.solarflow_1_temp') | float(999) }}"
           hub2: "{{ states('sensor.solarflow_2_temp') | float(999) }}"
 
-      # U1 battery cooldown: set >=58°C, clear <=55°C for 5 min
+      # U1 battery cooldown: battery >=58°C means no charging and no output until <=55°C.
       - if:
           - condition: template
             value_template: >
@@ -2243,6 +2243,19 @@ automation:
         then:
           - action: input_boolean.turn_on
             target: { entity_id: input_boolean.zendure_batt_temp_cooldown_u1 }
+          - action: script.zendure_dispatch_u1_inputlimit
+            data:
+              power: 0
+              force: true
+          - action: mqtt.publish
+            data:
+              topic: !secret zendure_topic_u1_number_chargeMaxLimit_set
+              payload: "0"
+              qos: 1
+          - action: script.zendure_dispatch_u1_ac_mode
+            data:
+              mode: "Output mode"
+              force: true
           - action: script.zendure_set_u1_outputlimit_zero
           - if:
               - condition: template
@@ -2252,7 +2265,7 @@ automation:
                 target: { entity_id: !secret telegram_id1 }
                 data:
                   message: >
-                    🚨 *Battery Temp Cooldown U1*\nBatterie >=58°C – Output wird gestoppt bis <=55°C.
+                    🚨 *Battery Temp Cooldown U1*\nBatterie >=58°C – InputLimit, ChargeMaxLimit und Output werden gestoppt bis <=55°C.
 
       - if:
           - condition: template
@@ -2275,7 +2288,7 @@ automation:
                   message: >
                     ✅ *Battery Temp Cooldown U1 beendet*\nBatterie <=55°C für 5 Minuten.
 
-      # U2 battery cooldown: set >=58°C, clear <=55°C for 5 min
+      # U2 battery cooldown: battery >=58°C means no charging and no output until <=55°C.
       - if:
           - condition: template
             value_template: >
@@ -2287,6 +2300,19 @@ automation:
         then:
           - action: input_boolean.turn_on
             target: { entity_id: input_boolean.zendure_batt_temp_cooldown_u2 }
+          - action: script.zendure_dispatch_u2_inputlimit
+            data:
+              power: 0
+              force: true
+          - action: mqtt.publish
+            data:
+              topic: !secret zendure_topic_u2_number_chargeMaxLimit_set
+              payload: "0"
+              qos: 1
+          - action: script.zendure_dispatch_u2_ac_mode
+            data:
+              mode: "Output mode"
+              force: true
           - action: script.zendure_set_u2_outputlimit_zero
           - if:
               - condition: template
@@ -2296,7 +2322,7 @@ automation:
                 target: { entity_id: !secret telegram_id1 }
                 data:
                   message: >
-                    🚨 *Battery Temp Cooldown U2*\nBatterie >=58°C – Output wird gestoppt bis <=55°C.
+                    🚨 *Battery Temp Cooldown U2*\nBatterie >=58°C – InputLimit, ChargeMaxLimit und Output werden gestoppt bis <=55°C.
 
       - if:
           - condition: template
@@ -2319,7 +2345,7 @@ automation:
                   message: >
                     ✅ *Battery Temp Cooldown U2 beendet*\nBatterie <=55°C für 5 Minuten.
 
-      # U1 hub/inverter cooldown: set >=65°C, clear <=62°C for 5 min
+      # U1 hub/inverter cooldown: hub >=65°C means true cooldown: no output and no charging until <=62°C.
       - if:
           - condition: template
             value_template: >
@@ -2331,6 +2357,19 @@ automation:
         then:
           - action: input_boolean.turn_on
             target: { entity_id: input_boolean.zendure_hub_temp_cooldown_u1 }
+          - action: script.zendure_dispatch_u1_inputlimit
+            data:
+              power: 0
+              force: true
+          - action: mqtt.publish
+            data:
+              topic: !secret zendure_topic_u1_number_chargeMaxLimit_set
+              payload: "0"
+              qos: 1
+          - action: script.zendure_dispatch_u1_ac_mode
+            data:
+              mode: "Output mode"
+              force: true
           - action: script.zendure_set_u1_outputlimit_zero
           - if:
               - condition: template
@@ -2340,7 +2379,7 @@ automation:
                 target: { entity_id: !secret telegram_id1 }
                 data:
                   message: >
-                    🚨 *Hub/WR Temp Cooldown U1*\nHub/WR >=65°C – Output wird gestoppt bis <=62°C.
+                    🚨 *Hub/WR Temp Cooldown U1*\nHub/WR >=65°C – InputLimit, ChargeMaxLimit und Output werden gestoppt bis <=62°C.
 
       - if:
           - condition: template
@@ -2363,7 +2402,7 @@ automation:
                   message: >
                     ✅ *Hub/WR Temp Cooldown U1 beendet*\nHub/WR <=62°C für 5 Minuten.
 
-      # U2 hub/inverter cooldown: set >=65°C, clear <=62°C for 5 min
+      # U2 hub/inverter cooldown: hub >=65°C means true cooldown: no output and no charging until <=62°C.
       - if:
           - condition: template
             value_template: >
@@ -2375,6 +2414,19 @@ automation:
         then:
           - action: input_boolean.turn_on
             target: { entity_id: input_boolean.zendure_hub_temp_cooldown_u2 }
+          - action: script.zendure_dispatch_u2_inputlimit
+            data:
+              power: 0
+              force: true
+          - action: mqtt.publish
+            data:
+              topic: !secret zendure_topic_u2_number_chargeMaxLimit_set
+              payload: "0"
+              qos: 1
+          - action: script.zendure_dispatch_u2_ac_mode
+            data:
+              mode: "Output mode"
+              force: true
           - action: script.zendure_set_u2_outputlimit_zero
           - if:
               - condition: template
@@ -2384,7 +2436,7 @@ automation:
                 target: { entity_id: !secret telegram_id1 }
                 data:
                   message: >
-                    🚨 *Hub/WR Temp Cooldown U2*\nHub/WR >=65°C – Output wird gestoppt bis <=62°C.
+                    🚨 *Hub/WR Temp Cooldown U2*\nHub/WR >=65°C – InputLimit, ChargeMaxLimit und Output werden gestoppt bis <=62°C.
 
       - if:
           - condition: template
@@ -3057,6 +3109,18 @@ automation:
         minutes: "/5"
         id: "periodic_reconcile"
 
+      - trigger: state
+        id: "temperature_reconcile"
+        entity_id:
+          - sensor.solarflow_1_battery_max_temp
+          - sensor.solarflow_2_battery_max_temp
+          - sensor.solarflow_1_temp
+          - sensor.solarflow_2_temp
+          - input_boolean.zendure_batt_temp_cooldown_u1
+          - input_boolean.zendure_batt_temp_cooldown_u2
+          - input_boolean.zendure_hub_temp_cooldown_u1
+          - input_boolean.zendure_hub_temp_cooldown_u2
+
       - trigger: template
         id: "device_online_u1"
         value_template: "{{ states('sensor.solarflow_1_status_raw')|upper not in ['UNAVAILABLE','UNKNOWN','FAULT','ERROR'] }}"
@@ -3260,27 +3324,33 @@ automation:
           ss2: "{% if soc2 < 12 %} 300 {% else %} 800 {% endif %}"
 
           charge_limit_u1: >
-            {% set t1 = states('sensor.solarflow_1_battery_max_temp') | float(states('sensor.solarflow_1_temp')|float(99)) %}
-            {% set soc1 = states('sensor.solarflow_1_battery_level') | float(-1) %}
-            {% set cl1 = 100 if t1 < 5 else (300 if t1 < 10 else 800) %}
-            {% set sl1 = 100 if soc1 > 97 else (200 if soc1 >= 90 else 800) %}
-            {% set ss1 = 300 if soc1 < 12 else 800 %}
+            {% set batt = states('sensor.solarflow_1_battery_max_temp') | float(states('sensor.solarflow_1_temp')|float(999)) %}
+            {% set hub = states('sensor.solarflow_1_temp') | float(999) %}
+            {% set soc = states('sensor.solarflow_1_battery_level') | float(-1) %}
+            {% set cold_cap = 100 if batt < 5 else (300 if batt < 10 else 800) %}
+            {% set landing_cap = 100 if soc > 97 else (200 if soc >= 90 else 800) %}
+            {% set low_soc_cap = 300 if soc < 12 else 800 %}
+            {% set battery_charge_cap = 0 if is_state('input_boolean.zendure_batt_temp_cooldown_u1','on') or batt >= 55 else (100 if batt >= 53 else (300 if batt >= 50 else 800)) %}
+            {% set hub_charge_cap = 0 if is_state('input_boolean.zendure_hub_temp_cooldown_u1','on') or hub >= 65 else (100 if hub >= 62 else (200 if hub >= 60 else (400 if hub >= 58 else (600 if hub >= 55 else 800)))) %}
             {% if is_state('input_boolean.zendure_calib_discharge_u1', 'on') %}
               0
             {% else %}
-              {{ [cl1|int, sl1|int, ss1|int]|min }}
+              {{ [cold_cap|int, landing_cap|int, low_soc_cap|int, battery_charge_cap|int, hub_charge_cap|int]|min }}
             {% endif %}
 
           charge_limit_u2: >
-            {% set t2 = states('sensor.solarflow_2_battery_max_temp') | float(states('sensor.solarflow_2_temp')|float(99)) %}
-            {% set soc2 = states('sensor.solarflow_2_battery_level') | float(-1) %}
-            {% set cl2 = 100 if t2 < 5 else (300 if t2 < 10 else 800) %}
-            {% set sl2 = 100 if soc2 > 97 else (200 if soc2 >= 90 else 800) %}
-            {% set ss2 = 300 if soc2 < 12 else 800 %}
+            {% set batt = states('sensor.solarflow_2_battery_max_temp') | float(states('sensor.solarflow_2_temp')|float(999)) %}
+            {% set hub = states('sensor.solarflow_2_temp') | float(999) %}
+            {% set soc = states('sensor.solarflow_2_battery_level') | float(-1) %}
+            {% set cold_cap = 100 if batt < 5 else (300 if batt < 10 else 800) %}
+            {% set landing_cap = 100 if soc > 97 else (200 if soc >= 90 else 800) %}
+            {% set low_soc_cap = 300 if soc < 12 else 800 %}
+            {% set battery_charge_cap = 0 if is_state('input_boolean.zendure_batt_temp_cooldown_u2','on') or batt >= 55 else (100 if batt >= 53 else (300 if batt >= 50 else 800)) %}
+            {% set hub_charge_cap = 0 if is_state('input_boolean.zendure_hub_temp_cooldown_u2','on') or hub >= 65 else (100 if hub >= 62 else (200 if hub >= 60 else (400 if hub >= 58 else (600 if hub >= 55 else 800)))) %}
             {% if is_state('input_boolean.zendure_calib_discharge_u2', 'on') %}
               0
             {% else %}
-              {{ [cl2|int, sl2|int, ss2|int]|min }}
+              {{ [cold_cap|int, landing_cap|int, low_soc_cap|int, battery_charge_cap|int, hub_charge_cap|int]|min }}
             {% endif %}
 
           curr_min_soc_1: "{{ states('sensor.solarflow_1_setting_minsoc') | int(-1) }}"
@@ -5070,16 +5140,26 @@ automation:
           s1_solar: "{{ states('sensor.solarflow_1_solar_input') | float(0) if online1 else 0 }}"
           s2_solar: "{{ states('sensor.solarflow_2_solar_input') | float(0) if online2 else 0 }}"
 
-          t1: "{{ states('sensor.solarflow_1_battery_max_temp') | float(states('sensor.solarflow_1_temp')|float(0)) }}"
-          t2: "{{ states('sensor.solarflow_2_battery_max_temp') | float(states('sensor.solarflow_2_temp')|float(0)) }}"
-          cl1: "{{ 100 if t1 < 5 else (300 if t1 < 10 else 800) }}"
-          cl2: "{{ 100 if t2 < 5 else (300 if t2 < 10 else 800) }}"
+          batt_t1_calib: "{{ states('sensor.solarflow_1_battery_max_temp') | float(states('sensor.solarflow_1_temp')|float(999)) }}"
+          batt_t2_calib: "{{ states('sensor.solarflow_2_battery_max_temp') | float(states('sensor.solarflow_2_temp')|float(999)) }}"
+          hub_t1_calib: "{{ states('sensor.solarflow_1_temp') | float(999) }}"
+          hub_t2_calib: "{{ states('sensor.solarflow_2_temp') | float(999) }}"
+          cl1: "{{ 100 if batt_t1_calib < 5 else (300 if batt_t1_calib < 10 else 800) }}"
+          cl2: "{{ 100 if batt_t2_calib < 5 else (300 if batt_t2_calib < 10 else 800) }}"
           sl1: "{{ 100 if soc1 > 97 else (200 if soc1 >= 90 else 800) }}"
           sl2: "{{ 100 if soc2 > 97 else (200 if soc2 >= 90 else 800) }}"
           soc_soft_u1: "{{ 100 if soc1 < 8 else (300 if soc1 < 12 else 800) }}"
           soc_soft_u2: "{{ 100 if soc2 < 8 else (300 if soc2 < 12 else 800) }}"
-          limit_calib_u1: "{{ [cl1|int, sl1|int, soc_soft_u1|int]|min }}"
-          limit_calib_u2: "{{ [cl2|int, sl2|int, soc_soft_u2|int]|min }}"
+          batt_charge_cap_calib_u1: "{{ 0 if is_state('input_boolean.zendure_batt_temp_cooldown_u1','on') or batt_t1_calib >= 55 else (100 if batt_t1_calib >= 53 else (300 if batt_t1_calib >= 50 else 800)) }}"
+          batt_charge_cap_calib_u2: "{{ 0 if is_state('input_boolean.zendure_batt_temp_cooldown_u2','on') or batt_t2_calib >= 55 else (100 if batt_t2_calib >= 53 else (300 if batt_t2_calib >= 50 else 800)) }}"
+          hub_charge_cap_calib_u1: "{{ 0 if is_state('input_boolean.zendure_hub_temp_cooldown_u1','on') or hub_t1_calib >= 65 else (100 if hub_t1_calib >= 62 else (200 if hub_t1_calib >= 60 else (400 if hub_t1_calib >= 58 else (600 if hub_t1_calib >= 55 else 800)))) }}"
+          hub_charge_cap_calib_u2: "{{ 0 if is_state('input_boolean.zendure_hub_temp_cooldown_u2','on') or hub_t2_calib >= 65 else (100 if hub_t2_calib >= 62 else (200 if hub_t2_calib >= 60 else (400 if hub_t2_calib >= 58 else (600 if hub_t2_calib >= 55 else 800)))) }}"
+          temp_charge_cap_calib_u1: "{{ [batt_charge_cap_calib_u1|int, hub_charge_cap_calib_u1|int] | min }}"
+          temp_charge_cap_calib_u2: "{{ [batt_charge_cap_calib_u2|int, hub_charge_cap_calib_u2|int] | min }}"
+          temp_charge_block_u1: "{{ (temp_charge_cap_calib_u1 | int(0)) <= 0 }}"
+          temp_charge_block_u2: "{{ (temp_charge_cap_calib_u2 | int(0)) <= 0 }}"
+          limit_calib_u1: "{{ [cl1|int, sl1|int, soc_soft_u1|int, temp_charge_cap_calib_u1|int]|min }}"
+          limit_calib_u2: "{{ [cl2|int, sl2|int, soc_soft_u2|int, temp_charge_cap_calib_u2|int]|min }}"
           curr_limit_u1: >
             {% set real = states('sensor.solarflow_1_input_limit') %}
             {% if is_number(real) %}
@@ -5100,6 +5180,32 @@ automation:
       - parallel:
           # --- UNIT 1 STEUERUNG ---
           - choose:
+              - conditions:
+                  - condition: template
+                    value_template: >
+                      {{ (calib1 or dis1) and online1
+                         and (temp_charge_block_u1 | bool)
+                         and (
+                           states('input_text.zendure_ac_mode_u1') != 'Output mode'
+                           or curr_limit_u1|int(-1) != 0
+                           or states('sensor.solarflow_1_output_limit')|int(-1) != 0
+                           or states('input_number.zendure_last_sent_1')|int(-1) != 0
+                         ) }}
+                sequence:
+                  - action: script.zendure_dispatch_u1_inputlimit
+                    data:
+                      power: 0
+                      force: true
+                  - action: mqtt.publish
+                    data:
+                      topic: !secret zendure_topic_u1_number_chargeMaxLimit_set
+                      payload: "0"
+                      qos: 1
+                  - action: script.zendure_dispatch_u1_ac_mode
+                    data:
+                      mode: "Output mode"
+                      force: true
+                  - action: script.zendure_set_u1_outputlimit_zero
               - conditions:
                   - condition: template
                     value_template: >
@@ -5144,6 +5250,8 @@ automation:
                   - condition: template
                     value_template: >
                       {{ calib1 and not dis1 and online1 and is_state('input_boolean.zendure_emergency_u1','off') and is_state('input_boolean.zendure_vguard_u1','off') and soc1 < 100 and s1_solar <= (pv_low|float(40))
+                         and not (temp_charge_block_u1 | bool)
+                         and (limit_calib_u1 | int(0)) > 0
                          and (allow_ac | bool)
                          and (states('input_text.zendure_ac_mode_u1') != 'Input mode'
                               or curr_limit_u1|int(-1) != (limit_calib_u1|int)) }}
@@ -5184,6 +5292,32 @@ automation:
 
           # --- UNIT 2 STEUERUNG ---
           - choose:
+              - conditions:
+                  - condition: template
+                    value_template: >
+                      {{ (calib2 or dis2) and online2
+                         and (temp_charge_block_u2 | bool)
+                         and (
+                           states('input_text.zendure_ac_mode_u2') != 'Output mode'
+                           or curr_limit_u2|int(-1) != 0
+                           or states('sensor.solarflow_2_output_limit')|int(-1) != 0
+                           or states('input_number.zendure_last_sent_2')|int(-1) != 0
+                         ) }}
+                sequence:
+                  - action: script.zendure_dispatch_u2_inputlimit
+                    data:
+                      power: 0
+                      force: true
+                  - action: mqtt.publish
+                    data:
+                      topic: !secret zendure_topic_u2_number_chargeMaxLimit_set
+                      payload: "0"
+                      qos: 1
+                  - action: script.zendure_dispatch_u2_ac_mode
+                    data:
+                      mode: "Output mode"
+                      force: true
+                  - action: script.zendure_set_u2_outputlimit_zero
               - conditions:
                   - condition: template
                     value_template: >
@@ -5228,6 +5362,8 @@ automation:
                   - condition: template
                     value_template: >
                       {{ calib2 and not dis2 and online2 and is_state('input_boolean.zendure_emergency_u2','off') and is_state('input_boolean.zendure_vguard_u2','off') and soc2 < 100 and s2_solar <= (pv_low|float(40))
+                         and not (temp_charge_block_u2 | bool)
+                         and (limit_calib_u2 | int(0)) > 0
                          and (allow_ac | bool)
                          and (states('input_text.zendure_ac_mode_u2') != 'Input mode'
                               or curr_limit_u2|int(-1) != (limit_calib_u2|int)) }}
