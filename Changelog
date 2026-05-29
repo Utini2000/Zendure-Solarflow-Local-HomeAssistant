@@ -1745,4 +1745,9 @@
 # - Final output cap is the most restrictive value: min(raw safety cap, battery_temp_cap, hub_temp_cap).
 # - Output block reason and ETA diagnostics now distinguish battery and hub temperature limits separately.
 #
+# Changes V166:
+# - Some fixes and improvements regarding the latest re-write of temperature degrading
+# - Chargelimit is not being temperature degraded as well
+# - Temperature degrading has been added to the calibration path
+#
 ################################################################################
