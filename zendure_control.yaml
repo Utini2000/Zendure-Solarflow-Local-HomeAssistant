@@ -1,5 +1,5 @@
 ################################################################################
-#                   ZENDURE SOLARFLOW CONTROL PACKAGE (V166)                    #
+#                   ZENDURE SOLARFLOW CONTROL PACKAGE (V168)                    #
 ################################################################################
 #
 # DESCRIPTION:
@@ -8,7 +8,6 @@
 #
 # Complete Changelog:
 # https://github.com/Utini2000/Zendure-Solarflow-Local-HomeAssistant/blob/main/Changelog
-
 
 # ==============================================================================
 # 1. KONFIGURATION (Input Helpers)
@@ -322,6 +321,54 @@ mqtt:
       device_class: power
       state_class: measurement
 
+    - name: "SolarFlow 1 Solar Power 1"
+      unique_id: solarflow_1_solar_power_1_mqtt
+      default_entity_id: sensor.solarflow_1_solar_power_1
+      state_topic: !secret zendure_topic_u1_sensor_solarpower1
+      unit_of_measurement: "W"
+      device_class: power
+      state_class: measurement
+      entity_category: diagnostic
+      value_template: >
+        {% set v = value | float(none) %}
+        {% if v is none %}{{ 'unavailable' }}{% else %}{{ [v, 0] | max | round(0) }}{% endif %}
+
+    - name: "SolarFlow 1 Solar Power 2"
+      unique_id: solarflow_1_solar_power_2_mqtt
+      default_entity_id: sensor.solarflow_1_solar_power_2
+      state_topic: !secret zendure_topic_u1_sensor_solarpower2
+      unit_of_measurement: "W"
+      device_class: power
+      state_class: measurement
+      entity_category: diagnostic
+      value_template: >
+        {% set v = value | float(none) %}
+        {% if v is none %}{{ 'unavailable' }}{% else %}{{ [v, 0] | max | round(0) }}{% endif %}
+
+    - name: "SolarFlow 1 Solar Power 3"
+      unique_id: solarflow_1_solar_power_3_mqtt
+      default_entity_id: sensor.solarflow_1_solar_power_3
+      state_topic: !secret zendure_topic_u1_sensor_solarpower3
+      unit_of_measurement: "W"
+      device_class: power
+      state_class: measurement
+      entity_category: diagnostic
+      value_template: >
+        {% set v = value | float(none) %}
+        {% if v is none %}{{ 'unavailable' }}{% else %}{{ [v, 0] | max | round(0) }}{% endif %}
+
+    - name: "SolarFlow 1 Solar Power 4"
+      unique_id: solarflow_1_solar_power_4_mqtt
+      default_entity_id: sensor.solarflow_1_solar_power_4
+      state_topic: !secret zendure_topic_u1_sensor_solarpower4
+      unit_of_measurement: "W"
+      device_class: power
+      state_class: measurement
+      entity_category: diagnostic
+      value_template: >
+        {% set v = value | float(none) %}
+        {% if v is none %}{{ 'unavailable' }}{% else %}{{ [v, 0] | max | round(0) }}{% endif %}
+
     - name: "SolarFlow 1 Grid Input Power"
       unique_id: solarflow_1_grid_input_mqtt
       default_entity_id: sensor.solarflow_1_grid_input_power
@@ -483,6 +530,54 @@ mqtt:
       unit_of_measurement: "W"
       device_class: power
       state_class: measurement
+
+    - name: "SolarFlow 2 Solar Power 1"
+      unique_id: solarflow_2_solar_power_1_mqtt
+      default_entity_id: sensor.solarflow_2_solar_power_1
+      state_topic: !secret zendure_topic_u2_sensor_solarpower1
+      unit_of_measurement: "W"
+      device_class: power
+      state_class: measurement
+      entity_category: diagnostic
+      value_template: >
+        {% set v = value | float(none) %}
+        {% if v is none %}{{ 'unavailable' }}{% else %}{{ [v, 0] | max | round(0) }}{% endif %}
+
+    - name: "SolarFlow 2 Solar Power 2"
+      unique_id: solarflow_2_solar_power_2_mqtt
+      default_entity_id: sensor.solarflow_2_solar_power_2
+      state_topic: !secret zendure_topic_u2_sensor_solarpower2
+      unit_of_measurement: "W"
+      device_class: power
+      state_class: measurement
+      entity_category: diagnostic
+      value_template: >
+        {% set v = value | float(none) %}
+        {% if v is none %}{{ 'unavailable' }}{% else %}{{ [v, 0] | max | round(0) }}{% endif %}
+
+    - name: "SolarFlow 2 Solar Power 3"
+      unique_id: solarflow_2_solar_power_3_mqtt
+      default_entity_id: sensor.solarflow_2_solar_power_3
+      state_topic: !secret zendure_topic_u2_sensor_solarpower3
+      unit_of_measurement: "W"
+      device_class: power
+      state_class: measurement
+      entity_category: diagnostic
+      value_template: >
+        {% set v = value | float(none) %}
+        {% if v is none %}{{ 'unavailable' }}{% else %}{{ [v, 0] | max | round(0) }}{% endif %}
+
+    - name: "SolarFlow 2 Solar Power 4"
+      unique_id: solarflow_2_solar_power_4_mqtt
+      default_entity_id: sensor.solarflow_2_solar_power_4
+      state_topic: !secret zendure_topic_u2_sensor_solarpower4
+      unit_of_measurement: "W"
+      device_class: power
+      state_class: measurement
+      entity_category: diagnostic
+      value_template: >
+        {% set v = value | float(none) %}
+        {% if v is none %}{{ 'unavailable' }}{% else %}{{ [v, 0] | max | round(0) }}{% endif %}
 
     - name: "SolarFlow 2 Grid Input Power"
       unique_id: solarflow_2_grid_input_mqtt
@@ -744,8 +839,8 @@ template:
           {% set soc2 = states('sensor.solarflow_2_battery_level') | float(0) %}
           {% set v1 = states('sensor.solarflow_1_cell_min_vol') | float(99) %}
           {% set v2 = states('sensor.solarflow_2_cell_min_vol') | float(99) %}
-          {% set batt_t1 = states('sensor.solarflow_1_battery_max_temp') | float(states('sensor.solarflow_1_batt_max_temp') | float(999)) %}
-          {% set batt_t2 = states('sensor.solarflow_2_battery_max_temp') | float(states('sensor.solarflow_2_batt_max_temp') | float(999)) %}
+          {% set batt_t1 = states('sensor.solarflow_1_battery_max_temp') | float(999) %}
+          {% set batt_t2 = states('sensor.solarflow_2_battery_max_temp') | float(999) %}
           {% set hub_t1 = states('sensor.solarflow_1_temp') | float(999) %}
           {% set hub_t2 = states('sensor.solarflow_2_temp') | float(999) %}
 
@@ -820,8 +915,8 @@ template:
             {% set soc2 = states('sensor.solarflow_2_battery_level') | float(0) %}
             {% set v1 = states('sensor.solarflow_1_cell_min_vol') | float(99) %}
             {% set v2 = states('sensor.solarflow_2_cell_min_vol') | float(99) %}
-            {% set batt_t1 = states('sensor.solarflow_1_battery_max_temp') | float(states('sensor.solarflow_1_batt_max_temp') | float(999)) %}
-            {% set batt_t2 = states('sensor.solarflow_2_battery_max_temp') | float(states('sensor.solarflow_2_batt_max_temp') | float(999)) %}
+            {% set batt_t1 = states('sensor.solarflow_1_battery_max_temp') | float(999) %}
+            {% set batt_t2 = states('sensor.solarflow_2_battery_max_temp') | float(999) %}
             {% set hub_t1 = states('sensor.solarflow_1_temp') | float(999) %}
             {% set hub_t2 = states('sensor.solarflow_2_temp') | float(999) %}
             {% set blocked1 = is_state('input_boolean.zendure_bypass_u1','on') or is_state('input_boolean.zendure_emergency_u1','on') or is_state('input_boolean.zendure_vguard_u1','on') or is_state('input_boolean.zendure_calib_mode_u1','on') or is_state('input_boolean.zendure_calib_discharge_u1','on') or is_state('input_boolean.zendure_batt_temp_cooldown_u1','on') or is_state('input_boolean.zendure_hub_temp_cooldown_u1','on') or (batt_t1 < 200 and batt_t1 >= 55) or (hub_t1 < 200 and hub_t1 >= 65) or soc1 <= stop_soc or v1 < 3.12 %}
@@ -2552,8 +2647,8 @@ automation:
           v2_min_ok: "{{ has_value('sensor.solarflow_2_cell_min_vol') }}"
           v1_min: "{{ states('sensor.solarflow_1_cell_min_vol') | float(0) if v1_min_ok | bool else 0 }}"
           v2_min: "{{ states('sensor.solarflow_2_cell_min_vol') | float(0) if v2_min_ok | bool else 0 }}"
-          batt_t1_raw: "{{ states('sensor.solarflow_1_battery_max_temp') | float(states('sensor.solarflow_1_batt_max_temp')|float(999)) }}"
-          batt_t2_raw: "{{ states('sensor.solarflow_2_battery_max_temp') | float(states('sensor.solarflow_2_batt_max_temp')|float(999)) }}"
+          batt_t1_raw: "{{ states('sensor.solarflow_1_battery_max_temp') | float(999) }}"
+          batt_t2_raw: "{{ states('sensor.solarflow_2_battery_max_temp') | float(999) }}"
           hub_t1_raw: "{{ states('sensor.solarflow_1_temp') | float(999) }}"
           hub_t2_raw: "{{ states('sensor.solarflow_2_temp') | float(999) }}"
           t1_raw: >-
@@ -4011,7 +4106,12 @@ automation:
         minutes: "/1"
         id: "check"
 
-      # --- U1: Full-Hold startet ---
+      # --- U1: echte 100%-Full-Hold-Phase startet ---
+      # Zweck: Der 14-Tage-Timer soll schon dann zurückgesetzt werden,
+      # wenn die Unit im normalen Betrieb wirklich 100% fuer 30 min erreicht.
+      # Die Zellspreizung wird hier bewusst NICHT mehr als Voraussetzung genutzt;
+      # Top-Balancing mit Imbalance-Check passiert nur in der eigentlichen
+      # Kalibrierung (calib_mode).
       - trigger: template
         id: "u1_full_hold_start"
         value_template: >
@@ -4022,7 +4122,7 @@ automation:
              and is_state('input_boolean.zendure_calib_mode_u1','off')
              and full_start < 946684800 }}
 
-      # --- U2: Full-Hold startet ---
+      # --- U2: echte 100%-Full-Hold-Phase startet ---
       - trigger: template
         id: "u2_full_hold_start"
         value_template: >
@@ -4033,79 +4133,31 @@ automation:
              and is_state('input_boolean.zendure_calib_mode_u2','off')
              and full_start < 946684800 }}
 
-      # --- U1: Balance-Fenster startet ---
-      - trigger: template
-        id: "u1_balance_start"
-        value_template: >
-          {% set bal_start = as_timestamp(states('input_datetime.zendure_natural_balance_start_u1'), default=0) %}
-          {% set imbalance = (states('sensor.solarflow_1_cell_max_vol')|float(99) - states('sensor.solarflow_1_cell_min_vol')|float(0)) | round(3) %}
-          {{ states('sensor.solarflow_1_battery_level')|float(0) > 99.5
-             and imbalance <= 0.050
-             and is_state('input_boolean.zendure_emergency_u1','off')
-             and is_state('input_boolean.zendure_calib_discharge_u1','off')
-             and is_state('input_boolean.zendure_calib_mode_u1','off')
-             and bal_start < 946684800 }}
-
-      # --- U2: Balance-Fenster startet ---
-      - trigger: template
-        id: "u2_balance_start"
-        value_template: >
-          {% set bal_start = as_timestamp(states('input_datetime.zendure_natural_balance_start_u2'), default=0) %}
-          {% set imbalance = (states('sensor.solarflow_2_cell_max_vol')|float(99) - states('sensor.solarflow_2_cell_min_vol')|float(0)) | round(3) %}
-          {{ states('sensor.solarflow_2_battery_level')|float(0) > 99.5
-             and imbalance <= 0.050
-             and is_state('input_boolean.zendure_emergency_u2','off')
-             and is_state('input_boolean.zendure_calib_discharge_u2','off')
-             and is_state('input_boolean.zendure_calib_mode_u2','off')
-             and bal_start < 946684800 }}
-
-      # --- U1: Balance-Fenster zurücksetzen, wenn Imbalance wieder zu hoch wird ---
-      - trigger: template
-        id: "u1_balance_reset"
-        value_template: >
-          {% set bal_start = as_timestamp(states('input_datetime.zendure_natural_balance_start_u1'), default=0) %}
-          {% set imbalance = (states('sensor.solarflow_1_cell_max_vol')|float(99) - states('sensor.solarflow_1_cell_min_vol')|float(0)) | round(3) %}
-          {{ states('sensor.solarflow_1_battery_level')|float(0) > 99.5
-             and imbalance > 0.050
-             and bal_start > 946684800 }}
-
-      # --- U2: Balance-Fenster zurücksetzen, wenn Imbalance wieder zu hoch wird ---
-      - trigger: template
-        id: "u2_balance_reset"
-        value_template: >
-          {% set bal_start = as_timestamp(states('input_datetime.zendure_natural_balance_start_u2'), default=0) %}
-          {% set imbalance = (states('sensor.solarflow_2_cell_max_vol')|float(99) - states('sensor.solarflow_2_cell_min_vol')|float(0)) | round(3) %}
-          {{ states('sensor.solarflow_2_battery_level')|float(0) > 99.5
-             and imbalance > 0.050
-             and bal_start > 946684800 }}
-
-      # --- U1: Full-/Balance-Fenster zurücksetzen, wenn Full-Hold nicht mehr gilt ---
+      # --- U1: Full-Hold zuruecksetzen, wenn 100% nicht mehr anliegt oder Spezialmodus aktiv wird ---
       - trigger: template
         id: "u1_reset"
         value_template: >
           {% set full_start = as_timestamp(states('input_datetime.zendure_natural_full_hold_start_u1'), default=0) %}
-          {% set bal_start = as_timestamp(states('input_datetime.zendure_natural_balance_start_u1'), default=0) %}
           {{ (
                states('sensor.solarflow_1_battery_level')|float(0) < 99.3
                or is_state('input_boolean.zendure_emergency_u1','on')
                or is_state('input_boolean.zendure_calib_discharge_u1','on')
                or is_state('input_boolean.zendure_calib_mode_u1','on')
              )
-             and (full_start > 946684800 or bal_start > 946684800) }}
+             and full_start > 946684800 }}
 
-      # --- U2: Full-/Balance-Fenster zurücksetzen, wenn Full-Hold nicht mehr gilt ---
+      # --- U2: Full-Hold zuruecksetzen, wenn 100% nicht mehr anliegt oder Spezialmodus aktiv wird ---
       - trigger: template
         id: "u2_reset"
         value_template: >
           {% set full_start = as_timestamp(states('input_datetime.zendure_natural_full_hold_start_u2'), default=0) %}
-          {% set bal_start = as_timestamp(states('input_datetime.zendure_natural_balance_start_u2'), default=0) %}
           {{ (
                states('sensor.solarflow_2_battery_level')|float(0) < 99.3
                or is_state('input_boolean.zendure_emergency_u2','on')
                or is_state('input_boolean.zendure_calib_discharge_u2','on')
                or is_state('input_boolean.zendure_calib_mode_u2','on')
              )
-             and (full_start > 946684800 or bal_start > 946684800) }}
+             and full_start > 946684800 }}
 
     conditions:
       - condition: state
@@ -4121,6 +4173,9 @@ automation:
               - action: input_datetime.set_datetime
                 target: { entity_id: input_datetime.zendure_natural_full_hold_start_u1 }
                 data: { timestamp: "{{ as_timestamp(now()) | int }}" }
+              - action: input_datetime.set_datetime
+                target: { entity_id: input_datetime.zendure_natural_balance_start_u1 }
+                data: { timestamp: 0 }
 
           - conditions:
               - condition: template
@@ -4129,35 +4184,6 @@ automation:
               - action: input_datetime.set_datetime
                 target: { entity_id: input_datetime.zendure_natural_full_hold_start_u2 }
                 data: { timestamp: "{{ as_timestamp(now()) | int }}" }
-
-          - conditions:
-              - condition: template
-                value_template: "{{ trigger.id == 'u1_balance_start' }}"
-            sequence:
-              - action: input_datetime.set_datetime
-                target: { entity_id: input_datetime.zendure_natural_balance_start_u1 }
-                data: { timestamp: "{{ as_timestamp(now()) | int }}" }
-
-          - conditions:
-              - condition: template
-                value_template: "{{ trigger.id == 'u2_balance_start' }}"
-            sequence:
-              - action: input_datetime.set_datetime
-                target: { entity_id: input_datetime.zendure_natural_balance_start_u2 }
-                data: { timestamp: "{{ as_timestamp(now()) | int }}" }
-
-          - conditions:
-              - condition: template
-                value_template: "{{ trigger.id == 'u1_balance_reset' }}"
-            sequence:
-              - action: input_datetime.set_datetime
-                target: { entity_id: input_datetime.zendure_natural_balance_start_u1 }
-                data: { timestamp: 0 }
-
-          - conditions:
-              - condition: template
-                value_template: "{{ trigger.id == 'u2_balance_reset' }}"
-            sequence:
               - action: input_datetime.set_datetime
                 target: { entity_id: input_datetime.zendure_natural_balance_start_u2 }
                 data: { timestamp: 0 }
@@ -4184,21 +4210,17 @@ automation:
                 target: { entity_id: input_datetime.zendure_natural_balance_start_u2 }
                 data: { timestamp: 0 }
 
-      # --- U1: 30 min Full-Hold + 10 min Balance-Fenster erfüllt ---
+      # --- U1: 100% mindestens 30 Minuten gehalten -> 14-Tage-Timer zuruecksetzen ---
       - if:
           - condition: template
             value_template: >
               {% set now_ts = as_timestamp(now()) %}
               {% set full_start = as_timestamp(states('input_datetime.zendure_natural_full_hold_start_u1'), default=0) %}
-              {% set bal_start = as_timestamp(states('input_datetime.zendure_natural_balance_start_u1'), default=0) %}
               {% set last_full = as_timestamp(states('input_datetime.zendure_last_full_charge_1'), default=0) %}
               {{ full_start > 946684800
-                 and bal_start > 946684800
                  and last_full < full_start
                  and (now_ts - full_start) >= 1800
-                 and (now_ts - bal_start) >= 600
                  and states('sensor.solarflow_1_battery_level')|float(0) > 99.5
-                 and ((states('sensor.solarflow_1_cell_max_vol')|float(99) - states('sensor.solarflow_1_cell_min_vol')|float(0)) | round(3)) <= 0.050
                  and is_state('input_boolean.zendure_emergency_u1','off')
                  and is_state('input_boolean.zendure_calib_discharge_u1','off')
                  and is_state('input_boolean.zendure_calib_mode_u1','off') }}
@@ -4207,21 +4229,17 @@ automation:
             target: { entity_id: input_datetime.zendure_last_full_charge_1 }
             data: { timestamp: "{{ as_timestamp(now()) | int }}" }
 
-      # --- U2: 30 min Full-Hold + 10 min Balance-Fenster erfüllt ---
+      # --- U2: 100% mindestens 30 Minuten gehalten -> 14-Tage-Timer zuruecksetzen ---
       - if:
           - condition: template
             value_template: >
               {% set now_ts = as_timestamp(now()) %}
               {% set full_start = as_timestamp(states('input_datetime.zendure_natural_full_hold_start_u2'), default=0) %}
-              {% set bal_start = as_timestamp(states('input_datetime.zendure_natural_balance_start_u2'), default=0) %}
               {% set last_full = as_timestamp(states('input_datetime.zendure_last_full_charge_2'), default=0) %}
               {{ full_start > 946684800
-                 and bal_start > 946684800
                  and last_full < full_start
                  and (now_ts - full_start) >= 1800
-                 and (now_ts - bal_start) >= 600
                  and states('sensor.solarflow_2_battery_level')|float(0) > 99.5
-                 and ((states('sensor.solarflow_2_cell_max_vol')|float(99) - states('sensor.solarflow_2_cell_min_vol')|float(0)) | round(3)) <= 0.050
                  and is_state('input_boolean.zendure_emergency_u2','off')
                  and is_state('input_boolean.zendure_calib_discharge_u2','off')
                  and is_state('input_boolean.zendure_calib_mode_u2','off') }}
@@ -4229,7 +4247,6 @@ automation:
           - action: input_datetime.set_datetime
             target: { entity_id: input_datetime.zendure_last_full_charge_2 }
             data: { timestamp: "{{ as_timestamp(now()) | int }}" }
-
 
   - alias: "Zendure: Top Hold Start Tracker"
     id: "zendure_top_hold_tracker"
@@ -4244,10 +4261,10 @@ automation:
         value_template: "{{ is_state('input_boolean.zendure_calib_mode_u2','on') and states('sensor.solarflow_2_battery_level')|float(0) > 99.5 }}"
       - trigger: template
         id: u1_reset
-        value_template: "{{ is_state('input_boolean.zendure_calib_mode_u1','off') or (is_state('input_boolean.zendure_calib_mode_u1','on') and states('sensor.solarflow_1_battery_level')|float(0) < 99.3) }}"
+        value_template: "{{ is_state('input_boolean.zendure_calib_mode_u1','off') or (is_state('input_boolean.zendure_calib_mode_u1','on') and states('sensor.solarflow_1_battery_level')|float(0) <= 98) }}"
       - trigger: template
         id: u2_reset
-        value_template: "{{ is_state('input_boolean.zendure_calib_mode_u2','off') or (is_state('input_boolean.zendure_calib_mode_u2','on') and states('sensor.solarflow_2_battery_level')|float(0) < 99.3) }}"
+        value_template: "{{ is_state('input_boolean.zendure_calib_mode_u2','off') or (is_state('input_boolean.zendure_calib_mode_u2','on') and states('sensor.solarflow_2_battery_level')|float(0) <= 98) }}"
     actions:
       - choose:
           - conditions:
@@ -4389,7 +4406,7 @@ automation:
       - trigger: template
         id: "top_balance_ok_u1"
         value_template: >
-          {% set hold = states('sensor.solarflow_1_battery_level')|float(0) > 99.5 %}
+          {% set hold = states('sensor.solarflow_1_battery_level')|float(0) >= 99 %}
           {% set hold_start = as_timestamp(states('input_datetime.zendure_top_hold_start_u1'), default=0) %}
           {{ is_state('input_boolean.zendure_calib_mode_u1','on')
              and hold
@@ -4400,7 +4417,7 @@ automation:
       - trigger: template
         id: "top_balance_ok_u2"
         value_template: >
-          {% set hold = states('sensor.solarflow_2_battery_level')|float(0) > 99.5 %}
+          {% set hold = states('sensor.solarflow_2_battery_level')|float(0) >= 99 %}
           {% set hold_start = as_timestamp(states('input_datetime.zendure_top_hold_start_u2'), default=0) %}
           {{ is_state('input_boolean.zendure_calib_mode_u2','on')
              and hold
@@ -4410,12 +4427,20 @@ automation:
         for: "00:10:00"
       - trigger: template
         id: "top_balance_timeout_u1"
-        value_template: "{{ is_state('input_boolean.zendure_calib_mode_u1','on') and states('sensor.solarflow_1_battery_level')|float(0) > 99.5 }}"
-        for: "02:00:00"
+        value_template: >
+          {% set hold_start = as_timestamp(states('input_datetime.zendure_top_hold_start_u1'), default=0) %}
+          {{ is_state('input_boolean.zendure_calib_mode_u1','on')
+             and hold_start > 946684800
+             and states('sensor.solarflow_1_battery_level')|float(0) >= 99
+             and (as_timestamp(now()) - hold_start) >= 7200 }}
       - trigger: template
         id: "top_balance_timeout_u2"
-        value_template: "{{ is_state('input_boolean.zendure_calib_mode_u2','on') and states('sensor.solarflow_2_battery_level')|float(0) > 99.5 }}"
-        for: "02:00:00"
+        value_template: >
+          {% set hold_start = as_timestamp(states('input_datetime.zendure_top_hold_start_u2'), default=0) %}
+          {{ is_state('input_boolean.zendure_calib_mode_u2','on')
+             and hold_start > 946684800
+             and states('sensor.solarflow_2_battery_level')|float(0) >= 99
+             and (as_timestamp(now()) - hold_start) >= 7200 }}
     conditions:
       - condition: state
         entity_id: input_boolean.zendure_auto_mode
@@ -4981,7 +5006,7 @@ automation:
             data:
               message: >
                 {% if trigger.id == 'top_balance_timeout_u1' %}
-                  ⚠️ *Top-Balance U1 beendet*\nMaximale Haltezeit (120 min) erreicht – Top-Balance nicht perfekt.
+                  ⚠️ *Top-Balance U1 beendet*\nMaximale Haltezeit (120 min ab erstem echten 100%-Punkt) erreicht – Top-Balance nicht perfekt.
                 {% else %}
                   ✅ *Top-Balance U1 abgeschlossen*\nMindesthaltezeit erfüllt und Zellspreizung im Zielbereich.
                 {% endif %}
@@ -5023,7 +5048,7 @@ automation:
             data:
               message: >
                 {% if trigger.id == 'top_balance_timeout_u2' %}
-                  ⚠️ *Top-Balance U2 beendet*\nMaximale Haltezeit (120 min) erreicht – Top-Balance nicht perfekt.
+                  ⚠️ *Top-Balance U2 beendet*\nMaximale Haltezeit (120 min ab erstem echten 100%-Punkt) erreicht – Top-Balance nicht perfekt.
                 {% else %}
                   ✅ *Top-Balance U2 abgeschlossen*\nMindesthaltezeit erfüllt und Zellspreizung im Zielbereich.
                 {% endif %}
@@ -5174,6 +5199,8 @@ automation:
             {% else %}
               {{ states('input_number.zendure_last_inputlimit_u2') | int(-1) }}
             {% endif %}
+          curr_charge_u1: "{{ states('sensor.solarflow_1_setting_chargelimit') | int(-1) }}"
+          curr_charge_u2: "{{ states('sensor.solarflow_2_setting_chargelimit') | int(-1) }}"
 
       - condition: template
         value_template: "{{ calib1 or calib2 or dis1 or dis2 }}"
@@ -5241,6 +5268,11 @@ automation:
                     data:
                       power: 0
                       force: true
+                  - action: mqtt.publish
+                    data:
+                      topic: !secret zendure_topic_u1_number_chargeMaxLimit_set
+                      payload: "{{ limit_calib_u1|int }}"
+                      qos: 1
                   - action: script.zendure_dispatch_u1_ac_mode
                     data:
                       mode: "Output mode"
@@ -5249,12 +5281,13 @@ automation:
               - conditions:
                   - condition: template
                     value_template: >
-                      {{ calib1 and not dis1 and online1 and is_state('input_boolean.zendure_emergency_u1','off') and is_state('input_boolean.zendure_vguard_u1','off') and soc1 < 100 and s1_solar <= (pv_low|float(40))
+                      {{ calib1 and not dis1 and online1 and is_state('input_boolean.zendure_emergency_u1','off') and is_state('input_boolean.zendure_vguard_u1','off') and s1_solar <= (pv_low|float(40))
                          and not (temp_charge_block_u1 | bool)
                          and (limit_calib_u1 | int(0)) > 0
                          and (allow_ac | bool)
                          and (states('input_text.zendure_ac_mode_u1') != 'Input mode'
-                              or curr_limit_u1|int(-1) != (limit_calib_u1|int)) }}
+                              or curr_limit_u1|int(-1) != (limit_calib_u1|int)
+                              or curr_charge_u1|int(-1) != (limit_calib_u1|int)) }}
                 sequence:
                   - if:
                       - condition: template
@@ -5265,6 +5298,11 @@ automation:
                           mode: "Input mode"
                           force: true
                       - action: script.zendure_set_u1_outputlimit_zero
+                  - action: mqtt.publish
+                    data:
+                      topic: !secret zendure_topic_u1_number_chargeMaxLimit_set
+                      payload: "{{ limit_calib_u1|int }}"
+                      qos: 1
                   - action: script.zendure_dispatch_u1_inputlimit
                     data:
                       power: "{{ limit_calib_u1|int }}"
@@ -5272,18 +5310,24 @@ automation:
               - conditions:
                   - condition: template
                     value_template: >
-                      {{ calib1 and not dis1 and online1 and is_state('input_boolean.zendure_emergency_u1','off') and is_state('input_boolean.zendure_vguard_u1','off') and soc1 < 100 and s1_solar >= (pv_high|float(70))
+                      {{ calib1 and not dis1 and online1 and is_state('input_boolean.zendure_emergency_u1','off') and is_state('input_boolean.zendure_vguard_u1','off') and s1_solar >= (pv_high|float(70))
                       and (
                           states('input_text.zendure_ac_mode_u1') != 'Output mode'
                           or curr_limit_u1|int(-1) != 0
                           or states('sensor.solarflow_1_output_limit')|int(-1) != 0
                           or states('input_number.zendure_last_sent_1')|int(-1) != 0
+                          or curr_charge_u1|int(-1) != (limit_calib_u1|int)
                       ) }}
                 sequence:
                   - action: script.zendure_dispatch_u1_inputlimit
                     data:
                       power: 0
                       force: true
+                  - action: mqtt.publish
+                    data:
+                      topic: !secret zendure_topic_u1_number_chargeMaxLimit_set
+                      payload: "{{ limit_calib_u1|int }}"
+                      qos: 1
                   - action: script.zendure_dispatch_u1_ac_mode
                     data:
                       mode: "Output mode"
@@ -5353,6 +5397,11 @@ automation:
                     data:
                       power: 0
                       force: true
+                  - action: mqtt.publish
+                    data:
+                      topic: !secret zendure_topic_u2_number_chargeMaxLimit_set
+                      payload: "{{ limit_calib_u2|int }}"
+                      qos: 1
                   - action: script.zendure_dispatch_u2_ac_mode
                     data:
                       mode: "Output mode"
@@ -5361,12 +5410,13 @@ automation:
               - conditions:
                   - condition: template
                     value_template: >
-                      {{ calib2 and not dis2 and online2 and is_state('input_boolean.zendure_emergency_u2','off') and is_state('input_boolean.zendure_vguard_u2','off') and soc2 < 100 and s2_solar <= (pv_low|float(40))
+                      {{ calib2 and not dis2 and online2 and is_state('input_boolean.zendure_emergency_u2','off') and is_state('input_boolean.zendure_vguard_u2','off') and s2_solar <= (pv_low|float(40))
                          and not (temp_charge_block_u2 | bool)
                          and (limit_calib_u2 | int(0)) > 0
                          and (allow_ac | bool)
                          and (states('input_text.zendure_ac_mode_u2') != 'Input mode'
-                              or curr_limit_u2|int(-1) != (limit_calib_u2|int)) }}
+                              or curr_limit_u2|int(-1) != (limit_calib_u2|int)
+                              or curr_charge_u2|int(-1) != (limit_calib_u2|int)) }}
                 sequence:
                   - if:
                       - condition: template
@@ -5377,6 +5427,11 @@ automation:
                           mode: "Input mode"
                           force: true
                       - action: script.zendure_set_u2_outputlimit_zero
+                  - action: mqtt.publish
+                    data:
+                      topic: !secret zendure_topic_u2_number_chargeMaxLimit_set
+                      payload: "{{ limit_calib_u2|int }}"
+                      qos: 1
                   - action: script.zendure_dispatch_u2_inputlimit
                     data:
                       power: "{{ limit_calib_u2|int }}"
@@ -5384,18 +5439,24 @@ automation:
               - conditions:
                   - condition: template
                     value_template: >
-                      {{ calib2 and not dis2 and online2 and is_state('input_boolean.zendure_emergency_u2','off') and is_state('input_boolean.zendure_vguard_u2','off') and soc2 < 100 and s2_solar >= (pv_high|float(70))
+                      {{ calib2 and not dis2 and online2 and is_state('input_boolean.zendure_emergency_u2','off') and is_state('input_boolean.zendure_vguard_u2','off') and s2_solar >= (pv_high|float(70))
                       and (
                           states('input_text.zendure_ac_mode_u2') != 'Output mode'
                           or curr_limit_u2|int(-1) != 0
                           or states('sensor.solarflow_2_output_limit')|int(-1) != 0
                           or states('input_number.zendure_last_sent_2')|int(-1) != 0
+                          or curr_charge_u2|int(-1) != (limit_calib_u2|int)
                       ) }}
                 sequence:
                   - action: script.zendure_dispatch_u2_inputlimit
                     data:
                       power: 0
                       force: true
+                  - action: mqtt.publish
+                    data:
+                      topic: !secret zendure_topic_u2_number_chargeMaxLimit_set
+                      payload: "{{ limit_calib_u2|int }}"
+                      qos: 1
                   - action: script.zendure_dispatch_u2_ac_mode
                     data:
                       mode: "Output mode"
@@ -6632,4 +6693,3 @@ automation:
                     Ist (vor Re-Sync): {{ ac2_is }}\n
                     Soll (vor Re-Sync): {{ ac2_should }}\n
                     Der Fehler wurde erkannt und via MQTT korrigiert.
-
