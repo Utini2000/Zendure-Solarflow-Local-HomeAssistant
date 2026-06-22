@@ -1750,4 +1750,26 @@
 # - Chargelimit is not being temperature degraded as well
 # - Temperature degrading has been added to the calibration path
 #
+# Changes V166:
+# - Some fixes and improvements regarding the latest re-write of temperature degrading
+# - Chargelimit is not being temperature degraded as well
+# - Temperature degrading has been added to the calibration path
+#
+# Changes V167:
+# - Top Hold Start: Set only when SoC >99.5%.
+# - Top Hold Reset: Reset only when calib_mode is off or SoC <=98%.
+# - Top Balance OK: top_hold_start age >=30 min, SoC >=99%, imbalance <=0.050 V for 10 min.
+# - Top Balance Timeout: top_hold_start age >=120 min, SoC >=99% -> stop calibration with "Top-Balance not perfect" warning.
+#
+# Changes V168:
+# - Improved calibration top-hold handling:
+#   * Top-hold still starts only after a true 100% event (SoC > 99.5%).
+#   * The top-hold timestamp now remains latched if SoC later fluctuates to 99%.
+#   * The 120-minute max-hold timeout now counts from the first true 100% point,
+#     preventing calibration from hanging indefinitely on multi-pack systems.
+#   * Successful top-balance still requires >=30 min top-hold and cell spread
+#     <=0.050 V for 10 min.
+#   * During calibration hold, a controlled low-power charge/hold path remains
+# - Added sensors for Solarpower Input 1-4 for both units
+#
 ################################################################################
