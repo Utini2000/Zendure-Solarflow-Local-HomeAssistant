@@ -1772,4 +1772,17 @@
 #   * During calibration hold, a controlled low-power charge/hold path remains
 # - Added sensors for Solarpower Input 1-4 for both units
 #
+# Changes V169:
+# - min_change changed from 5w to 8w based on more than 700.000 historical datasets
+#   * This should reduce read/write by ~13% while only very very marginally increasing the chance of small exports
+# - ChargeMaxLimit real state-readback replaced by /set Last-Set sensors plus memory dispatchers
+# - Zen-mode min_change capped to 20W
+# - GridOffMode comparisons made case-insensitive
+# - Fix for AC Calibration Fallback Manager for low on/off PV input situations
+#   * switching between PV-only/output mode and AC-input mode only happens when both the current PV raw value and the 20s PV average are stably below/above the configured thresholds.
+#   * This prevents short 0 W PV samples from causing unnecessary acMode/inputLimit flapping during calibration, while the normal fast output control loop remains unchanged.
+#
+# Changes V170:
+# - Added an automation "InputLimit Cleanup After Output Mode" which checks and sets the correct Input/Output Mode after calibration
+#
 ################################################################################
