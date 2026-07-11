@@ -1,5 +1,5 @@
 ################################################################################
-#                   ZENDURE SOLARFLOW CONTROL PACKAGE (V168)                    #
+#                   ZENDURE SOLARFLOW CONTROL PACKAGE (V170)                    #
 ################################################################################
 #
 # DESCRIPTION:
@@ -8,6 +8,7 @@
 #
 # Complete Changelog:
 # https://github.com/Utini2000/Zendure-Solarflow-Local-HomeAssistant/blob/main/Changelog
+
 
 # ==============================================================================
 # 1. KONFIGURATION (Input Helpers)
@@ -182,6 +183,20 @@ input_number:
     step: 1
     mode: box
     initial: 0
+  zendure_last_chargelimit_u1:
+    name: "System: Letztes ChargeMaxLimit U1"
+    min: 0
+    max: 800
+    step: 1
+    mode: box
+    initial: 0
+  zendure_last_chargelimit_u2:
+    name: "System: Letztes ChargeMaxLimit U2"
+    min: 0
+    max: 800
+    step: 1
+    mode: box
+    initial: 0
   zendure_soc_drift_ref_u1:
     name: "Intern: SoC-Drift Referenz U1"
     min: 0
@@ -225,7 +240,7 @@ input_number:
     min: 1
     max: 50
     step: 1
-    initial: 10
+    initial: 8
     unit_of_measurement: "W"
 
   zendure_conf_hysteresis:
@@ -415,16 +430,16 @@ mqtt:
       unit_of_measurement: "%"
       entity_category: diagnostic
 
-    - name: "SolarFlow 1 Setting ChargeLimit"
+    - name: "SolarFlow 1 ChargeLimit Last Set"
       unique_id: solarflow_1_setting_chargelimit
       default_entity_id: sensor.solarflow_1_setting_chargelimit
-      state_topic: !secret zendure_topic_u1_number_chargeMaxLimit
+      state_topic: !secret zendure_topic_u1_number_chargeMaxLimit_set
       unit_of_measurement: "W"
       entity_category: diagnostic
       value_template: >
         {% set v = value | float(none) %}
-        {% if v is not none %}{{ v | int(0) }}
-        {% else %}{{ states('input_number.zendure_last_inputlimit_u1') | int(0) }}{% endif %}
+        {% if v is not none %}{{ [0, [v | int(0), 800] | min] | max }}
+        {% else %}{{ states('input_number.zendure_last_chargelimit_u1') | int(800) }}{% endif %}
 
     - name: "SolarFlow 1 Input Limit"
       unique_id: solarflow_1_input_limit_mqtt
@@ -625,16 +640,16 @@ mqtt:
       unit_of_measurement: "%"
       entity_category: diagnostic
 
-    - name: "SolarFlow 2 Setting ChargeLimit"
+    - name: "SolarFlow 2 ChargeLimit Last Set"
       unique_id: solarflow_2_setting_chargelimit
       default_entity_id: sensor.solarflow_2_setting_chargelimit
-      state_topic: !secret zendure_topic_u2_number_chargeMaxLimit
+      state_topic: !secret zendure_topic_u2_number_chargeMaxLimit_set
       unit_of_measurement: "W"
       entity_category: diagnostic
       value_template: >
         {% set v = value | float(none) %}
-        {% if v is not none %}{{ v | int(0) }}
-        {% else %}{{ states('input_number.zendure_last_inputlimit_u2') | int(0) }}{% endif %}
+        {% if v is not none %}{{ [0, [v | int(0), 800] | min] | max }}
+        {% else %}{{ states('input_number.zendure_last_chargelimit_u2') | int(800) }}{% endif %}
 
     - name: "SolarFlow 2 Input Limit"
       unique_id: solarflow_2_input_limit_mqtt
@@ -1580,6 +1595,96 @@ script:
             data:
               value: "{{ target }}"
 
+  zendure_dispatch_u1_chargelimit:
+    alias: "Zendure: Dispatch U1 ChargeMaxLimit"
+    mode: queued
+    fields:
+      power:
+        description: "Target charge limit in W"
+      force:
+        description: "Send command immediately (ignore cooldown/check)"
+    sequence:
+      - variables:
+          target: "{{ [0, [power | int(800), 800] | min] | max }}"
+          force_mode: "{{ force | default(false) }}"
+          mem: "{{ states('input_number.zendure_last_chargelimit_u1') | int(-1) }}"
+          actual_raw: "{{ states('sensor.solarflow_1_setting_chargelimit') }}"
+          actual: "{{ actual_raw | int(mem) if is_number(actual_raw) else mem }}"
+          ts_base: "{{ as_timestamp(states.input_number.zendure_last_chargelimit_u1.last_updated, 0) }}"
+          since_base: "{{ as_timestamp(now()) - ts_base }}"
+          cmd_ok: "{{ since_base > 2.2 }}"
+      - if:
+          - condition: template
+            value_template: "{{ is_number(actual_raw) and actual | int(-1) != mem | int(-1) }}"
+        then:
+          - action: input_number.set_value
+            target: { entity_id: input_number.zendure_last_chargelimit_u1 }
+            data:
+              value: "{{ actual | int(800) }}"
+      - if:
+          - condition: template
+            value_template: >
+              {{ (force_mode | bool)
+                 or (
+                   (cmd_ok | bool)
+                   and (
+                     (is_number(actual_raw) and (target | int(-2)) != (actual | int(-1)))
+                     or (not is_number(actual_raw) and (target | int(-2)) != (mem | int(-1)))
+                   )
+                 ) }}
+        then:
+          - action: mqtt.publish
+            data: { topic: !secret zendure_topic_u1_number_chargeMaxLimit_set, payload: "{{ target }}", qos: 1 }
+          - action: input_number.set_value
+            target: { entity_id: input_number.zendure_last_chargelimit_u1 }
+            data:
+              value: "{{ target }}"
+
+  zendure_dispatch_u2_chargelimit:
+    alias: "Zendure: Dispatch U2 ChargeMaxLimit"
+    mode: queued
+    fields:
+      power:
+        description: "Target charge limit in W"
+      force:
+        description: "Send command immediately (ignore cooldown/check)"
+    sequence:
+      - variables:
+          target: "{{ [0, [power | int(800), 800] | min] | max }}"
+          force_mode: "{{ force | default(false) }}"
+          mem: "{{ states('input_number.zendure_last_chargelimit_u2') | int(-1) }}"
+          actual_raw: "{{ states('sensor.solarflow_2_setting_chargelimit') }}"
+          actual: "{{ actual_raw | int(mem) if is_number(actual_raw) else mem }}"
+          ts_base: "{{ as_timestamp(states.input_number.zendure_last_chargelimit_u2.last_updated, 0) }}"
+          since_base: "{{ as_timestamp(now()) - ts_base }}"
+          cmd_ok: "{{ since_base > 2.2 }}"
+      - if:
+          - condition: template
+            value_template: "{{ is_number(actual_raw) and actual | int(-1) != mem | int(-1) }}"
+        then:
+          - action: input_number.set_value
+            target: { entity_id: input_number.zendure_last_chargelimit_u2 }
+            data:
+              value: "{{ actual | int(800) }}"
+      - if:
+          - condition: template
+            value_template: >
+              {{ (force_mode | bool)
+                 or (
+                   (cmd_ok | bool)
+                   and (
+                     (is_number(actual_raw) and (target | int(-2)) != (actual | int(-1)))
+                     or (not is_number(actual_raw) and (target | int(-2)) != (mem | int(-1)))
+                   )
+                 ) }}
+        then:
+          - action: mqtt.publish
+            data: { topic: !secret zendure_topic_u2_number_chargeMaxLimit_set, payload: "{{ target }}", qos: 1 }
+          - action: input_number.set_value
+            target: { entity_id: input_number.zendure_last_chargelimit_u2 }
+            data:
+              value: "{{ target }}"
+
   zendure_start_emergency_u1_manual:
     alias: "Zendure: Manual Emergency Start U1"
     mode: restart
@@ -2342,11 +2447,10 @@ automation:
             data:
               power: 0
               force: true
-          - action: mqtt.publish
+          - action: script.zendure_dispatch_u1_chargelimit
             data:
-              topic: !secret zendure_topic_u1_number_chargeMaxLimit_set
-              payload: "0"
-              qos: 1
+              power: "0"
+              force: true
           - action: script.zendure_dispatch_u1_ac_mode
             data:
               mode: "Output mode"
@@ -2399,11 +2503,10 @@ automation:
             data:
               power: 0
               force: true
-          - action: mqtt.publish
+          - action: script.zendure_dispatch_u2_chargelimit
             data:
-              topic: !secret zendure_topic_u2_number_chargeMaxLimit_set
-              payload: "0"
-              qos: 1
+              power: "0"
+              force: true
           - action: script.zendure_dispatch_u2_ac_mode
             data:
               mode: "Output mode"
@@ -2456,11 +2559,10 @@ automation:
             data:
               power: 0
               force: true
-          - action: mqtt.publish
+          - action: script.zendure_dispatch_u1_chargelimit
             data:
-              topic: !secret zendure_topic_u1_number_chargeMaxLimit_set
-              payload: "0"
-              qos: 1
+              power: "0"
+              force: true
           - action: script.zendure_dispatch_u1_ac_mode
             data:
               mode: "Output mode"
@@ -2513,11 +2615,10 @@ automation:
             data:
               power: 0
               force: true
-          - action: mqtt.publish
+          - action: script.zendure_dispatch_u2_chargelimit
             data:
-              topic: !secret zendure_topic_u2_number_chargeMaxLimit_set
-              payload: "0"
-              qos: 1
+              power: "0"
+              force: true
           - action: script.zendure_dispatch_u2_ac_mode
             data:
               mode: "Output mode"
@@ -2861,14 +2962,14 @@ automation:
             {% elif soc2_val <= (soc_off|float(20) + 12) %}{{ [300, ((s2_solar * 0.9) + 150) | int(0), tc] | min }}
             {% else %}{{ tc }}{% endif %}
 
-          global_max: "{{ states('input_number.zendure_conf_max_output') | int(1000) }}"
+          global_max: "{{ [[states('input_number.zendure_conf_max_output') | int(800), 0] | max, 800] | min }}"
           available_capacity: "{{ [ (global_max|int(0) - ghost_total|int(0)), 0 ] | max }}"
 
           failsafe: "{{ states('input_number.zendure_conf_failsafe_watt') | int(130) }}"
           grid_bias: "{{ states('input_number.zendure_conf_grid_bias') | int(10) }}"
 
           zen_mode: "{{ (bypass1 or bypass2) }}"
-          slider_change: "{{ states('input_number.zendure_conf_min_change') | int(5) }}"
+          slider_change: "{{ states('input_number.zendure_conf_min_change') | int(8) }}"
           jump_raw: >-
             {% if trigger.id == 'meter_step' and trigger.from_state is not none and trigger.to_state is not none and is_number(trigger.from_state.state) and is_number(trigger.to_state.state) %}
               {{ ((trigger.to_state.state | float(0)) - (trigger.from_state.state | float(0))) | abs }}
@@ -2879,7 +2980,7 @@ automation:
           fast_event: "{{ trigger.id == 'meter_step' and (jump_raw | float(0)) >= (fast_jump_threshold | int(30)) }}"
           fast_push_1: "{{ fast_event and time_since_1 > 1.2 }}"
           fast_push_2: "{{ fast_event and time_since_2 > 1.2 }}"
-          min_change_base: "{{ (slider_change * 4) if zen_mode else slider_change }}"
+          min_change_base: "{{ ([((slider_change | int(8)) * 4), 20] | min) if (zen_mode | bool) else (slider_change | int(8)) }}"
           min_change: "{{ [5, ((min_change_base | int(0)) // 2)] | max if fast_event else min_change_base }}"
 
           override_margin: "{{ [min_change|int(0), 10] | max }}"
@@ -3449,9 +3550,13 @@ automation:
             {% endif %}
 
           curr_min_soc_1: "{{ states('sensor.solarflow_1_setting_minsoc') | int(-1) }}"
-          curr_charge_1: "{{ states('sensor.solarflow_1_setting_chargelimit') | int(-1) }}"
+          curr_charge_1: >
+            {% set real = states('sensor.solarflow_1_setting_chargelimit') %}
+            {{ real | int(states('input_number.zendure_last_chargelimit_u1') | int(-1)) if is_number(real) else states('input_number.zendure_last_chargelimit_u1') | int(-1) }}
           curr_min_soc_2: "{{ states('sensor.solarflow_2_setting_minsoc') | int(-1) }}"
-          curr_charge_2: "{{ states('sensor.solarflow_2_setting_chargelimit') | int(-1) }}"
+          curr_charge_2: >
+            {% set real = states('sensor.solarflow_2_setting_chargelimit') %}
+            {{ real | int(states('input_number.zendure_last_chargelimit_u2') | int(-1)) if is_number(real) else states('input_number.zendure_last_chargelimit_u2') | int(-1) }}
 
       - if:
           - condition: state
@@ -3461,20 +3566,32 @@ automation:
           - parallel:
             - if:
                 - condition: template
-                  value_template: "{{ online1 and (curr_min_soc_1 != min_soc|int or curr_charge_1 != charge_limit_u1|int) }}"
+                  value_template: "{{ online1 and curr_min_soc_1|int(-1) != min_soc|int }}"
               then:
                 - action: mqtt.publish
                   data: { topic: !secret zendure_topic_u1_number_minSoc_set, payload: "{{ min_soc }}", qos: 1 }
-                - action: mqtt.publish
-                  data: { topic: !secret zendure_topic_u1_number_chargeMaxLimit_set, payload: "{{ charge_limit_u1 }}", qos: 1 }
             - if:
                 - condition: template
-                  value_template: "{{ online2 and (curr_min_soc_2 != min_soc|int or curr_charge_2 != charge_limit_u2|int) }}"
+                  value_template: "{{ online1 and curr_charge_1|int(-1) != charge_limit_u1|int }}"
+              then:
+                - action: script.zendure_dispatch_u1_chargelimit
+                  data:
+                    power: "{{ charge_limit_u1 }}"
+                    force: false
+            - if:
+                - condition: template
+                  value_template: "{{ online2 and curr_min_soc_2|int(-1) != min_soc|int }}"
               then:
                 - action: mqtt.publish
                   data: { topic: !secret zendure_topic_u2_number_minSoc_set, payload: "{{ min_soc }}", qos: 1 }
-                - action: mqtt.publish
-                  data: { topic: !secret zendure_topic_u2_number_chargeMaxLimit_set, payload: "{{ charge_limit_u2 }}", qos: 1 }
+            - if:
+                - condition: template
+                  value_template: "{{ online2 and curr_charge_2|int(-1) != charge_limit_u2|int }}"
+              then:
+                - action: script.zendure_dispatch_u2_chargelimit
+                  data:
+                    power: "{{ charge_limit_u2 }}"
+                    force: false
 
 
   # --- 6.6a SAG CONFIRM U1 ---
@@ -4682,11 +4799,10 @@ automation:
             data:
               mode: "Output mode"
               force: true
-          - action: mqtt.publish
+          - action: script.zendure_dispatch_u1_chargelimit
             data:
-              topic: !secret zendure_topic_u1_number_chargeMaxLimit_set
-              payload: "0"
-              qos: 1
+              power: "0"
+              force: true
           - action: script.zendure_dispatch_u1_inputlimit
             data:
               power: 0
@@ -4733,11 +4849,10 @@ automation:
             data:
               mode: "Output mode"
               force: true
-          - action: mqtt.publish
+          - action: script.zendure_dispatch_u2_chargelimit
             data:
-              topic: !secret zendure_topic_u2_number_chargeMaxLimit_set
-              payload: "0"
-              qos: 1
+              power: "0"
+              force: true
           - action: script.zendure_dispatch_u2_inputlimit
             data:
               power: 0
@@ -5139,6 +5254,8 @@ automation:
           - input_boolean.zendure_calib_discharge_u2
           - sensor.solarflow_1_solar_input
           - sensor.solarflow_2_solar_input
+          - sensor.zendure_u1_pv_mean_20s
+          - sensor.zendure_u2_pv_mean_20s
     conditions:
       - condition: state
         entity_id: input_boolean.zendure_auto_mode
@@ -5164,6 +5281,20 @@ automation:
           soc2: "{{ states('sensor.solarflow_2_battery_level') | float(0) }}"
           s1_solar: "{{ states('sensor.solarflow_1_solar_input') | float(0) if online1 else 0 }}"
           s2_solar: "{{ states('sensor.solarflow_2_solar_input') | float(0) if online2 else 0 }}"
+          s1_solar_mean: "{{ states('sensor.zendure_u1_pv_mean_20s') | float(s1_solar | float(0)) if online1 else 0 }}"
+          s2_solar_mean: "{{ states('sensor.zendure_u2_pv_mean_20s') | float(s2_solar | float(0)) if online2 else 0 }}"
+          s1_pv_low_stable: >
+            {{ (s1_solar | float(0)) <= (pv_low | float(40))
+               and (s1_solar_mean | float(0)) <= (pv_low | float(40)) }}
+          s2_pv_low_stable: >
+            {{ (s2_solar | float(0)) <= (pv_low | float(40))
+               and (s2_solar_mean | float(0)) <= (pv_low | float(40)) }}
+          s1_pv_high_stable: >
+            {{ (s1_solar | float(0)) >= (pv_high | float(70))
+               and (s1_solar_mean | float(0)) >= (pv_high | float(70)) }}
+          s2_pv_high_stable: >
+            {{ (s2_solar | float(0)) >= (pv_high | float(70))
+               and (s2_solar_mean | float(0)) >= (pv_high | float(70)) }}
 
           batt_t1_calib: "{{ states('sensor.solarflow_1_battery_max_temp') | float(states('sensor.solarflow_1_temp')|float(999)) }}"
           batt_t2_calib: "{{ states('sensor.solarflow_2_battery_max_temp') | float(states('sensor.solarflow_2_temp')|float(999)) }}"
@@ -5199,8 +5330,12 @@ automation:
             {% else %}
               {{ states('input_number.zendure_last_inputlimit_u2') | int(-1) }}
             {% endif %}
-          curr_charge_u1: "{{ states('sensor.solarflow_1_setting_chargelimit') | int(-1) }}"
-          curr_charge_u2: "{{ states('sensor.solarflow_2_setting_chargelimit') | int(-1) }}"
+          curr_charge_u1: >
+            {% set real = states('sensor.solarflow_1_setting_chargelimit') %}
+            {{ real | int(states('input_number.zendure_last_chargelimit_u1') | int(-1)) if is_number(real) else states('input_number.zendure_last_chargelimit_u1') | int(-1) }}
+          curr_charge_u2: >
+            {% set real = states('sensor.solarflow_2_setting_chargelimit') %}
+            {{ real | int(states('input_number.zendure_last_chargelimit_u2') | int(-1)) if is_number(real) else states('input_number.zendure_last_chargelimit_u2') | int(-1) }}
 
       - condition: template
         value_template: "{{ calib1 or calib2 or dis1 or dis2 }}"
@@ -5223,11 +5358,10 @@ automation:
                     data:
                       power: 0
                       force: true
-                  - action: mqtt.publish
+                  - action: script.zendure_dispatch_u1_chargelimit
                     data:
-                      topic: !secret zendure_topic_u1_number_chargeMaxLimit_set
-                      payload: "0"
-                      qos: 1
+                      power: "0"
+                      force: true
                   - action: script.zendure_dispatch_u1_ac_mode
                     data:
                       mode: "Output mode"
@@ -5245,11 +5379,10 @@ automation:
                     data:
                       mode: "Output mode"
                       force: true
-                  - action: mqtt.publish
+                  - action: script.zendure_dispatch_u1_chargelimit
                     data:
-                      topic: !secret zendure_topic_u1_number_chargeMaxLimit_set
-                      payload: "0"
-                      qos: 1
+                      power: "0"
+                      force: true
                   - action: script.zendure_dispatch_u1_inputlimit
                     data:
                       power: 0
@@ -5268,11 +5401,10 @@ automation:
                     data:
                       power: 0
                       force: true
-                  - action: mqtt.publish
+                  - action: script.zendure_dispatch_u1_chargelimit
                     data:
-                      topic: !secret zendure_topic_u1_number_chargeMaxLimit_set
-                      payload: "{{ limit_calib_u1|int }}"
-                      qos: 1
+                      power: "{{ limit_calib_u1|int }}"
+                      force: true
                   - action: script.zendure_dispatch_u1_ac_mode
                     data:
                       mode: "Output mode"
@@ -5281,7 +5413,7 @@ automation:
               - conditions:
                   - condition: template
                     value_template: >
-                      {{ calib1 and not dis1 and online1 and is_state('input_boolean.zendure_emergency_u1','off') and is_state('input_boolean.zendure_vguard_u1','off') and s1_solar <= (pv_low|float(40))
+                      {{ calib1 and not dis1 and online1 and is_state('input_boolean.zendure_emergency_u1','off') and is_state('input_boolean.zendure_vguard_u1','off') and (s1_pv_low_stable | bool)
                          and not (temp_charge_block_u1 | bool)
                          and (limit_calib_u1 | int(0)) > 0
                          and (allow_ac | bool)
@@ -5298,11 +5430,10 @@ automation:
                           mode: "Input mode"
                           force: true
                       - action: script.zendure_set_u1_outputlimit_zero
-                  - action: mqtt.publish
+                  - action: script.zendure_dispatch_u1_chargelimit
                     data:
-                      topic: !secret zendure_topic_u1_number_chargeMaxLimit_set
-                      payload: "{{ limit_calib_u1|int }}"
-                      qos: 1
+                      power: "{{ limit_calib_u1|int }}"
+                      force: true
                   - action: script.zendure_dispatch_u1_inputlimit
                     data:
                       power: "{{ limit_calib_u1|int }}"
@@ -5310,7 +5441,7 @@ automation:
               - conditions:
                   - condition: template
                     value_template: >
-                      {{ calib1 and not dis1 and online1 and is_state('input_boolean.zendure_emergency_u1','off') and is_state('input_boolean.zendure_vguard_u1','off') and s1_solar >= (pv_high|float(70))
+                      {{ calib1 and not dis1 and online1 and is_state('input_boolean.zendure_emergency_u1','off') and is_state('input_boolean.zendure_vguard_u1','off') and (s1_pv_high_stable | bool)
                       and (
                           states('input_text.zendure_ac_mode_u1') != 'Output mode'
                           or curr_limit_u1|int(-1) != 0
@@ -5323,11 +5454,10 @@ automation:
                     data:
                       power: 0
                       force: true
-                  - action: mqtt.publish
+                  - action: script.zendure_dispatch_u1_chargelimit
                     data:
-                      topic: !secret zendure_topic_u1_number_chargeMaxLimit_set
-                      payload: "{{ limit_calib_u1|int }}"
-                      qos: 1
+                      power: "{{ limit_calib_u1|int }}"
+                      force: true
                   - action: script.zendure_dispatch_u1_ac_mode
                     data:
                       mode: "Output mode"
@@ -5352,11 +5482,10 @@ automation:
                     data:
                       power: 0
                       force: true
-                  - action: mqtt.publish
+                  - action: script.zendure_dispatch_u2_chargelimit
                     data:
-                      topic: !secret zendure_topic_u2_number_chargeMaxLimit_set
-                      payload: "0"
-                      qos: 1
+                      power: "0"
+                      force: true
                   - action: script.zendure_dispatch_u2_ac_mode
                     data:
                       mode: "Output mode"
@@ -5374,11 +5503,10 @@ automation:
                     data:
                       mode: "Output mode"
                       force: true
-                  - action: mqtt.publish
+                  - action: script.zendure_dispatch_u2_chargelimit
                     data:
-                      topic: !secret zendure_topic_u2_number_chargeMaxLimit_set
-                      payload: "0"
-                      qos: 1
+                      power: "0"
+                      force: true
                   - action: script.zendure_dispatch_u2_inputlimit
                     data:
                       power: 0
@@ -5397,11 +5525,10 @@ automation:
                     data:
                       power: 0
                       force: true
-                  - action: mqtt.publish
+                  - action: script.zendure_dispatch_u2_chargelimit
                     data:
-                      topic: !secret zendure_topic_u2_number_chargeMaxLimit_set
-                      payload: "{{ limit_calib_u2|int }}"
-                      qos: 1
+                      power: "{{ limit_calib_u2|int }}"
+                      force: true
                   - action: script.zendure_dispatch_u2_ac_mode
                     data:
                       mode: "Output mode"
@@ -5410,7 +5537,7 @@ automation:
               - conditions:
                   - condition: template
                     value_template: >
-                      {{ calib2 and not dis2 and online2 and is_state('input_boolean.zendure_emergency_u2','off') and is_state('input_boolean.zendure_vguard_u2','off') and s2_solar <= (pv_low|float(40))
+                      {{ calib2 and not dis2 and online2 and is_state('input_boolean.zendure_emergency_u2','off') and is_state('input_boolean.zendure_vguard_u2','off') and (s2_pv_low_stable | bool)
                          and not (temp_charge_block_u2 | bool)
                          and (limit_calib_u2 | int(0)) > 0
                          and (allow_ac | bool)
@@ -5427,11 +5554,10 @@ automation:
                           mode: "Input mode"
                           force: true
                       - action: script.zendure_set_u2_outputlimit_zero
-                  - action: mqtt.publish
+                  - action: script.zendure_dispatch_u2_chargelimit
                     data:
-                      topic: !secret zendure_topic_u2_number_chargeMaxLimit_set
-                      payload: "{{ limit_calib_u2|int }}"
-                      qos: 1
+                      power: "{{ limit_calib_u2|int }}"
+                      force: true
                   - action: script.zendure_dispatch_u2_inputlimit
                     data:
                       power: "{{ limit_calib_u2|int }}"
@@ -5439,7 +5565,7 @@ automation:
               - conditions:
                   - condition: template
                     value_template: >
-                      {{ calib2 and not dis2 and online2 and is_state('input_boolean.zendure_emergency_u2','off') and is_state('input_boolean.zendure_vguard_u2','off') and s2_solar >= (pv_high|float(70))
+                      {{ calib2 and not dis2 and online2 and is_state('input_boolean.zendure_emergency_u2','off') and is_state('input_boolean.zendure_vguard_u2','off') and (s2_pv_high_stable | bool)
                       and (
                           states('input_text.zendure_ac_mode_u2') != 'Output mode'
                           or curr_limit_u2|int(-1) != 0
@@ -5452,16 +5578,107 @@ automation:
                     data:
                       power: 0
                       force: true
-                  - action: mqtt.publish
+                  - action: script.zendure_dispatch_u2_chargelimit
                     data:
-                      topic: !secret zendure_topic_u2_number_chargeMaxLimit_set
-                      payload: "{{ limit_calib_u2|int }}"
-                      qos: 1
+                      power: "{{ limit_calib_u2|int }}"
+                      force: true
                   - action: script.zendure_dispatch_u2_ac_mode
                     data:
                       mode: "Output mode"
                       force: true
                   - action: script.zendure_set_u2_outputlimit_zero
+
+  # --- 6.8a.1 INPUTLIMIT CLEANUP AFTER OUTPUT MODE ---
+  - alias: "Zendure: InputLimit Cleanup After Output Mode"
+    id: "zendure_inputlimit_cleanup_after_output_mode"
+    mode: restart
+    initial_state: true
+    max_exceeded: silent
+    triggers:
+      - trigger: homeassistant
+        event: start
+      - trigger: time_pattern
+        minutes: "/5"
+      - trigger: state
+        entity_id: input_boolean.zendure_auto_mode
+        to: "on"
+      - trigger: state
+        entity_id:
+          - sensor.solarflow_1_ac_mode
+          - input_text.zendure_ac_mode_u1
+        to: "Output mode"
+      - trigger: state
+        entity_id:
+          - sensor.solarflow_2_ac_mode
+          - input_text.zendure_ac_mode_u2
+        to: "Output mode"
+      - trigger: state
+        entity_id:
+          - input_boolean.zendure_calib_mode_u1
+          - input_boolean.zendure_calib_discharge_u1
+          - input_boolean.zendure_emergency_u1
+          - input_boolean.zendure_vguard_u1
+          - input_boolean.zendure_calib_mode_u2
+          - input_boolean.zendure_calib_discharge_u2
+          - input_boolean.zendure_emergency_u2
+          - input_boolean.zendure_vguard_u2
+        to: "off"
+      - trigger: state
+        entity_id:
+          - sensor.solarflow_1_input_limit
+          - sensor.solarflow_2_input_limit
+    conditions:
+      - condition: state
+        entity_id: input_boolean.zendure_auto_mode
+        state: "on"
+    actions:
+      # Gives the hub and MQTT readback a short window to settle after AC-mode changes.
+      - delay:
+          seconds: 15
+      - variables:
+          u1_online: "{{ states('sensor.solarflow_1_status_raw')|upper not in ['UNAVAILABLE','UNKNOWN','FAULT','ERROR'] }}"
+          u2_online: "{{ states('sensor.solarflow_2_status_raw')|upper not in ['UNAVAILABLE','UNKNOWN','FAULT','ERROR'] }}"
+          u1_input_raw: "{{ states('sensor.solarflow_1_input_limit') }}"
+          u2_input_raw: "{{ states('sensor.solarflow_2_input_limit') }}"
+          u1_input_now: >
+            {{ u1_input_raw | int(states('input_number.zendure_last_inputlimit_u1') | int(0))
+               if is_number(u1_input_raw) else states('input_number.zendure_last_inputlimit_u1') | int(0) }}
+          u2_input_now: >
+            {{ u2_input_raw | int(states('input_number.zendure_last_inputlimit_u2') | int(0))
+               if is_number(u2_input_raw) else states('input_number.zendure_last_inputlimit_u2') | int(0) }}
+          u1_normal_output_safe: >
+            {{ (u1_online | bool)
+               and states('sensor.solarflow_1_ac_mode') == 'Output mode'
+               and states('input_text.zendure_ac_mode_u1') == 'Output mode'
+               and is_state('input_boolean.zendure_calib_mode_u1','off')
+               and is_state('input_boolean.zendure_calib_discharge_u1','off')
+               and is_state('input_boolean.zendure_emergency_u1','off')
+               and is_state('input_boolean.zendure_vguard_u1','off') }}
+          u2_normal_output_safe: >
+            {{ (u2_online | bool)
+               and states('sensor.solarflow_2_ac_mode') == 'Output mode'
+               and states('input_text.zendure_ac_mode_u2') == 'Output mode'
+               and is_state('input_boolean.zendure_calib_mode_u2','off')
+               and is_state('input_boolean.zendure_calib_discharge_u2','off')
+               and is_state('input_boolean.zendure_emergency_u2','off')
+               and is_state('input_boolean.zendure_vguard_u2','off') }}
+      - parallel:
+          - if:
+              - condition: template
+                value_template: "{{ (u1_normal_output_safe | bool) and (u1_input_now | int(0)) != 0 }}"
+            then:
+              - action: script.zendure_dispatch_u1_inputlimit
+                data:
+                  power: 0
+                  force: true
+          - if:
+              - condition: template
+                value_template: "{{ (u2_normal_output_safe | bool) and (u2_input_now | int(0)) != 0 }}"
+            then:
+              - action: script.zendure_dispatch_u2_inputlimit
+                data:
+                  power: 0
+                  force: true
 
   # --- 6.8b AUTO-EMERGENCY MANAGER (PER-UNIT) ---
   - alias: "Zendure: VGuard -> Emergency Bridge (Low-SoC)"
@@ -6225,7 +6442,7 @@ automation:
         data: { value: 10 }
       - action: input_number.set_value
         target: { entity_id: input_number.zendure_conf_min_change }
-        data: { value: 5 }
+        data: { value: 8 }
 
       - delay: "00:00:05"
       - parallel:
@@ -6504,8 +6721,8 @@ automation:
               - condition: template
                 value_template: >
                   {% set ups = states('sensor.ups_status') | lower %}
-                  {% set d1 = states(states('input_text.zendure_gridoffmode_entity_u1')) %}
-                  {% set d2 = states(states('input_text.zendure_gridoffmode_entity_u2')) %}
+                  {% set d1 = states(states('input_text.zendure_gridoffmode_entity_u1')) | lower %}
+                  {% set d2 = states(states('input_text.zendure_gridoffmode_entity_u2')) | lower %}
                   {{ ('on battery' in ups or 'ob' in ups or 'discharging' in ups) and
                      (d1 == 'off' or d2 == 'off') }}
             sequence:
@@ -6535,10 +6752,10 @@ automation:
               - condition: template
                 value_template: >
                   {% set ups = states('sensor.ups_status') | lower %}
-                  {% set d1 = states(states('input_text.zendure_gridoffmode_entity_u1')) %}
-                  {% set d2 = states(states('input_text.zendure_gridoffmode_entity_u2')) %}
+                  {% set d1 = states(states('input_text.zendure_gridoffmode_entity_u1')) | lower %}
+                  {% set d2 = states(states('input_text.zendure_gridoffmode_entity_u2')) | lower %}
                   {{ ('online' in ups or 'ol' in ups) and
-                     (d1 == 'Normal mode' or d2 == 'Normal mode') }}
+                     (d1 == 'normal mode' or d2 == 'normal mode') }}
             sequence:
               - action: mqtt.publish
                 data:
