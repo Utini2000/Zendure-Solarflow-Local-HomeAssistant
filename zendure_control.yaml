@@ -467,6 +467,7 @@ mqtt:
         {% set v = value | float(none) %}
         {% if v is none %} {{ 'unavailable' }}
         {% elif v > 1000 %} {{ ((v - 2731) / 10) | round(1) }}
+        {% elif v > 150 %} {{ (v - 273.1) | round(1) }}
         {% else %} {{ v }} {% endif %}
 
     - name: "SolarFlow 1 Heizung"
@@ -504,6 +505,7 @@ mqtt:
         {% set v = value | float(none) %}
         {% if v is none %} {{ 'unavailable' }}
         {% elif v > 1000 %} {{ ((v - 2731) / 10) | round(1) }}
+        {% elif v > 150 %} {{ (v - 273.1) | round(1) }}
         {% else %} {{ v }} {% endif %}
 
     - name: "SolarFlow 1 Cell Max Vol"
@@ -677,6 +679,7 @@ mqtt:
         {% set v = value | float(none) %}
         {% if v is none %} {{ 'unavailable' }}
         {% elif v > 1000 %} {{ ((v - 2731) / 10) | round(1) }}
+        {% elif v > 150 %} {{ (v - 273.1) | round(1) }}
         {% else %} {{ v }} {% endif %}
 
     - name: "SolarFlow 2 Heizung"
@@ -714,6 +717,7 @@ mqtt:
         {% set v = value | float(none) %}
         {% if v is none %} {{ 'unavailable' }}
         {% elif v > 1000 %} {{ ((v - 2731) / 10) | round(1) }}
+        {% elif v > 150 %} {{ (v - 273.1) | round(1) }}
         {% else %} {{ v }} {% endif %}
 
     - name: "SolarFlow 2 Cell Max Vol"
