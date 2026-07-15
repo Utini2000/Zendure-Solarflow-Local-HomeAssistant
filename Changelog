@@ -1785,4 +1785,22 @@
 # Changes V170:
 # - Added an automation "InputLimit Cleanup After Output Mode" which checks and sets the correct Input/Output Mode after calibration
 #
+# Changes V171:
+# - Added compatibility for SolarFlow 800 Pro / Pro 2 firmware reporting temperatures
+#   as plain Kelvin values (for example 303.1 K) in addition to the existing deci-Kelvin format (for example 3031).
+# - Added BMS power plausibility filters for both units: values below 0 W or above 1200 W are marked unavailable to suppress impossible MQTT spikes.
+#
+# Beta:
+# - Implement binary_sensor.solarflow_pv_curtailment_suspected which is enabled when a surplus of sunlight pv energy that isn't being used is expected:
+#   * Auto mode is ON
+#   * AND at least one unit is really full
+#   * AND forecast says PV should be meaningfully higher than actual harvested PV
+#   * AND estimated hidden PV >= configured threshold
+#   * AND grid import is not high
+#   * AND battery discharge is below configured max discharge
+#   * AND no emergency / vguard / calibration / temp cooldown is active
+#   * AND condition remains true for 5 minutes
+# - Added binary_sensor.solarflow_confirmed_export_surplus which measures real surplus grid export which should theoretically never exist
+# - Added binary_sensor.excess_solar_available turns on when confirmed grid export exists OR forecast-based PV curtailment is suspected
+#
 ################################################################################
