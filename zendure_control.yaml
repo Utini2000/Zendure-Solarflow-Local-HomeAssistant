@@ -1,5 +1,5 @@
 ################################################################################
-#                   ZENDURE SOLARFLOW CONTROL PACKAGE (V170)                    #
+#                   ZENDURE SOLARFLOW CONTROL PACKAGE (V171)                    #
 ################################################################################
 #
 # DESCRIPTION:
@@ -467,6 +467,7 @@ mqtt:
         {% set v = value | float(none) %}
         {% if v is none %} {{ 'unavailable' }}
         {% elif v > 1000 %} {{ ((v - 2731) / 10) | round(1) }}
+        {% elif v > 150 %} {{ (v - 273.1) | round(1) }}
         {% else %} {{ v }} {% endif %}
 
     - name: "SolarFlow 1 Heizung"
@@ -492,6 +493,10 @@ mqtt:
       unit_of_measurement: "W"
       device_class: power
       state_class: measurement
+      value_template: >
+        {% set v = value | float(none) %}
+        {% if v is none or v < 0 or v > 1200 %} {{ 'unavailable' }}
+        {% else %} {{ v | round(0) }} {% endif %}
 
     - name: "SolarFlow 1 Battery Max Temp"
       unique_id: solarflow_1_batt_max_temp
@@ -504,6 +509,7 @@ mqtt:
         {% set v = value | float(none) %}
         {% if v is none %} {{ 'unavailable' }}
         {% elif v > 1000 %} {{ ((v - 2731) / 10) | round(1) }}
+        {% elif v > 150 %} {{ (v - 273.1) | round(1) }}
         {% else %} {{ v }} {% endif %}
 
     - name: "SolarFlow 1 Cell Max Vol"
@@ -677,6 +683,7 @@ mqtt:
         {% set v = value | float(none) %}
         {% if v is none %} {{ 'unavailable' }}
         {% elif v > 1000 %} {{ ((v - 2731) / 10) | round(1) }}
+        {% elif v > 150 %} {{ (v - 273.1) | round(1) }}
         {% else %} {{ v }} {% endif %}
 
     - name: "SolarFlow 2 Heizung"
@@ -702,6 +709,10 @@ mqtt:
       unit_of_measurement: "W"
       device_class: power
       state_class: measurement
+      value_template: >
+        {% set v = value | float(none) %}
+        {% if v is none or v < 0 or v > 1200 %} {{ 'unavailable' }}
+        {% else %} {{ v | round(0) }} {% endif %}
 
     - name: "SolarFlow 2 Battery Max Temp"
       unique_id: solarflow_2_batt_max_temp
@@ -714,6 +725,7 @@ mqtt:
         {% set v = value | float(none) %}
         {% if v is none %} {{ 'unavailable' }}
         {% elif v > 1000 %} {{ ((v - 2731) / 10) | round(1) }}
+        {% elif v > 150 %} {{ (v - 273.1) | round(1) }}
         {% else %} {{ v }} {% endif %}
 
     - name: "SolarFlow 2 Cell Max Vol"
