@@ -1790,6 +1790,313 @@
 #   as plain Kelvin values (for example 303.1 K) in addition to the existing deci-Kelvin format (for example 3031).
 # - Added BMS power plausibility filters for both units: values below 0 W or above 1200 W are marked unavailable to suppress impossible MQTT spikes.
 #
+# Changes V171.1 (Closed-Loop Reliability & Efficiency):
+# 1. CONTROL STATE SEPARATION:
+#    - Kept `zendure_last_sent_1/2` as backward-compatible entity IDs, but they
+#      now store DESIRED output only.
+#    - Added separate LAST-DISPATCHED and CONFIRMED MQTT readback helpers.
+# 2. ANTI-DRIFT OWNERSHIP FIX:
+#    - Device readback can no longer overwrite the desired setpoint while Auto
+#      Mode is active. Manual/off-mode synchronization remains available.
+# 3. PERSISTENT ACK RECOVERY:
+#    - Added continuous 5s/10s/30s/60s retry backoff with AC-mode re-assertion.
+#      There is no longer a 60-second recovery blind spot.
+# 4. EXPORT RECOVERY:
+#    - Persistent export below -80W for 3 seconds plus a command mismatch forces
+#      an immediate resend or safety 0W clamp.
+# 5. TRUE MQTT FRESHNESS:
+#    - Added per-topic receive timestamps for Status, Output, OutputLimit, PV,
+#      SoC, Vmin, Battery temperature and Hub temperature.
+# 6. BREAK-BEFORE-MAKE DISPATCH:
+#    - Dual-unit redistribution lowers output first, briefly verifies the drop,
+#      and only then permits the opposite unit to increase.
+#    - Generation tokens prevent stale control-loop runs from winning races.
+# 7. COHERENT DIAGNOSTICS:
+#    - Added raw asynchronous total output, coherent total output, commanded
+#      total output and Unit timestamp-skew sensors.
+# 8. LOW-LOAD EFFICIENCY:
+#    - Below 100W, one suitable unit is preferred where possible.
+#    - Sub-30W fragments are reallocated so no active unit is intentionally run
+#      below the configured 30W inverter efficiency floor.
+# 9. TEMPERATURE DATA SAFETY:
+#    - Last valid temperatures are held for at most 30 seconds; afterwards the
+#      affected unit fails closed with dedicated `battery_temp_invalid` or
+#      `hub_temp_invalid` diagnostics instead of a fake cooldown temperature.
+# 10. LIMIT CONSISTENCY:
+#     - `zendure_conf_max_output` and the central pair dispatcher enforce the
+#       configured system ceiling, capped at 800W.
+# 11. GRID SOURCE CENTRALIZATION:
+#     - All control logic now uses the single `sensor.zendure_grid_power` proxy.
+# 12. CLEANUP & DATABASE HYGIENE:
+#     - Removed obsolete control variables and duplicate source paths.
+#     - Removed measurement statistics from setting/readback entities where they
+#       do not represent physical measurements.
+#
+# Changes V172 (Traffic-Optimized Recovery):
+# - SINGLE EXPORT RETRY: A continuous export episode can trigger only one immediate resend per unit. Further attempts use the normal ACK backoff.
+# - CALMER ACK BACKOFF: Retry timing changed from 5s/10s/30s/60s to 10s/30s/60s. The duplicate generic drift-retry path in the main control
+#   loop was removed; normal unchanged-target retries now have one clear owner. Immediate safety-zero paths remain independent by design.
+# - OFFLINE ANTI-SPAM: An offline/stale unit receives only one best-effort 0W clamp per offline episode. No repeated MQTT writes are sent while absent.
+# - RECONNECT SAFETY: After the unit is online again, one fresh 0W clamp is sent and the offline latch is cleared before normal regulation resumes.
+#   These 0W clamps are direct lowering commands and cannot be cancelled by a newer normal control generation.
+# - AC-MODE RATE LIMIT: Output mode is no longer sent with every retry. It is asserted once after about 20s, thereafter only on a real mode mismatch with
+#   a 20s guard, or at most every 5 minutes during an unresolved ACK cycle.
+# - TRAFFIC RESULT: No additional Zendure read requests. Normal-operation write volume remains unchanged; fault/recovery writes are now strictly bounded.
+# - BASE: Based on V172 Closed-Loop Reliability & Efficiency. No new secrets.yaml keys are required.
+#
+# Changes V173 (Telemetry Stability / Invalid-Flapping Fix):
+# 1. TEMPERATURE LAST-GOOD WINDOW:
+#    - Increased the Battery- and Hub-temperature last-good window from 30s to
+#      300s, aligned with the unit heartbeat timeout.
+#    - Expiry evaluation now runs every 15s instead of every 5s, reducing
+#      internal template churn without affecting real temperature updates.
+# 2. TRANSIENT MQTT PAYLOAD FILTER:
+#    - Hub temperature, Battery temperature and Cell Min/Max Voltage sensors now
+#      keep their last plausible value when a single empty, zero or malformed
+#      MQTT payload arrives.
+#    - Genuine low cell voltages remain visible and continue to trigger all
+#      existing hard protection paths; only implausible 0/invalid samples are held.
+# 3. SEPARATE SAFETY FRESHNESS:
+#    - Battery temperature, Hub temperature, Vmin and SoC are checked against
+#      their own MQTT receive timestamps with a 300s safety window.
+#    - Output- and PV-topic timing no longer invalidates the complete unit; those
+#      values keep their dedicated command/readback fallback behavior.
+# 4. DIAGNOSTIC DEBOUNCE:
+#    - Block Reason now distinguishes `telemetry_initializing`, `vmin_stale`,
+#      `battery_temp_stale` and `hub_temp_stale` from truly invalid values.
+#    - This removes the repeating battery_temp_invalid / hub_temp_invalid /
+#      vmin_invalid / freigegeben cycle caused by the former 30s expiry.
+# 5. SOC ENTITY DECOUPLING:
+#    - Battery-level availability no longer depends on temperature or cell-
+#      voltage entities. Each safety signal is validated independently.
+# 6. BASE:
+#    - Based on V172.2. No additional Zendure read/write commands and no new
+#      secrets.yaml keys are introduced.
+# 7. Additionally:
+# - input_number.zendure_last_sent_1/2 remain as backward-compatible entity IDs, but now represent DESIRED output only.
+# - Last dispatched commands and confirmed MQTT readbacks are stored separately.
+# - Output commands use traffic-aware ACK recovery: one immediate retry per export episode, followed by 10s/30s/60s bounded backoff.
+# - Offline 0W safety commands are sent once per offline episode and once again after reconnect; they are never spammed while a unit is absent.
+# - AC-Mode is re-asserted once after ~20s, on a real mode mismatch with a 20s guard, or as a maximum 5-minute keepalive during an open ACK cycle.
+# - Dual-unit redistributions are break-before-make: required decreases must be confirmed; a timeout blocks the opposing increase.
+# - Critical MQTT topics have explicit receive timestamps; slow-changing safety telemetry uses a 300-second last-good window and rejects transient bad payloads.
+# - All grid-control logic consumes the single proxy sensor.zendure_grid_power.
+# - Template sensor definitions are compatible with the current Home Assistant schema; unsupported entity_category keys were removed from template sensors.
+# - Existing secrets.yaml keys are reused; V172.3 introduces no new secrets.
+#
+# CHANGES V174 (Hybrid Safe-Headroom / Latest-Target Dispatch):
+# - Replaced the blocking two-phase Break-Before-Make wait with a non-blocking Safe-Headroom dispatcher. Normal commands are dispatched immediately and in
+#   parallel; only the rising side of an opposing transfer is temporarily capped.
+# - The safe cap reserves the highest known effective output of the other unit: desired, last-dispatched, confirmed OutputLimit, and fresh actual output power.
+# - Removed pair_busy, pair_done, grid_headroom_ok, forced companion reductions, and forced paired-transfer writes. The normal 2-second loop performs any
+#   remaining top-up after the lowering unit has really reduced its output.
+# - Output dispatch scripts now use restart/latest-target-wins instead of queued execution, so a current reduction or 0W safety command cannot wait behind old
+#   positive targets.
+# - Removed the additional per-unit output ramp in normal operation. The existing low-SoC total soft-start, safety caps, unit limit, system limit, hysteresis,
+#   minimum-change filter, and command cooldown remain active.
+# - A pending ACK blocks only small follow-up corrections. A materially newer target (>= max(min_change, 30W)) may supersede it after the normal cooldown.
+# - Desired remains the regulator's final target, Last Dispatched records the actually published (possibly temporary safe) command, and Confirmed remains
+#   the MQTT readback. ACK tracking now compares Dispatched vs Confirmed.
+# - ACK/export recovery, MQTT freshness, 800W per-unit limit, and the configurable total system limit remain intact.
+#
+# CHANGES V175 (Split-Loop Trim Controller / Event-Driven Transfer):
+# - Split the control architecture into two independent loops:
+#   * FAST TOTAL CONTROLLER: follows grid changes immediately and adjusts mainly
+#     one stable Trim Unit. It no longer recalculates the SoC/PV/temperature split
+#     on every 2-second run.
+#   * SLOW UNIT BALANCER: evaluates SoC, PV, temperature and cell-voltage fairness
+#     every 30 seconds, only after a configurable stable-grid period and only for
+#     material transfers (default >=100W, max one transfer per minute).
+# - Normal load changes now modify the Trim Unit first and use the second unit only when the Trim Unit reaches 0W or its active cap. This sharply reduces opposing
+#   unit writes and prevents fast appliance cycling from constantly rebalancing.
+# - Added an event-driven pending-transfer state machine. If a true opposing transfer could exceed the configured system limit, the lowering command is sent
+#   first and the rising command is released immediately by fresh OutputLimit or actual-output readback; it no longer waits for the next 2-second control tick.
+# - Pending transfers carry a dispatch generation and are invalidated when a newer material total/safety target arrives. Stale second-stage commands are therefore
+#   never executed after a cooker/heater load has changed again.
+# - During a valid transfer the expected temporary power deficit is removed from the grid feedback calculation. The fast controller therefore does not fight the
+#   planned break-before-make gap or create artificial follow-up commands.
+# - The former generic Hybrid Safe-Headroom top-up-on-next-loop behavior was removed. The pair dispatcher now either sends a safe pair immediately or records one
+#   explicit transfer and lets the readback continuation complete it.
+# - Added configurable helpers for minimum rebalance size and stable-grid time, plus internal helpers for Trim Unit, effective caps and transfer diagnostics.
+# - Existing ACK/export recovery, MQTT freshness, OutputLimit long-term statistics, per-unit 800W cap, configurable total system cap, calibration, emergency,
+#   VGuard, bypass and temperature protections remain active.
+#
+# CHANGES V176 (Transactional Split-Loop Hardening):
+# - OUTPUT WRITER TRANSACTIONS: OutputLimit writers now use short queued transactions with generation checks immediately before publish. MQTT is
+#   published before Last-Dispatched/Pending memory is committed, eliminating phantom commands when a restart/latest-target run is superseded.
+# - GRID-METER FREEZE GUARD: Restored V171-style source freshness validation. The grid proxy now expires after 30 seconds without a fresh source report;
+#   a stale meter may only reduce output toward the configured failsafe and can never increase discharge from the previous dispatched level.
+# - MATERIAL EVENT GATE: Sub-15W meter changes are rejected as top-level automation conditions, so they no longer cancel a running material control
+#   calculation in restart mode.
+# - PHYSICAL TRANSFER ACK: The second stage of a unit-to-unit transfer is now released only by fresh physical outputHomePower after the lowering command.
+#   OutputLimit readback remains a command ACK but is no longer accepted as proof that inverter power has physically fallen.
+# - ATOMIC TRANSFER ARMING: Transfer metadata is written while Pending is OFF; the lower command is published first, and Pending is armed only afterwards.
+#   Partial/restarted metadata can therefore never launch a second-stage raise.
+# - HARD LIMIT DEFENSE-IN-DEPTH: Removed pair_validated bypass semantics. Every unit writer rechecks current unit/system limits and a conservative peer
+#   reservation immediately before MQTT publish. A transfer continuation may use a lower physical reservation only while its current generation and fresh
+#   post-command output measurement are both still valid.
+# - STRICT ACK OWNERSHIP: In Auto mode a readback acknowledges only the latest Last-Dispatched value received after its dispatch timestamp. Desired values
+#   can no longer be learned as if they had already been sent.
+# - STATE SEMANTICS: Desired was removed from all physical-output, ghost-load and peer-reservation estimates. Physical hierarchy is Actual -> fresh Confirmed
+#   -> Last Dispatched.
+# - TRANSFER TIMEOUT/TRAFFIC: Transfer continuation now watches physical output only, uses a 2-second fallback check, latest-state restart semantics and a
+#   15-second hard timeout instead of a 60-second queued path.
+# - BALANCER REFINEMENT: Temperature weighting is now separate, continuous and milder for Battery and Hub thresholds. Balancing is also blocked during
+#   recent dispatch/retry activity in addition to open ACKs.
+# - CONSISTENCY: All system-limit fallbacks use 1000W. AC-mode helper memory is committed only after its MQTT publish. OutputLimit state_class measurement,
+#   the per-unit 800W helper and configurable total-system helper are retained.
+# - DIAGNOSTICS: Added sensor.zendure_dispatch_state with Desired, Dispatched, Confirmed, generation, transfer and pending-ACK attributes. No new secrets
+#   and no active Zendure read requests are introduced.
+#
+# CHANGES V177 (Traffic-Coalesced Control / Anti-Flood):
+# - NORMAL TIMING RETAINED: The field-tested command gates remain unchanged: 1.5s for fast events, 2.0s for reductions and 2.5s for increases.
+# - SINGLE RETRY OWNER: The normal pair dispatcher no longer writes again merely because Confirmed differs from Last-Dispatched. ACK/export/import recovery is
+#   now the only owner of unchanged-target retries.
+# - LATEST-TARGET COALESCING: Normal fast/slow controller calls re-read the newest Desired value when their short writer transaction actually runs. Intermediate
+#   targets are discarded; stale generations are dropped and queued normal runs become no-ops when the newest Desired value has already been dispatched.
+# - ACK RACE SELF-HEALING: Pending ACK is cleared both from MQTT readback and from the periodic recovery path when a post-dispatch readback or fresh physical
+#   output already proves the command effective. Publish/commit ordering remains transactional and a post-publish check catches very fast replies.
+# - EFFECT-AWARE RETRIES: A delayed OutputLimit readback alone no longer causes a resend. Retry additionally requires real over/under-production, a material
+#   grid error, or a safety-zero mismatch. Existing 10s/30s/60s backoff remains.
+# - ONE-SHOT IMPORT RECOVERY: Persistent import above the configured bias can trigger one fast retry per episode when physical output remains materially
+#   below the dispatched target; later retries use the bounded ACK backoff.
+# - ADAPTIVE ANTI-FLOOD: Six actual OutputLimit publishes within a 30s window arm a 60s per-unit traffic guard. During it, normal minimum change rises to 20W
+#   and the slow balancer pauses; safety-zero and heavy-export reductions bypass it.
+# - 5W COMMAND QUANTIZATION: Normal output targets are rounded down to 5W steps,
+#   preserving all hard caps while eliminating low-value command churn.
+# - EFFECTIVE TOTAL OUTPUT: The main total-output sensor now uses fresh physical power, then fresh OutputLimit, then Last-Dispatched. Raw asynchronous and
+#   coherent diagnostic totals remain available separately.
+# - SMARTMODE STARTUP DEDUPE: SmartMode writes are centralized and rate-limited, preventing duplicate boot/season bursts without adding any read request.
+# - NO PROTOCOL CHANGE: QoS 1, all existing MQTT topics, safety paths, per-unit 800W limit and configurable total-system limit are retained. No active Zendure
+#   read request and no new secrets.yaml key are introduced.
+#
+# CHANGES V178 (Writer Hardening / Degraded Temperature Fallback):
+# - TEMPERATURE DEGRADATION INSTEAD OF FALSE ZERO: either valid battery or valid hub temperature is sufficient to keep a unit usable. With only one channel,
+#   the unit is conservatively capped by a configurable degraded-temperature cap; only loss of both temperature sources fails closed.
+# - FINAL WRITER TOKEN BUCKET: every non-emergency OutputLimit publish, including forced transfer and ACK/recovery writes, is checked immediately before MQTT.
+#   A configurable five-token bucket refills one token every four seconds by default, preserving the field-tested 1.5/2.0/2.5-second command gates while
+#   preventing sustained command floods.
+# - PRIORITY EMERGENCY ZERO: the first real safety 0W command uses a dedicated per-unit writer outside the normal queue. It may bypass the token bucket once;
+#   later retries are deduplicated and use the normal bounded writer budget.
+# - QUEUE DIAGNOSTICS RESTORED: Output writers no longer suppress max-exceeded warnings. Safety-zero traffic is no longer able to wait behind a saturated
+#   normal command queue.
+# - EVENT-DRIVEN ACK RECOVERY: removed the 2-second ACK polling loop. Per-unit timers now schedule retry evaluation; MQTT readback/physical-output events
+#   still self-heal pending state immediately.
+# - EVENT-DRIVEN UNIT TRANSFER: removed the 2-second transfer polling loop. Physical output MQTT messages release a transfer immediately; a dedicated
+#   timeout timer bounds it. Observed outputHomePower intervals are recorded and may extend the timeout conservatively for slow device telemetry.
+# - LOWER HA SCHEDULER LOAD: grid freshness now reconciles every 10s, temperature expiry every 30s, and the fixed-window burst-reset automation was removed.
+# - SETTING-WRITE DEDUPE: forced AC-mode/InputLimit/ChargeLimit calls may bypass their normal cooldown only when the requested setting actually differs. A
+#   recent identical AC-mode command is never repeated solely because readback lags.
+# - PUBLISH AUDIT: every actual OutputLimit publish fires the internal event zendure_outputlimit_publish and updates a compact per-unit last-publish helper
+#   with target, source, generation, force/bypass and budget information.
+# - MONITORING SEMANTICS: sensor.solarflow_system_total_output keeps its entity ID but is labelled Effective Output. Coherent physical, raw asynchronous and
+#   timestamp-skew diagnostics remain separate for auditing.
+# - LIMIT INTENT RETAINED: 800W per unit and the explicitly requested configurable combined limit up to 1000W remain unchanged. No active Zendure read request,
+#   MQTT topic, QoS setting or secrets.yaml key was added.
+#
+# CHANGES V179 (Production Hardening / Unified Write Governance):
+# - EMERGENCY-ZERO SINGLE OWNERSHIP: only the dedicated priority-zero writer may bypass the OutputLimit token bucket. The normal output writers are always
+#   budgeted, including forced and recovery calls.
+# - FLAP-SAFE EMERGENCY REARM: an unbudgeted 0W command is limited by a per-unit timestamp and latch. The latch is rearmed only after a positive command is
+#   acknowledged or physically visible and the unit remains healthy for 10s.
+# - RESERVED REDUCTION TOKEN: normal increases require one additional available OutputLimit token, preserving one token for a later reduction. Reductions and
+#   bounded 0W retries still require only one token; field-tested timing gates are unchanged.
+# - CONFIGURATION WRITE GOVERNOR: SmartMode, AC mode, InputLimit, ChargeMaxLimit, MinSoC and GridOffMode now share a separate per-unit token
+#   bucket. Configuration traffic can no longer consume OutputLimit capacity.
+# - INPUT/CHARGE PUBLISH OWNERSHIP: InputLimit and ChargeMaxLimit now keep separate last-readback, last-published-target and last-publish-time state.
+#   Identical forced targets cannot repeat more often than every 15 seconds.
+# - UNIFIED CHARGE TEMPERATURE POLICY: all emergency, calibration and regular AC charging paths use the same temperature cap. Both sensors valid gives normal
+#   derating; one valid sensor gives a configurable conservative cap; neither valid source permits AC charging. Missing telemetry is never treated as 0C.
+# - TRANSFER COLD-START HARDENING: base timeout is 30s. The most recent five physical output-message intervals are retained; after at least three samples,
+#   the timeout adapts to their recent maximum, capped at 90s. Slow balancing is held until physical telemetry cadence is known.
+# - TEST DIAGNOSTICS: Calibration AC Fallback and all final writer queues emit max-exceeded warnings. Output and configuration publishes retain audit events.
+# - RETAINED: 800W per unit, configurable 1000W system limit, QoS 1, all existing MQTT topics/secrets, 1.5/2.0/2.5s field-tested command gates and zero active
+#   Zendure read requests.
+#
+# CHANGES V180 (Wire Governance / Retry Semantics / Restart Persistence):
+# - EMERGENCY REARM CORRECTION: the one-shot unbudgeted 0W path can only rearm after a genuinely positive command was published after the last emergency
+#   zero and was then confirmed or physically observed during a stable healthy period. Bypass and all active low-SoC/voltage restart guards block rearming.
+# - PHYSICAL RETRY DIRECTION: unchanged retries are classified from the missing physical effect, not only from Target versus Last-Dispatched. Ignored
+#   reductions therefore retry as reductions and retain priority over increases.
+# - RESTART-PERSISTENT GOVERNORS: Output/config tokens, their refill timestamps, emergency-zero latches and emergency timestamps now restore across HA
+#   restarts. A one-time conservative bootstrap is used only when no valid state exists, preventing restart loops from repeatedly refilling all budgets.
+# - PER-UNIT FINAL WIRE GOVERNOR: all normal OutputLimit and configuration MQTT writes share one serialized per-unit publish boundary with the proven 1.2s
+#   minimum wire gap. Separate Output and Config token buckets remain intact.
+# - CONFIG LATEST-INTENT COALESCING: every writable property has an explicit current desired value. Queued configuration commands are revalidated at the
+#   final wire boundary and stale payloads are discarded instead of replayed.
+# - DEFERRED OUTPUT RETRY: a first command delayed by tokens or the final timing gate now receives its own short writer timer even when no prior ACK-pending
+#   state exists. This is distinct from the post-publish ACK retry timer.
+# - TRANSFER COLD START: until three physical output intervals are known for both devices, safety-critical lower-first transfers use a conservative 90s timeout;
+#   normal slow balancing remains suppressed until cadence is known.
+# - PROTOCOL RANGE: MinSoC dispatch and helper limits are clamped to the documented 0..50 percent range.
+# - RETAINED: 800W maximum per unit, configurable 1000W combined output, field-tested 1.5/2.0/2.5s regulation gates, QoS 1 and zero active Zendure reads.
+#
+# CHANGES V181 (Precise Wire Timing / Deferred Safety Context / Startup Race Hardening):
+# - SUBSECOND TIMING FIX: all time-critical input_datetime reads now use the precise timestamp attribute. The configured 1.2s shared wire gap, ACK order,
+#   token refill and Emergency timestamps therefore retain fractional seconds.
+# - DEFERRED CONTEXT PRESERVATION: blocked output commands retain target, force, safety-zero, mode, generation, source, coalescing and peer-reservation state.
+#   Ignored reductions and bounded 0W retries cannot disappear after deferral.
+# - AUTO-OFF ZERO RECOVERY: Deferred and ACK recovery continue only for a desired 0W target while Auto Mode is OFF; every positive target remains prohibited.
+# - STARTUP WRITER BARRIER: persistent first-initialization state is separated from a per-start writers-ready flag. No writer can run before restored token,
+#   timestamp, latch, deferred and emergency-lock state has been validated.
+# - EMERGENCY WIRE LOCK: Priority 0W temporarily locks the per-unit normal wire, invalidates older generations and revalidates immediately before publish.
+# - FINAL BOUNDARY DEFENSE: desired state, generation, lock, 800W unit cap, 1000W system cap, peer reservation, command effect and token state are checked
+#   again at the actual MQTT publish boundary.
+# - CONFIG QUEUE HYGIENE: stale configuration intent is discarded both before token waiting and again at the final wire boundary; token accounting is
+#   refreshed at the actual publish time.
+# - 0W EFFECT DEDUPE: forced 0W retries are sent only while physical output, confirmed OutputLimit or grid export still proves that zero has not taken effect.
+# - RETAINED: field-tested 1.5/2.0/2.5s regulation gates, 1.2s normal shared wire gap, 800W per unit, configurable 1000W combined output, QoS 1 and zero active reads.
+#
+# CHANGES V182 (Startup Zero-Safety / Retry Continuity / Emergency Race Closure):
+# - STARTUP SYNC OWNERSHIP: startup synchronization now updates CONFIRMED output only. It never learns a positive device readback as DESIRED, never overwrites
+#   LAST-DISPATCHED unconditionally and clears Pending only for an unambiguous ACK received after the current dispatch. With Auto Mode OFF, Desired remains 0W
+#   and a still-positive readback or physical output immediately reasserts 0W.
+# - ZERO-FIRST RESET ORDER: every safe-reset and kill path now dispatches the priority OutputLimit 0W command before InputLimit or AC-mode cleanup. The 0W
+#   attempt is made regardless of current status telemetry; configuration cleanup follows only when the unit status is usable.
+# - DUAL-STALE EXPORT RECOVERY: if Desired and Last-Dispatched are 0W, both unit output telemetry channels are stale, and the independent grid meter still
+#   proves material export, the 0W Pending/ACK chain remains active instead of being soft-cleared. Existing token, wire-gap and 10/30/60s backoff limits apply.
+# - IDEMPOTENT EMERGENCY GENERATIONS: consecutive safety-zero generations cannot neutralize one another. A stale generation may finish an idempotent 0W publish
+#   while the current Desired value is still 0W; it is dropped only after a newer positive owner has taken control.
+# - RETAINED: precise timestamp attributes, complete deferred safety context, startup writer barrier, emergency wire locks, 1.2s shared normal wire gap,
+#   800W per unit, configurable 1000W combined output, QoS 1 and zero active reads.
+#
+# CHANGES V183 (Unified Zero-ACK / Live MQTT Ownership / Lock Recovery):
+# - UNIFIED SAFE 0W ACK: startup sync, live MQTT sync, final wire immediate ACK and ACK recovery now use the same rule. A 0W command is complete only when
+#   fresh physical output is <=30W, or physical output is unavailable while a valid grid meter proves that material export is no longer unresolved.
+# - NO OUTPUTLIMIT-ONLY ZERO SUCCESS: outputLimit=0 alone no longer clears Pending or cancels the ACK timer while physical output is stale and the
+#   independent grid meter still shows export.
+# - LIVE MQTT OWNERSHIP HARDENING: the MQTT readback automation updates CONFIRMED only. It no longer learns positive DESIRED/LAST-DISPATCHED values
+#   while Auto Mode is OFF; Kill-Switch semantics remain Desired=0W.
+# - DUAL-STALE ZERO CONTINUITY: the 0W retry chain remains active even with a fresh outputLimit=0 readback whenever physical telemetry is unavailable and
+#   the grid meter still proves material export. Existing token, wire-gap and 10/30/60s backoff limits continue to bound every retry.
+# - EMERGENCY LOCK WATCHDOG: a lock remaining active for 10s now stops a stuck priority script, releases the lock, preserves Desired=0W and starts a bounded
+#   0W retry with a warning instead of silently unlocking without recovery.
+# - RETAINED: four centralized MQTT publish boundaries, 1.2s shared normal wire gap, 800W per unit, configurable 1000W combined output, QoS 1 and no active reads.
+#
+# CHANGES V184 (Zero-Effect Closure / ACK Backoff Ownership / Export Reopen):
+# - WRITER ZERO-EFFECT FIX: all four OutputLimit decision boundaries now treat independent grid export as missing 0W effect even when a fresh outputLimit=0
+#   readback exists but physical outputHomePower is stale or unavailable.
+# - LIVE MQTT BACKOFF OWNERSHIP: MQTT readbacks may start a new 0W episode only when no Pending or Deferred safety-zero operation exists. An open episode is
+#   left to the bounded ACK timer instead of generating a write on every readback.
+# - TIMER SELF-HEAL: if Pending exists but its ACK timer is unexpectedly idle, Live MQTT restores the timer without publishing directly.
+# - LATE EXPORT REOPEN: a new persistent-export episode can reopen a completed Desired=0W operation when physical output is unknown, even if Confirmed and
+#   Last-Dispatched already read 0W.
+# - NO 1S UNVERIFIABLE LOOP: when both physical output and the independent grid meter are unavailable, Pending is retained but its next verification uses the
+#   full 10/30/60s interval instead of waking Home Assistant every second.
+# - RETAINED: four centralized MQTT publish boundaries, token budgets, 1.2s shared wire gap, 800W per unit, configurable 1000W combined output and QoS 1.
+#
+# CHANGES V185 (Ordered MQTT Readbacks / Lossless ACK Recovery):
+# - PER-UNIT MQTT ORDERING: the former shared parallel OutputLimit readback automation is split into independent U1 and U2 automations.
+#   Each uses queued mode so readbacks for the same unit are applied in arrival order, while both units remain able to process readbacks concurrently.
+# - ACK TRIGGER CONTINUITY: Output ACK Recovery now uses queued mode with a visible max-10 queue. A persistent-export/import, timer, readback or
+#   physical-output trigger is no longer silently discarded merely because an earlier recovery evaluation is still finishing.
+# - LATEST-STATE SAFETY: every queued recovery pass re-reads current Desired, Dispatched, Confirmed, physical output, grid state, generation and timers;
+#   obsolete queued evaluations therefore terminate as no-ops instead of replaying captured payloads or creating additional MQTT commands.
+# - ARRIVAL-TIME INTEGRITY: each MQTT trigger captures its receive timestamp before entering the queue, so a delayed queued run cannot misclassify an older readback
+#   as having arrived after a newer OutputLimit dispatch.
+# - RETAINED: unified safe 0W effect verification, 10/30/60s retry ownership, four final MQTT publish boundaries, token budgets, 1.2s shared wire gap,
+#   800W per unit, configurable 1000W combined output and zero active reads.
+#
 # Beta:
 # - Implement binary_sensor.solarflow_pv_curtailment_suspected which is enabled when a surplus of sunlight pv energy that isn't being used is expected:
 #   * Auto mode is ON
@@ -1804,3 +2111,4 @@
 # - Added binary_sensor.excess_solar_available turns on when confirmed grid export exists OR forecast-based PV curtailment is suspected
 #
 ################################################################################
+
