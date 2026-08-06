@@ -2097,6 +2097,70 @@
 # - RETAINED: unified safe 0W effect verification, 10/30/60s retry ownership, four final MQTT publish boundaries, token budgets, 1.2s shared wire gap,
 #   800W per unit, configurable 1000W combined output and zero active reads.
 #
+# Changes V186 to V194:
+# - !!!!!! New entries for secrets.yaml !!!!!!
+#   Please add to secrets.yaml:
+#   zendure_topic_u1_switch_smartMode:         "Zendure/switch/HUB1_SERIAL_NUMBER/smartMode"
+#   zendure_topic_u2_switch_smartMode:         "Zendure/switch/HUB2_SERIAL_NUMBER/smartMode"
+#
+# - We are now actively checking if smartmode was set correctly and is still being set correctly as it is published via MQTT.
+# - Control feedback uses Last Dispatched only; the conservative down-floor is exclusively a peer/system-limit reservation and never a feedback baseline.
+# - Down-floors are released only by post-dispatch physical outputHomePower evidence and are owned by target, precise timestamp and generation.
+# - Floor values are clamped to the 800 W hardware ceiling; diagnostics use the exact same conservative hierarchy as the final MQTT writer.
+# - SmartMode=1 is treated as a RAM-write prerequisite for all normal commands. It is sent as a controlled two-pulse confirmation on startup, reconnect,
+#   every six hours and the existing daily/season paths, without write spam.
+#   A rare AC-mode change additionally requires a SmartMode pair no older than five minutes, because AC-mode changes are especially flash-sensitive.
+# - Priority Emergency Zero remains independent and retains mode: single with max_exceeded: silent as explicitly requested.
+# - Retains V190 zero-export math, physical-only down-floor ownership, ordered per-unit MQTT readbacks, four centralized publish boundaries, token budgets,
+#   1.2-second shared wire gap, 800W per unit and 1000W combined system ceiling.
+# - Captures SmartMode MQTT receive timestamps in trigger variables at message arrival, before queued processing. Delayed/retained queue entries can no
+#   longer appear newer than the verification episode they predate.
+# - OFF evidence arms a bounded retry while either Verifying is ON or the SmartMode verification script is still finishing, closing the tail race.
+# - Adds a second full publish-edge revalidation after any down-floor arming and immediately before mqtt.publish. Generation, Desired, emergency lock,
+#   SmartMode and current unit/system headroom are re-read from live state.
+# - If that edge check fails, a floor armed by the current run is rolled back to its exact previous owner state; a newer or older floor is never cleared.
+# - SmartMode watchdog also performs a one-minute reload-safe local check and successful verification dismisses both normal and watchdog notifications.
+# - Wire audit events include SmartMode Ready/Actual/age/request/verifying state.
+# - No change to the fast controller, output/config token settings, QoS, MQTT topics, secrets, or active read traffic. Emergency Zero remains the deliberate
+#   safety exception to the verified SmartMode guard.
+# - Retains V191 zero-export math, physical-only down-floor ownership, ordered per-unit MQTT readbacks, four centralized publish boundaries, token budgets,
+#   1.2-second shared wire gap, 800W per unit and 1000W combined system ceiling.
+# - Accepts a late SmartMode=ON report only when its real MQTT receive timestamp belongs to the currently published verification episode. This closes the
+#   observed Ready-OFF deadlock without trusting arbitrary retained ON values.
+# - When SmartMode is unverified while material grid export persists, one priority Emergency-Zero is issued per unit/episode before bounded recovery.
+# - Grid-only 0W retries no longer blame a calibrating/busy unit when the peer's fresh over-output already explains the export. Strong per-unit physical or
+#   OutputLimit evidence still retries normally.
+# - Calibration AC fallback now uses stable semantic PV threshold sensors instead of triggering on every raw PV watt change; queue capacity and stored traces
+#   are increased for commissioning diagnostics.
+# - Slow balancing is capacity-aware and uses remaining usable Wh to weight the two batteries. The minimum transfer is adaptive to house load and SoC gap;
+#   the configured helper remains the normal baseline and defaults to 60W.
+# - The last important offline/fault/safety event is persisted in an input_text helper so a dismissed notification does not erase the diagnostic context.
+# - No explicit unit enable/disable helpers are introduced. Single-unit fallback behavior from V191 remains unchanged.
+# - Retains V192 SmartMode late-ACK recovery, export safety-zero, calibration debounce, adaptive capacity-aware balancing, four centralized MQTT publish
+#   boundaries, token budgets, 1.2-second wire gap, 800W per unit and 1000W total.
+# - A slow-balance attempt no longer starts its 60-second cooldown or changes the Trim Unit before a real OutputLimit MQTT publish occurs. The first actual
+#   slow_balance publish commits the cooldown and, only while its generation is still current, the intended Trim Unit. Superseded/no-op attempts have no
+#   successful-balance side effects.
+# - Battery-temperature soft caps at 50-55C use a conservative linear decay of the last PV evidence between 60 and 120 seconds instead of abruptly falling
+#   to the battery-only allowance at exactly 60 seconds. The stricter >=55C PV-only branch still requires the original fresh (<60s) PV evidence.
+# - Slow balancing no longer fails completely merely because PV telemetry is slower than 60 seconds. SoC, voltage and temperature remain mandatory; PV is
+#   used as a weighting input only while no older than 120 seconds, otherwise 0W.
+# - Pending diagnostics distinguish a delayed command (>30s) from a probable device/communication stall (>120s) and notify only for material command,
+#   physical or grid deviations. The compact evidence remains persisted.
+# - No explicit unit enable/disable helpers are introduced. Single-unit fallback behavior remains unchanged.
+# - Retains V193 SmartMode, zero-export, temperature-cap stability, physical down-floor, writer token budgets, 1.2-second per-unit wire gap, 800W/unit
+#   and configurable 1000W combined system limit.
+# - Slow balancing is now a two-stage transaction: MQTT wire commit first, physical outputHomePower effect commit second. A published command alone
+#   no longer starts the successful-balance cooldown or commits the trim anchor.
+# - Slow-balance ACK handling is source-aware. A global grid correction by the peer unit can no longer soft-clear a missing physical balance effect.
+# - Balance transactions record targets, pre-command physical output, wire ownership and an adaptive 30-90 second physical-effect timeout. Missing
+#   effects are bounded, diagnosed and back off before another balance attempt.
+# - A successful physical balance stores a target U1/U2 share. The fast loop follows it directionally: increases favor the unit below its share and
+#   reductions favor the unit above it. A 50W corridor keeps small corrections on one trim unit; only larger steps spill the remainder to the peer.
+# - Balance ownership uses the exact 5W-quantized wire targets and separate per-unit publish timestamps, including lower-first transfer releases.
+# - Adds a persistent diagnostic for a balance command that was published but did not become physically effective. No new MQTT topic or secret is needed.
+# - No explicit unit enable/disable helpers are introduced. Existing one-unit fallback behavior remains unchanged.
+#
 # Beta:
 # - Implement binary_sensor.solarflow_pv_curtailment_suspected which is enabled when a surplus of sunlight pv energy that isn't being used is expected:
 #   * Auto mode is ON
