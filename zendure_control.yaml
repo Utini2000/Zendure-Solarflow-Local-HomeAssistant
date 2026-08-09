@@ -1,5 +1,5 @@
 ################################################################################
-#                   ZENDURE SOLARFLOW CONTROL PACKAGE (V194)                    #
+#                   ZENDURE SOLARFLOW CONTROL PACKAGE (V197)                    #
 ################################################################################
 #
 # DESCRIPTION:
@@ -217,6 +217,17 @@ input_boolean:
     icon: mdi:transmission-tower-off
     initial: off
 
+  # V195: a Full-Priority latch can only be armed by a genuine, fresh
+  # 100% SoC event. It is runtime-only and must be earned again after HA start.
+  zendure_full_priority_u1:
+    name: "Intern: Voll-Prioritaet U1"
+    icon: mdi:battery-high
+    initial: off
+  zendure_full_priority_u2:
+    name: "Intern: Voll-Prioritaet U2"
+    icon: mdi:battery-high
+    initial: off
+
   zendure_calib_discharge_u1:
     name: "Status: Kalibrierung Entladen U1"
     icon: mdi:battery-arrow-down
@@ -287,6 +298,18 @@ input_text:
     name: "Zendure: Letztes Fehler-/Safety-Ereignis"
     max: 255
 
+  # V196: last execution stage of the priority-zero writer. If the lock watchdog
+  # fires, this identifies whether the script stalled before publish, during the
+  # safety-critical memory commit, or only in post-publish diagnostics.
+  zendure_emergency_stage_u1:
+    name: "Intern: Emergency Zero Stufe U1"
+    max: 64
+    initial: "idle"
+  zendure_emergency_stage_u2:
+    name: "Intern: Emergency Zero Stufe U2"
+    max: 64
+    initial: "idle"
+
   # V175: the fast loop keeps one stable unit as its primary trim actuator.
   zendure_trim_unit:
     name: "Intern: Fast-Regler Trim Unit"
@@ -302,6 +325,20 @@ input_text:
     initial: "none"
   zendure_balance_effect_diagnostic:
     name: "Zendure: Slow-Balance Wirkungsdiagnose"
+    max: 255
+    initial: "none"
+  zendure_pending_balance_mode:
+    name: "Intern: Pending Slow-Balance Modus"
+    initial: "normal"
+  zendure_balance_anchor_mode:
+    name: "Intern: Balance-Anker Modus"
+    initial: "normal"
+  zendure_full_priority_diagnostic:
+    name: "Zendure: Voll-Prioritaet Diagnose"
+    max: 255
+    initial: "inactive"
+  zendure_balance_last_result:
+    name: "Zendure: Letztes Balance-Ergebnis"
     max: 255
     initial: "none"
   zendure_pending_output_source_u1:
@@ -605,6 +642,26 @@ input_datetime:
     has_date: true
     has_time: true
     initial: "1970-01-01 00:00:00"
+  zendure_full_priority_since_u1:
+    name: "Intern: Voll-Prioritaet seit U1"
+    has_date: true
+    has_time: true
+    initial: "1970-01-01 00:00:00"
+  zendure_full_priority_since_u2:
+    name: "Intern: Voll-Prioritaet seit U2"
+    has_date: true
+    has_time: true
+    initial: "1970-01-01 00:00:00"
+  zendure_last_cross_cycle_u1:
+    name: "Intern: Letzter Cross-Cycle U1 voll"
+    has_date: true
+    has_time: true
+    initial: "1970-01-01 00:00:00"
+  zendure_last_cross_cycle_u2:
+    name: "Intern: Letzter Cross-Cycle U2 voll"
+    has_date: true
+    has_time: true
+    initial: "1970-01-01 00:00:00"
   zendure_last_balance_effect_failure:
     name: "Intern: Letzte fehlende Slow-Balance Wirkung"
     has_date: true
@@ -787,6 +844,58 @@ input_number:
     step: 0.1
     mode: box
     initial: 50
+  zendure_balance_anchor_cap_u1:
+    name: "Intern: Balance-Anker Cap U1"
+    min: 0
+    max: 800
+    step: 1
+    mode: box
+    initial: 0
+  zendure_balance_anchor_cap_u2:
+    name: "Intern: Balance-Anker Cap U2"
+    min: 0
+    max: 800
+    step: 1
+    mode: box
+    initial: 0
+  zendure_balance_anchor_soc_u1:
+    name: "Intern: Balance-Anker SoC U1"
+    min: 0
+    max: 100
+    step: 1
+    mode: box
+    initial: 0
+  zendure_balance_anchor_soc_u2:
+    name: "Intern: Balance-Anker SoC U2"
+    min: 0
+    max: 100
+    step: 1
+    mode: box
+    initial: 0
+  zendure_balance_success_total:
+    name: "Diagnose: Slow-Balance Erfolg gesamt"
+    min: 0
+    max: 999999
+    step: 1
+    mode: box
+  zendure_balance_superseded_total:
+    name: "Diagnose: Slow-Balance ersetzt gesamt"
+    min: 0
+    max: 999999
+    step: 1
+    mode: box
+  zendure_balance_wire_failure_total:
+    name: "Diagnose: Slow-Balance Wire-Fehler gesamt"
+    min: 0
+    max: 999999
+    step: 1
+    mode: box
+  zendure_balance_physical_failure_total:
+    name: "Diagnose: Slow-Balance Wirkungsfehler gesamt"
+    min: 0
+    max: 999999
+    step: 1
+    mode: box
   zendure_balance_effect_failure_count:
     name: "Intern: Slow-Balance Wirkungsfehler Folge"
     min: 0
@@ -1089,6 +1198,54 @@ input_number:
     initial: 15
     unit_of_measurement: "s"
     mode: box
+  zendure_conf_full_priority_release_soc:
+    name: "Zendure: Voll-Prioritaet Freigabe-SoC"
+    min: 90
+    max: 99
+    step: 1
+    initial: 98
+    unit_of_measurement: "%"
+    mode: box
+  zendure_conf_full_priority_fallback_share:
+    name: "Zendure: Voll-Prioritaet Fallback-Anteil"
+    min: 70
+    max: 95
+    step: 5
+    initial: 90
+    unit_of_measurement: "%"
+    mode: box
+  zendure_conf_full_priority_probe_step:
+    name: "Zendure: Voll-Prioritaet PV-Probe Schritt"
+    min: 25
+    max: 100
+    step: 5
+    initial: 50
+    unit_of_measurement: "W"
+    mode: box
+  zendure_conf_cross_cycle_threshold:
+    name: "Zendure: Cross-Cycle Schwellwert"
+    min: 20
+    max: 150
+    step: 5
+    initial: 50
+    unit_of_measurement: "W"
+    mode: box
+  zendure_conf_full_priority_probe_backoff_min:
+    name: "Zendure: PV-Probe Backoff nach Cross-Cycle"
+    min: 5
+    max: 60
+    step: 5
+    initial: 15
+    unit_of_measurement: "min"
+    mode: box
+  zendure_conf_balance_anchor_max_age_min:
+    name: "Zendure: Max. Alter Balance-Anker"
+    min: 30
+    max: 240
+    step: 15
+    initial: 120
+    unit_of_measurement: "min"
+    mode: box
 
   zendure_conf_single_temp_cap:
     name: "Zendure: Max. Leistung bei nur einem Temperatursensor"
@@ -1277,9 +1434,13 @@ mqtt:
       device_class: power
       state_class: measurement
       entity_category: diagnostic
-      value_template: >
+      value_template: >-
         {% set v = value | float(none) %}
-        {% if v is none %}{{ 'unavailable' }}{% else %}{{ [v, 0] | max | round(0) }}{% endif %}
+        {% if v is not none %}
+          {{ [v, 0] | max | round(0) }}
+        {% else %}
+          {{ '' }}
+        {% endif %}
 
     - name: "SolarFlow 1 Solar Power 2"
       unique_id: solarflow_1_solar_power_2_mqtt
@@ -1289,9 +1450,13 @@ mqtt:
       device_class: power
       state_class: measurement
       entity_category: diagnostic
-      value_template: >
+      value_template: >-
         {% set v = value | float(none) %}
-        {% if v is none %}{{ 'unavailable' }}{% else %}{{ [v, 0] | max | round(0) }}{% endif %}
+        {% if v is not none %}
+          {{ [v, 0] | max | round(0) }}
+        {% else %}
+          {{ '' }}
+        {% endif %}
 
     - name: "SolarFlow 1 Solar Power 3"
       unique_id: solarflow_1_solar_power_3_mqtt
@@ -1301,9 +1466,13 @@ mqtt:
       device_class: power
       state_class: measurement
       entity_category: diagnostic
-      value_template: >
+      value_template: >-
         {% set v = value | float(none) %}
-        {% if v is none %}{{ 'unavailable' }}{% else %}{{ [v, 0] | max | round(0) }}{% endif %}
+        {% if v is not none %}
+          {{ [v, 0] | max | round(0) }}
+        {% else %}
+          {{ '' }}
+        {% endif %}
 
     - name: "SolarFlow 1 Solar Power 4"
       unique_id: solarflow_1_solar_power_4_mqtt
@@ -1313,9 +1482,13 @@ mqtt:
       device_class: power
       state_class: measurement
       entity_category: diagnostic
-      value_template: >
+      value_template: >-
         {% set v = value | float(none) %}
-        {% if v is none %}{{ 'unavailable' }}{% else %}{{ [v, 0] | max | round(0) }}{% endif %}
+        {% if v is not none %}
+          {{ [v, 0] | max | round(0) }}
+        {% else %}
+          {{ '' }}
+        {% endif %}
 
     - name: "SolarFlow 1 Grid Input Power"
       unique_id: solarflow_1_grid_input_mqtt
@@ -1448,14 +1621,19 @@ mqtt:
 
     - name: "SolarFlow 1 BMS Leistung"
       unique_id: solarflow_1_bms_power
+      default_entity_id: sensor.solarflow_1_bms_leistung
       state_topic: !secret zendure_topic_battery1_sensor_power
       unit_of_measurement: "W"
       device_class: power
       state_class: measurement
-      value_template: >
+      expire_after: 300
+      value_template: >-
         {% set v = value | float(none) %}
-        {% if v is none or v < 0 or v > 1200 %} {{ 'unavailable' }}
-        {% else %} {{ v | round(0) }} {% endif %}
+        {% if v is not none and 0 <= v <= 1200 %}
+          {{ v | round(0) }}
+        {% else %}
+          {{ '' }}
+        {% endif %}
 
     - name: "SolarFlow 1 Battery Max Temp"
       unique_id: solarflow_1_batt_max_temp
@@ -1558,9 +1736,13 @@ mqtt:
       device_class: power
       state_class: measurement
       entity_category: diagnostic
-      value_template: >
+      value_template: >-
         {% set v = value | float(none) %}
-        {% if v is none %}{{ 'unavailable' }}{% else %}{{ [v, 0] | max | round(0) }}{% endif %}
+        {% if v is not none %}
+          {{ [v, 0] | max | round(0) }}
+        {% else %}
+          {{ '' }}
+        {% endif %}
 
     - name: "SolarFlow 2 Solar Power 2"
       unique_id: solarflow_2_solar_power_2_mqtt
@@ -1570,9 +1752,13 @@ mqtt:
       device_class: power
       state_class: measurement
       entity_category: diagnostic
-      value_template: >
+      value_template: >-
         {% set v = value | float(none) %}
-        {% if v is none %}{{ 'unavailable' }}{% else %}{{ [v, 0] | max | round(0) }}{% endif %}
+        {% if v is not none %}
+          {{ [v, 0] | max | round(0) }}
+        {% else %}
+          {{ '' }}
+        {% endif %}
 
     - name: "SolarFlow 2 Solar Power 3"
       unique_id: solarflow_2_solar_power_3_mqtt
@@ -1582,9 +1768,13 @@ mqtt:
       device_class: power
       state_class: measurement
       entity_category: diagnostic
-      value_template: >
+      value_template: >-
         {% set v = value | float(none) %}
-        {% if v is none %}{{ 'unavailable' }}{% else %}{{ [v, 0] | max | round(0) }}{% endif %}
+        {% if v is not none %}
+          {{ [v, 0] | max | round(0) }}
+        {% else %}
+          {{ '' }}
+        {% endif %}
 
     - name: "SolarFlow 2 Solar Power 4"
       unique_id: solarflow_2_solar_power_4_mqtt
@@ -1594,9 +1784,13 @@ mqtt:
       device_class: power
       state_class: measurement
       entity_category: diagnostic
-      value_template: >
+      value_template: >-
         {% set v = value | float(none) %}
-        {% if v is none %}{{ 'unavailable' }}{% else %}{{ [v, 0] | max | round(0) }}{% endif %}
+        {% if v is not none %}
+          {{ [v, 0] | max | round(0) }}
+        {% else %}
+          {{ '' }}
+        {% endif %}
 
     - name: "SolarFlow 2 Grid Input Power"
       unique_id: solarflow_2_grid_input_mqtt
@@ -1729,14 +1923,19 @@ mqtt:
 
     - name: "SolarFlow 2 BMS Leistung"
       unique_id: solarflow_2_bms_power
+      default_entity_id: sensor.solarflow_2_bms_leistung
       state_topic: !secret zendure_topic_battery2_sensor_power
       unit_of_measurement: "W"
       device_class: power
       state_class: measurement
-      value_template: >
+      expire_after: 300
+      value_template: >-
         {% set v = value | float(none) %}
-        {% if v is none or v < 0 or v > 1200 %} {{ 'unavailable' }}
-        {% else %} {{ v | round(0) }} {% endif %}
+        {% if v is not none and 0 <= v <= 1200 %}
+          {{ v | round(0) }}
+        {% else %}
+          {{ '' }}
+        {% endif %}
 
     - name: "SolarFlow 2 Battery Max Temp"
       unique_id: solarflow_2_batt_max_temp
@@ -3096,6 +3295,8 @@ template:
           {% set hub_temp = hub_temp_state | float(999) %}
           {% set batt_temp_valid = batt_temp_valid_age < 300 and is_number(batt_temp_state) %}
           {% set hub_temp_valid = hub_temp_valid_age < 300 and is_number(hub_temp_state) %}
+          {% set batt_output_cap = states('sensor.solarflow_1_battery_output_temperature_cap') | int(800) %}
+          {% set hub_output_cap = states('sensor.solarflow_1_hub_output_temperature_cap') | int(800) %}
           {% if status in ['UNAVAILABLE','UNKNOWN','FAULT','ERROR'] %} status_offline
           {% elif not hb_fresh %} heartbeat_stale
           {% elif is_state('input_boolean.zendure_vguard_u1','on') %} vguard_latch
@@ -3117,16 +3318,37 @@ template:
           {% elif not batt_temp_valid and not hub_temp_valid %} temperature_both_invalid
           {% elif batt_temp_valid and (is_state('input_boolean.zendure_batt_temp_cooldown_u1','on') or batt_temp >= 58) %} battery_temp_cooldown_58
           {% elif hub_temp_valid and (is_state('input_boolean.zendure_hub_temp_cooldown_u1','on') or hub_temp >= 65) %} hub_temp_cooldown_65
-          {% elif batt_temp_valid and batt_temp >= 55 %} battery_temp_pv_only_55
-          {% elif batt_temp_valid and batt_temp >= 53 %} battery_temp_softcap_53
-          {% elif batt_temp_valid and batt_temp >= 50 %} battery_temp_softcap_50
-          {% elif hub_temp_valid and hub_temp >= 62 %} hub_temp_softcap_62
-          {% elif hub_temp_valid and hub_temp >= 60 %} hub_temp_softcap_60
-          {% elif hub_temp_valid and hub_temp >= 58 %} hub_temp_softcap_58
-          {% elif hub_temp_valid and hub_temp >= 55 %} hub_temp_softcap_55
+          {% elif (batt_temp_valid and batt_temp >= 50) or (hub_temp_valid and hub_temp >= 55) %}
+            {% if batt_output_cap < hub_output_cap %}
+              {% if batt_temp >= 55 %} battery_temp_pv_only_55
+              {% elif batt_temp >= 53 %} battery_temp_softcap_53
+              {% else %} battery_temp_softcap_50 {% endif %}
+            {% elif hub_output_cap < batt_output_cap %}
+              {% if hub_temp >= 62 %} hub_temp_softcap_62
+              {% elif hub_temp >= 60 %} hub_temp_softcap_60
+              {% elif hub_temp >= 58 %} hub_temp_softcap_58
+              {% else %} hub_temp_softcap_55 {% endif %}
+            {% elif batt_temp_valid and batt_temp >= 50 and hub_temp_valid and hub_temp >= 55 %}
+              battery_and_hub_temp_softcap
+            {% elif batt_temp_valid and batt_temp >= 55 %} battery_temp_pv_only_55
+            {% elif batt_temp_valid and batt_temp >= 53 %} battery_temp_softcap_53
+            {% elif batt_temp_valid and batt_temp >= 50 %} battery_temp_softcap_50
+            {% elif hub_temp_valid and hub_temp >= 62 %} hub_temp_softcap_62
+            {% elif hub_temp_valid and hub_temp >= 60 %} hub_temp_softcap_60
+            {% elif hub_temp_valid and hub_temp >= 58 %} hub_temp_softcap_58
+            {% else %} hub_temp_softcap_55 {% endif %}
           {% elif not batt_temp_valid %} temperature_degraded_battery_missing
           {% elif not hub_temp_valid %} temperature_degraded_hub_missing
           {% else %} freigegeben {% endif %}
+        attributes:
+          battery_temperature_cap_w: "{{ states('sensor.solarflow_1_battery_output_temperature_cap') | int(800) }}"
+          hub_temperature_cap_w: "{{ states('sensor.solarflow_1_hub_output_temperature_cap') | int(800) }}"
+          effective_output_cap_w: "{{ states('input_number.zendure_effective_cap_u1') | int(0) }}"
+          dominant_temperature_cap: >-
+            {% set b = states('sensor.solarflow_1_battery_output_temperature_cap') | int(800) %}
+            {% set h = states('sensor.solarflow_1_hub_output_temperature_cap') | int(800) %}
+            {% if b < h %}battery{% elif h < b %}hub
+            {% elif b < 800 %}battery_and_hub{% else %}none{% endif %}
       - name: "SolarFlow 2 Output Block Reason"
         unique_id: solarflow_2_output_block_reason
         default_entity_id: sensor.solarflow_2_output_block_reason
@@ -3160,6 +3382,8 @@ template:
           {% set hub_temp = hub_temp_state | float(999) %}
           {% set batt_temp_valid = batt_temp_valid_age < 300 and is_number(batt_temp_state) %}
           {% set hub_temp_valid = hub_temp_valid_age < 300 and is_number(hub_temp_state) %}
+          {% set batt_output_cap = states('sensor.solarflow_2_battery_output_temperature_cap') | int(800) %}
+          {% set hub_output_cap = states('sensor.solarflow_2_hub_output_temperature_cap') | int(800) %}
           {% if status in ['UNAVAILABLE','UNKNOWN','FAULT','ERROR'] %} status_offline
           {% elif not hb_fresh %} heartbeat_stale
           {% elif is_state('input_boolean.zendure_vguard_u2','on') %} vguard_latch
@@ -3181,16 +3405,37 @@ template:
           {% elif not batt_temp_valid and not hub_temp_valid %} temperature_both_invalid
           {% elif batt_temp_valid and (is_state('input_boolean.zendure_batt_temp_cooldown_u2','on') or batt_temp >= 58) %} battery_temp_cooldown_58
           {% elif hub_temp_valid and (is_state('input_boolean.zendure_hub_temp_cooldown_u2','on') or hub_temp >= 65) %} hub_temp_cooldown_65
-          {% elif batt_temp_valid and batt_temp >= 55 %} battery_temp_pv_only_55
-          {% elif batt_temp_valid and batt_temp >= 53 %} battery_temp_softcap_53
-          {% elif batt_temp_valid and batt_temp >= 50 %} battery_temp_softcap_50
-          {% elif hub_temp_valid and hub_temp >= 62 %} hub_temp_softcap_62
-          {% elif hub_temp_valid and hub_temp >= 60 %} hub_temp_softcap_60
-          {% elif hub_temp_valid and hub_temp >= 58 %} hub_temp_softcap_58
-          {% elif hub_temp_valid and hub_temp >= 55 %} hub_temp_softcap_55
+          {% elif (batt_temp_valid and batt_temp >= 50) or (hub_temp_valid and hub_temp >= 55) %}
+            {% if batt_output_cap < hub_output_cap %}
+              {% if batt_temp >= 55 %} battery_temp_pv_only_55
+              {% elif batt_temp >= 53 %} battery_temp_softcap_53
+              {% else %} battery_temp_softcap_50 {% endif %}
+            {% elif hub_output_cap < batt_output_cap %}
+              {% if hub_temp >= 62 %} hub_temp_softcap_62
+              {% elif hub_temp >= 60 %} hub_temp_softcap_60
+              {% elif hub_temp >= 58 %} hub_temp_softcap_58
+              {% else %} hub_temp_softcap_55 {% endif %}
+            {% elif batt_temp_valid and batt_temp >= 50 and hub_temp_valid and hub_temp >= 55 %}
+              battery_and_hub_temp_softcap
+            {% elif batt_temp_valid and batt_temp >= 55 %} battery_temp_pv_only_55
+            {% elif batt_temp_valid and batt_temp >= 53 %} battery_temp_softcap_53
+            {% elif batt_temp_valid and batt_temp >= 50 %} battery_temp_softcap_50
+            {% elif hub_temp_valid and hub_temp >= 62 %} hub_temp_softcap_62
+            {% elif hub_temp_valid and hub_temp >= 60 %} hub_temp_softcap_60
+            {% elif hub_temp_valid and hub_temp >= 58 %} hub_temp_softcap_58
+            {% else %} hub_temp_softcap_55 {% endif %}
           {% elif not batt_temp_valid %} temperature_degraded_battery_missing
           {% elif not hub_temp_valid %} temperature_degraded_hub_missing
           {% else %} freigegeben {% endif %}
+        attributes:
+          battery_temperature_cap_w: "{{ states('sensor.solarflow_2_battery_output_temperature_cap') | int(800) }}"
+          hub_temperature_cap_w: "{{ states('sensor.solarflow_2_hub_output_temperature_cap') | int(800) }}"
+          effective_output_cap_w: "{{ states('input_number.zendure_effective_cap_u2') | int(0) }}"
+          dominant_temperature_cap: >-
+            {% set b = states('sensor.solarflow_2_battery_output_temperature_cap') | int(800) %}
+            {% set h = states('sensor.solarflow_2_hub_output_temperature_cap') | int(800) %}
+            {% if b < h %}battery{% elif h < b %}hub
+            {% elif b < 800 %}battery_and_hub{% else %}none{% endif %}
       - name: "SolarFlow 1 Charge Temperature Cap"
         unique_id: solarflow_1_charge_temperature_cap
         default_entity_id: sensor.solarflow_1_charge_temperature_cap
@@ -3362,6 +3607,278 @@ template:
             {% set ts = state_attr('input_datetime.zendure_down_floor_dispatch_ts_u2','timestamp') | float(0) %}
             {{ (as_timestamp(now()) - ts) | round(1) if ts > 1 else 0 }}
           last_physical_report: "{{ state_attr('sensor.solarflow_2_mqtt_freshness','output_power_ts') }}"
+
+  # --- V195 FULL-PRIORITY / FLOW / CAP DIAGNOSTICS ---
+  - sensor:
+      - name: "SolarFlow 1 Battery Charge Power Estimated"
+        unique_id: solarflow_1_battery_charge_power_estimated
+        default_entity_id: sensor.solarflow_1_battery_charge_power_estimated
+        unit_of_measurement: "W"
+        device_class: power
+        state_class: measurement
+        state: >-
+          {% set now_ts = as_timestamp(now()) %}
+          {% set pack = states('sensor.solarflow_1_status_raw') | string | trim | lower %}
+          {% set bms_entity = states.sensor.solarflow_1_bms_leistung %}
+          {% set bms = states('sensor.solarflow_1_bms_leistung') %}
+          {% set bms_ts = as_timestamp(bms_entity.last_reported, 0) if bms_entity is not none else 0 %}
+          {% set solar = states('sensor.solarflow_1_solar_input') %}
+          {% set grid = states('sensor.solarflow_1_grid_input_power') %}
+          {% set output = states('sensor.solarflow_1_output_power') %}
+          {% set solar_ts = as_timestamp(state_attr('sensor.solarflow_1_mqtt_freshness','solar_ts'), 0) %}
+          {% set output_ts = as_timestamp(state_attr('sensor.solarflow_1_mqtt_freshness','output_power_ts'), 0) %}
+          {% set bms_fresh = bms_ts > 1 and now_ts - bms_ts < 120 %}
+          {% set power_fresh = solar_ts > 1 and output_ts > 1 and now_ts - solar_ts < 120 and now_ts - output_ts < 120 %}
+          {% if pack in ['1','charging','charge'] and is_number(bms) and bms_fresh %}
+            {{ [bms | float(0), 0] | max | round(0) }}
+          {% elif pack in ['2','discharging','discharge'] %}0
+          {% elif power_fresh and is_number(solar) and is_number(grid) and is_number(output) %}
+            {{ [solar | float(0) + grid | float(0) - output | float(0), 0] | max | round(0) }}
+          {% else %}0{% endif %}
+      - name: "SolarFlow 1 Battery Discharge Power Estimated"
+        unique_id: solarflow_1_battery_discharge_power_estimated
+        default_entity_id: sensor.solarflow_1_battery_discharge_power_estimated
+        unit_of_measurement: "W"
+        device_class: power
+        state_class: measurement
+        state: >-
+          {% set now_ts = as_timestamp(now()) %}
+          {% set pack = states('sensor.solarflow_1_status_raw') | string | trim | lower %}
+          {% set bms_entity = states.sensor.solarflow_1_bms_leistung %}
+          {% set bms = states('sensor.solarflow_1_bms_leistung') %}
+          {% set bms_ts = as_timestamp(bms_entity.last_reported, 0) if bms_entity is not none else 0 %}
+          {% set solar = states('sensor.solarflow_1_solar_input') %}
+          {% set grid = states('sensor.solarflow_1_grid_input_power') %}
+          {% set output = states('sensor.solarflow_1_output_power') %}
+          {% set solar_ts = as_timestamp(state_attr('sensor.solarflow_1_mqtt_freshness','solar_ts'), 0) %}
+          {% set output_ts = as_timestamp(state_attr('sensor.solarflow_1_mqtt_freshness','output_power_ts'), 0) %}
+          {% set bms_fresh = bms_ts > 1 and now_ts - bms_ts < 120 %}
+          {% set power_fresh = solar_ts > 1 and output_ts > 1 and now_ts - solar_ts < 120 and now_ts - output_ts < 120 %}
+          {% if pack in ['2','discharging','discharge'] and is_number(bms) and bms_fresh %}
+            {{ [bms | float(0), 0] | max | round(0) }}
+          {% elif pack in ['1','charging','charge'] %}0
+          {% elif power_fresh and is_number(solar) and is_number(grid) and is_number(output) %}
+            {{ [output | float(0) - solar | float(0) - grid | float(0), 0] | max | round(0) }}
+          {% else %}0{% endif %}
+      - name: "SolarFlow 2 Battery Charge Power Estimated"
+        unique_id: solarflow_2_battery_charge_power_estimated
+        default_entity_id: sensor.solarflow_2_battery_charge_power_estimated
+        unit_of_measurement: "W"
+        device_class: power
+        state_class: measurement
+        state: >-
+          {% set now_ts = as_timestamp(now()) %}
+          {% set pack = states('sensor.solarflow_2_status_raw') | string | trim | lower %}
+          {% set bms_entity = states.sensor.solarflow_2_bms_leistung %}
+          {% set bms = states('sensor.solarflow_2_bms_leistung') %}
+          {% set bms_ts = as_timestamp(bms_entity.last_reported, 0) if bms_entity is not none else 0 %}
+          {% set solar = states('sensor.solarflow_2_solar_input') %}
+          {% set grid = states('sensor.solarflow_2_grid_input_power') %}
+          {% set output = states('sensor.solarflow_2_output_power') %}
+          {% set solar_ts = as_timestamp(state_attr('sensor.solarflow_2_mqtt_freshness','solar_ts'), 0) %}
+          {% set output_ts = as_timestamp(state_attr('sensor.solarflow_2_mqtt_freshness','output_power_ts'), 0) %}
+          {% set bms_fresh = bms_ts > 1 and now_ts - bms_ts < 120 %}
+          {% set power_fresh = solar_ts > 1 and output_ts > 1 and now_ts - solar_ts < 120 and now_ts - output_ts < 120 %}
+          {% if pack in ['1','charging','charge'] and is_number(bms) and bms_fresh %}
+            {{ [bms | float(0), 0] | max | round(0) }}
+          {% elif pack in ['2','discharging','discharge'] %}0
+          {% elif power_fresh and is_number(solar) and is_number(grid) and is_number(output) %}
+            {{ [solar | float(0) + grid | float(0) - output | float(0), 0] | max | round(0) }}
+          {% else %}0{% endif %}
+      - name: "SolarFlow 2 Battery Discharge Power Estimated"
+        unique_id: solarflow_2_battery_discharge_power_estimated
+        default_entity_id: sensor.solarflow_2_battery_discharge_power_estimated
+        unit_of_measurement: "W"
+        device_class: power
+        state_class: measurement
+        state: >-
+          {% set now_ts = as_timestamp(now()) %}
+          {% set pack = states('sensor.solarflow_2_status_raw') | string | trim | lower %}
+          {% set bms_entity = states.sensor.solarflow_2_bms_leistung %}
+          {% set bms = states('sensor.solarflow_2_bms_leistung') %}
+          {% set bms_ts = as_timestamp(bms_entity.last_reported, 0) if bms_entity is not none else 0 %}
+          {% set solar = states('sensor.solarflow_2_solar_input') %}
+          {% set grid = states('sensor.solarflow_2_grid_input_power') %}
+          {% set output = states('sensor.solarflow_2_output_power') %}
+          {% set solar_ts = as_timestamp(state_attr('sensor.solarflow_2_mqtt_freshness','solar_ts'), 0) %}
+          {% set output_ts = as_timestamp(state_attr('sensor.solarflow_2_mqtt_freshness','output_power_ts'), 0) %}
+          {% set bms_fresh = bms_ts > 1 and now_ts - bms_ts < 120 %}
+          {% set power_fresh = solar_ts > 1 and output_ts > 1 and now_ts - solar_ts < 120 and now_ts - output_ts < 120 %}
+          {% if pack in ['2','discharging','discharge'] and is_number(bms) and bms_fresh %}
+            {{ [bms | float(0), 0] | max | round(0) }}
+          {% elif pack in ['1','charging','charge'] %}0
+          {% elif power_fresh and is_number(solar) and is_number(grid) and is_number(output) %}
+            {{ [output | float(0) - solar | float(0) - grid | float(0), 0] | max | round(0) }}
+          {% else %}0{% endif %}
+
+      - name: "SolarFlow 1 Battery Output Temperature Cap"
+        unique_id: solarflow_1_battery_output_temperature_cap
+        default_entity_id: sensor.solarflow_1_battery_output_temperature_cap
+        unit_of_measurement: "W"
+        device_class: power
+        state: >-
+          {% set bt = states('sensor.solarflow_1_battery_temp_control') | float(999) %}
+          {% set pv = states('sensor.solarflow_1_solar_input') | float(0) %}
+          {% set age = as_timestamp(now()) - as_timestamp(state_attr('sensor.solarflow_1_mqtt_freshness','solar_ts'), 0) %}
+          {% set pv_soft = pv if age < 60 else (pv * ((120-age)/60) if age < 120 else 0) %}
+          {% if not is_number(states('sensor.solarflow_1_battery_temp_control')) %}800
+          {% elif is_state('input_boolean.zendure_batt_temp_cooldown_u1','on') or bt >= 58 %}0
+          {% elif bt >= 55 %}{{ (pv * 0.9) | int(0) if age < 60 else 0 }}
+          {% elif bt >= 53 %}{{ [300, (pv_soft * 0.9 + 75) | int(0)] | min }}
+          {% elif bt >= 50 %}{{ [500, (pv_soft * 0.9 + 150) | int(0)] | min }}
+          {% elif bt < 0 %}0{% else %}800{% endif %}
+      - name: "SolarFlow 1 Hub Output Temperature Cap"
+        unique_id: solarflow_1_hub_output_temperature_cap
+        default_entity_id: sensor.solarflow_1_hub_output_temperature_cap
+        unit_of_measurement: "W"
+        device_class: power
+        state: >-
+          {% set ht = states('sensor.solarflow_1_hub_temp_control') | float(999) %}
+          {% if not is_number(states('sensor.solarflow_1_hub_temp_control')) %}800
+          {% elif is_state('input_boolean.zendure_hub_temp_cooldown_u1','on') or ht >= 65 %}0
+          {% elif ht >= 62 %}100{% elif ht >= 60 %}200{% elif ht >= 58 %}400
+          {% elif ht >= 55 %}600{% elif ht < 0 %}0{% else %}800{% endif %}
+      - name: "SolarFlow 2 Battery Output Temperature Cap"
+        unique_id: solarflow_2_battery_output_temperature_cap
+        default_entity_id: sensor.solarflow_2_battery_output_temperature_cap
+        unit_of_measurement: "W"
+        device_class: power
+        state: >-
+          {% set bt = states('sensor.solarflow_2_battery_temp_control') | float(999) %}
+          {% set pv = states('sensor.solarflow_2_solar_input') | float(0) %}
+          {% set age = as_timestamp(now()) - as_timestamp(state_attr('sensor.solarflow_2_mqtt_freshness','solar_ts'), 0) %}
+          {% set pv_soft = pv if age < 60 else (pv * ((120-age)/60) if age < 120 else 0) %}
+          {% if not is_number(states('sensor.solarflow_2_battery_temp_control')) %}800
+          {% elif is_state('input_boolean.zendure_batt_temp_cooldown_u2','on') or bt >= 58 %}0
+          {% elif bt >= 55 %}{{ (pv * 0.9) | int(0) if age < 60 else 0 }}
+          {% elif bt >= 53 %}{{ [300, (pv_soft * 0.9 + 75) | int(0)] | min }}
+          {% elif bt >= 50 %}{{ [500, (pv_soft * 0.9 + 150) | int(0)] | min }}
+          {% elif bt < 0 %}0{% else %}800{% endif %}
+      - name: "SolarFlow 2 Hub Output Temperature Cap"
+        unique_id: solarflow_2_hub_output_temperature_cap
+        default_entity_id: sensor.solarflow_2_hub_output_temperature_cap
+        unit_of_measurement: "W"
+        device_class: power
+        state: >-
+          {% set ht = states('sensor.solarflow_2_hub_temp_control') | float(999) %}
+          {% if not is_number(states('sensor.solarflow_2_hub_temp_control')) %}800
+          {% elif is_state('input_boolean.zendure_hub_temp_cooldown_u2','on') or ht >= 65 %}0
+          {% elif ht >= 62 %}100{% elif ht >= 60 %}200{% elif ht >= 58 %}400
+          {% elif ht >= 55 %}600{% elif ht < 0 %}0{% else %}800{% endif %}
+      - name: "SolarFlow 1 Dominant Output Cap Reason"
+        unique_id: solarflow_1_dominant_output_cap_reason
+        default_entity_id: sensor.solarflow_1_dominant_output_cap_reason
+        state: >-
+          {% set b = states('sensor.solarflow_1_battery_output_temperature_cap') | int(800) %}
+          {% set h = states('sensor.solarflow_1_hub_output_temperature_cap') | int(800) %}
+          {% if b < h %}battery_temperature{% elif h < b %}hub_temperature
+          {% elif b < 800 %}battery_and_hub_temperature{% else %}other_or_none{% endif %}
+        attributes:
+          battery_cap_w: "{{ states('sensor.solarflow_1_battery_output_temperature_cap') | int(800) }}"
+          hub_cap_w: "{{ states('sensor.solarflow_1_hub_output_temperature_cap') | int(800) }}"
+          effective_cap_w: "{{ states('input_number.zendure_effective_cap_u1') | int(0) }}"
+          legacy_block_reason: "{{ states('sensor.solarflow_1_output_block_reason') }}"
+      - name: "SolarFlow 2 Dominant Output Cap Reason"
+        unique_id: solarflow_2_dominant_output_cap_reason
+        default_entity_id: sensor.solarflow_2_dominant_output_cap_reason
+        state: >-
+          {% set b = states('sensor.solarflow_2_battery_output_temperature_cap') | int(800) %}
+          {% set h = states('sensor.solarflow_2_hub_output_temperature_cap') | int(800) %}
+          {% if b < h %}battery_temperature{% elif h < b %}hub_temperature
+          {% elif b < 800 %}battery_and_hub_temperature{% else %}other_or_none{% endif %}
+        attributes:
+          battery_cap_w: "{{ states('sensor.solarflow_2_battery_output_temperature_cap') | int(800) }}"
+          hub_cap_w: "{{ states('sensor.solarflow_2_hub_output_temperature_cap') | int(800) }}"
+          effective_cap_w: "{{ states('input_number.zendure_effective_cap_u2') | int(0) }}"
+          legacy_block_reason: "{{ states('sensor.solarflow_2_output_block_reason') }}"
+      - name: "SolarFlow Full Priority State"
+        unique_id: solarflow_full_priority_state
+        default_entity_id: sensor.solarflow_full_priority_state
+        state: >-
+          {% if is_state('input_boolean.zendure_full_priority_u1','on') %}u1
+          {% elif is_state('input_boolean.zendure_full_priority_u2','on') %}u2
+          {% else %}none{% endif %}
+        attributes:
+          soc_u1: "{{ states('sensor.solarflow_1_battery_level') }}"
+          soc_u2: "{{ states('sensor.solarflow_2_battery_level') }}"
+          charge_u1_w: "{{ states('sensor.solarflow_1_battery_charge_power_estimated') | int(0) }}"
+          discharge_u1_w: "{{ states('sensor.solarflow_1_battery_discharge_power_estimated') | int(0) }}"
+          charge_u2_w: "{{ states('sensor.solarflow_2_battery_charge_power_estimated') | int(0) }}"
+          discharge_u2_w: "{{ states('sensor.solarflow_2_battery_discharge_power_estimated') | int(0) }}"
+          cross_cycle: "{{ is_state('binary_sensor.solarflow_full_priority_cross_cycle','on') }}"
+          diagnostic: "{{ states('input_text.zendure_full_priority_diagnostic') }}"
+      - name: "SolarFlow Balance Result Counters"
+        unique_id: solarflow_balance_result_counters
+        default_entity_id: sensor.solarflow_balance_result_counters
+        state: "{{ states('input_text.zendure_balance_last_result') }}"
+        attributes:
+          success: "{{ states('input_number.zendure_balance_success_total') | int(0) }}"
+          superseded: "{{ states('input_number.zendure_balance_superseded_total') | int(0) }}"
+          wire_failure: "{{ states('input_number.zendure_balance_wire_failure_total') | int(0) }}"
+          physical_failure: "{{ states('input_number.zendure_balance_physical_failure_total') | int(0) }}"
+
+  - binary_sensor:
+      - name: "SolarFlow Full Priority Cross Cycle"
+        unique_id: solarflow_full_priority_cross_cycle
+        default_entity_id: binary_sensor.solarflow_full_priority_cross_cycle
+        device_class: problem
+        delay_on: "00:00:10"
+        delay_off: "00:00:05"
+        state: >-
+          {% set threshold = states('input_number.zendure_conf_cross_cycle_threshold') | float(50) %}
+          {% set out1 = states('sensor.solarflow_1_output_power') | float(0) %}
+          {% set out2 = states('sensor.solarflow_2_output_power') | float(0) %}
+          {% set cap1 = states('input_number.zendure_effective_cap_u1') | float(0) %}
+          {% set cap2 = states('input_number.zendure_effective_cap_u2') | float(0) %}
+          {% set age1 = as_timestamp(now()) - as_timestamp(state_attr('sensor.solarflow_1_mqtt_freshness','output_power_ts'), 0) %}
+          {% set age2 = as_timestamp(now()) - as_timestamp(state_attr('sensor.solarflow_2_mqtt_freshness','output_power_ts'), 0) %}
+          {% set fresh = age1 < 120 and age2 < 120 %}
+          {% set u1_dis_peer_chg = is_state('input_boolean.zendure_full_priority_u1','on')
+                    and states('sensor.solarflow_1_battery_discharge_power_estimated') | float(0) >= threshold
+                    and states('sensor.solarflow_2_battery_charge_power_estimated') | float(0) >= threshold
+                    and cap2 - out2 >= threshold %}
+          {% set u1_chg_peer_dis = is_state('input_boolean.zendure_full_priority_u1','on')
+                    and states('sensor.solarflow_1_battery_charge_power_estimated') | float(0) >= threshold
+                    and states('sensor.solarflow_2_battery_discharge_power_estimated') | float(0) >= threshold
+                    and cap1 - out1 >= threshold %}
+          {% set u2_dis_peer_chg = is_state('input_boolean.zendure_full_priority_u2','on')
+                    and states('sensor.solarflow_2_battery_discharge_power_estimated') | float(0) >= threshold
+                    and states('sensor.solarflow_1_battery_charge_power_estimated') | float(0) >= threshold
+                    and cap1 - out1 >= threshold %}
+          {% set u2_chg_peer_dis = is_state('input_boolean.zendure_full_priority_u2','on')
+                    and states('sensor.solarflow_2_battery_charge_power_estimated') | float(0) >= threshold
+                    and states('sensor.solarflow_1_battery_discharge_power_estimated') | float(0) >= threshold
+                    and cap2 - out2 >= threshold %}
+          {{ fresh and (u1_dis_peer_chg or u1_chg_peer_dis or u2_dis_peer_chg or u2_chg_peer_dis) }}
+        attributes:
+          direction: >-
+            {% set threshold = states('input_number.zendure_conf_cross_cycle_threshold') | float(50) %}
+            {% set out1 = states('sensor.solarflow_1_output_power') | float(0) %}
+            {% set out2 = states('sensor.solarflow_2_output_power') | float(0) %}
+            {% set cap1 = states('input_number.zendure_effective_cap_u1') | float(0) %}
+            {% set cap2 = states('input_number.zendure_effective_cap_u2') | float(0) %}
+            {% if is_state('input_boolean.zendure_full_priority_u1','on')
+                  and states('sensor.solarflow_1_battery_discharge_power_estimated') | float(0) >= threshold
+                  and states('sensor.solarflow_2_battery_charge_power_estimated') | float(0) >= threshold
+                  and cap2 - out2 >= threshold %}u1_discharges_u2_charges
+            {% elif is_state('input_boolean.zendure_full_priority_u1','on')
+                  and states('sensor.solarflow_1_battery_charge_power_estimated') | float(0) >= threshold
+                  and states('sensor.solarflow_2_battery_discharge_power_estimated') | float(0) >= threshold
+                  and cap1 - out1 >= threshold %}u1_charges_u2_discharges
+            {% elif is_state('input_boolean.zendure_full_priority_u2','on')
+                  and states('sensor.solarflow_2_battery_discharge_power_estimated') | float(0) >= threshold
+                  and states('sensor.solarflow_1_battery_charge_power_estimated') | float(0) >= threshold
+                  and cap1 - out1 >= threshold %}u2_discharges_u1_charges
+            {% elif is_state('input_boolean.zendure_full_priority_u2','on')
+                  and states('sensor.solarflow_2_battery_charge_power_estimated') | float(0) >= threshold
+                  and states('sensor.solarflow_1_battery_discharge_power_estimated') | float(0) >= threshold
+                  and cap2 - out2 >= threshold %}u2_charges_u1_discharges
+            {% else %}none{% endif %}
+          threshold_w: "{{ states('input_number.zendure_conf_cross_cycle_threshold') | int(50) }}"
+          u1_charge_w: "{{ states('sensor.solarflow_1_battery_charge_power_estimated') | int(0) }}"
+          u1_discharge_w: "{{ states('sensor.solarflow_1_battery_discharge_power_estimated') | int(0) }}"
+          u2_charge_w: "{{ states('sensor.solarflow_2_battery_charge_power_estimated') | int(0) }}"
+          u2_discharge_w: "{{ states('sensor.solarflow_2_battery_discharge_power_estimated') | int(0) }}"
 
 # ==============================================================================
 # 4. ENERGY SENSORS (RIEMANN SUM)
@@ -5868,8 +6385,14 @@ script:
                  and not bypass_used | bool
                  and emergency_bypass_cooldown_ok | bool }}
         then:
+          - action: input_text.set_value
+            target: { entity_id: input_text.zendure_emergency_stage_u1 }
+            data: { value: "preparing_lock" }
           - action: input_boolean.turn_on
             target: { entity_id: input_boolean.zendure_wire_emergency_lock_u1 }
+          - action: input_text.set_value
+            target: { entity_id: input_text.zendure_emergency_stage_u1 }
+            data: { value: "lock_set" }
           - action: script.turn_off
             target: { entity_id: script.zendure_wire_publish_u1 }
           - action: script.zendure_clear_deferred_u1
@@ -5882,11 +6405,20 @@ script:
             then:
               - action: input_boolean.turn_off
                 target: { entity_id: input_boolean.zendure_wire_emergency_lock_u1 }
+              - action: input_text.set_value
+                target: { entity_id: input_text.zendure_emergency_stage_u1 }
+                data: { value: "aborted_pre_publish" }
               - stop: "Emergency zero invalidated before priority publish."
           - variables:
               dispatch_ts: "{{ now().timestamp() }}"
+          - action: input_text.set_value
+            target: { entity_id: input_text.zendure_emergency_stage_u1 }
+            data: { value: "publishing" }
           - action: mqtt.publish
             data: { topic: !secret zendure_topic_u1_number_outputLimit_set, payload: "0", qos: 1 }
+          - action: input_text.set_value
+            target: { entity_id: input_text.zendure_emergency_stage_u1 }
+            data: { value: "published_committing" }
           - if:
               - condition: template
                 value_template: "{{ pre_zero_floor | int(0) > 0 }}"
@@ -5924,6 +6456,16 @@ script:
           - action: input_datetime.set_datetime
             target: { entity_id: input_datetime.zendure_last_emergency_zero_ts_u1 }
             data: { timestamp: "{{ dispatch_ts }}" }
+          # Safety-critical publish and memory ownership are now committed.
+          # Release the normal-wire interlock before audit/diagnostic work.
+          - action: input_boolean.turn_off
+            target: { entity_id: input_boolean.zendure_wire_emergency_lock_u1 }
+          - action: timer.start
+            target: { entity_id: timer.zendure_ack_retry_u1 }
+            data: { duration: 10 }
+          - action: input_text.set_value
+            target: { entity_id: input_text.zendure_emergency_stage_u1 }
+            data: { value: "lock_released" }
           - action: input_text.set_value
             target: { entity_id: input_text.zendure_last_output_publish_u1 }
             data:
@@ -5939,11 +6481,9 @@ script:
               generation: "{{ generation_value }}"
               seconds_since_previous: "{{ (dispatch_ts | float(0) - last_any_publish_ts | float(0)) | round(3) }}"
               budget_before: emergency
-          - action: input_boolean.turn_off
-            target: { entity_id: input_boolean.zendure_wire_emergency_lock_u1 }
-          - action: timer.start
-            target: { entity_id: timer.zendure_ack_retry_u1 }
-            data: { duration: 10 }
+          - action: input_text.set_value
+            target: { entity_id: input_text.zendure_emergency_stage_u1 }
+            data: { value: "complete" }
         else:
           - if:
               - condition: template
@@ -6046,8 +6586,14 @@ script:
                  and not bypass_used | bool
                  and emergency_bypass_cooldown_ok | bool }}
         then:
+          - action: input_text.set_value
+            target: { entity_id: input_text.zendure_emergency_stage_u2 }
+            data: { value: "preparing_lock" }
           - action: input_boolean.turn_on
             target: { entity_id: input_boolean.zendure_wire_emergency_lock_u2 }
+          - action: input_text.set_value
+            target: { entity_id: input_text.zendure_emergency_stage_u2 }
+            data: { value: "lock_set" }
           - action: script.turn_off
             target: { entity_id: script.zendure_wire_publish_u2 }
           - action: script.zendure_clear_deferred_u2
@@ -6060,11 +6606,20 @@ script:
             then:
               - action: input_boolean.turn_off
                 target: { entity_id: input_boolean.zendure_wire_emergency_lock_u2 }
+              - action: input_text.set_value
+                target: { entity_id: input_text.zendure_emergency_stage_u2 }
+                data: { value: "aborted_pre_publish" }
               - stop: "Emergency zero invalidated before priority publish."
           - variables:
               dispatch_ts: "{{ now().timestamp() }}"
+          - action: input_text.set_value
+            target: { entity_id: input_text.zendure_emergency_stage_u2 }
+            data: { value: "publishing" }
           - action: mqtt.publish
             data: { topic: !secret zendure_topic_u2_number_outputLimit_set, payload: "0", qos: 1 }
+          - action: input_text.set_value
+            target: { entity_id: input_text.zendure_emergency_stage_u2 }
+            data: { value: "published_committing" }
           - if:
               - condition: template
                 value_template: "{{ pre_zero_floor | int(0) > 0 }}"
@@ -6102,6 +6657,16 @@ script:
           - action: input_datetime.set_datetime
             target: { entity_id: input_datetime.zendure_last_emergency_zero_ts_u2 }
             data: { timestamp: "{{ dispatch_ts }}" }
+          # Safety-critical publish and memory ownership are now committed.
+          # Release the normal-wire interlock before audit/diagnostic work.
+          - action: input_boolean.turn_off
+            target: { entity_id: input_boolean.zendure_wire_emergency_lock_u2 }
+          - action: timer.start
+            target: { entity_id: timer.zendure_ack_retry_u2 }
+            data: { duration: 10 }
+          - action: input_text.set_value
+            target: { entity_id: input_text.zendure_emergency_stage_u2 }
+            data: { value: "lock_released" }
           - action: input_text.set_value
             target: { entity_id: input_text.zendure_last_output_publish_u2 }
             data:
@@ -6117,11 +6682,9 @@ script:
               generation: "{{ generation_value }}"
               seconds_since_previous: "{{ (dispatch_ts | float(0) - last_any_publish_ts | float(0)) | round(3) }}"
               budget_before: emergency
-          - action: input_boolean.turn_off
-            target: { entity_id: input_boolean.zendure_wire_emergency_lock_u2 }
-          - action: timer.start
-            target: { entity_id: timer.zendure_ack_retry_u2 }
-            data: { duration: 10 }
+          - action: input_text.set_value
+            target: { entity_id: input_text.zendure_emergency_stage_u2 }
+            data: { value: "complete" }
         else:
           - if:
               - condition: template
@@ -6741,6 +7304,9 @@ script:
           - action: input_text.set_value
             target: { entity_id: input_text.zendure_pending_balance_trim }
             data: { value: "none" }
+          - action: input_text.set_value
+            target: { entity_id: input_text.zendure_pending_balance_mode }
+            data: { value: "normal" }
           - action: input_number.set_value
             target: { entity_id: input_number.zendure_pending_balance_generation }
             data: { value: 0 }
@@ -10916,6 +11482,329 @@ automation:
                 data: { duration: 2 }
 
   # --- 6.4b SLOW SOC/PV/TEMPERATURE BALANCER ---
+  # --- V195: EXACT-100% FULL-PRIORITY LATCH ---
+  - alias: "Zendure: Full Priority Latch"
+    id: "zendure_full_priority_latch"
+    mode: queued
+    max: 10
+    max_exceeded: warning
+    triggers:
+      - trigger: homeassistant
+        event: start
+        id: startup
+      - trigger: template
+        id: set_u1
+        value_template: >-
+          {% set now_ts = as_timestamp(now()) %}
+          {% set soc1_ts = as_timestamp(state_attr('sensor.solarflow_1_mqtt_freshness','soc_ts'), 0) %}
+          {% set soc2_ts = as_timestamp(state_attr('sensor.solarflow_2_mqtt_freshness','soc_ts'), 0) %}
+          {{ states('sensor.solarflow_1_battery_level') | int(-1) == 100
+             and states('sensor.solarflow_2_battery_level') | int(-1) >= 0
+             and states('sensor.solarflow_2_battery_level') | int(-1) < 100
+             and now_ts - soc1_ts < 300 and now_ts - soc2_ts < 300
+             and states('sensor.solarflow_1_status_raw') | upper not in ['UNAVAILABLE','UNKNOWN','FAULT','ERROR']
+             and states('sensor.solarflow_2_status_raw') | upper not in ['UNAVAILABLE','UNKNOWN','FAULT','ERROR']
+             and is_state('input_boolean.zendure_calib_mode_u1','off')
+             and is_state('input_boolean.zendure_calib_mode_u2','off')
+             and is_state('input_boolean.zendure_emergency_u1','off')
+             and is_state('input_boolean.zendure_emergency_u2','off')
+             and is_state('input_boolean.zendure_vguard_u1','off')
+             and is_state('input_boolean.zendure_vguard_u2','off') }}
+        for: "00:01:00"
+      - trigger: template
+        id: set_u2
+        value_template: >-
+          {% set now_ts = as_timestamp(now()) %}
+          {% set soc1_ts = as_timestamp(state_attr('sensor.solarflow_1_mqtt_freshness','soc_ts'), 0) %}
+          {% set soc2_ts = as_timestamp(state_attr('sensor.solarflow_2_mqtt_freshness','soc_ts'), 0) %}
+          {{ states('sensor.solarflow_2_battery_level') | int(-1) == 100
+             and states('sensor.solarflow_1_battery_level') | int(-1) >= 0
+             and states('sensor.solarflow_1_battery_level') | int(-1) < 100
+             and now_ts - soc1_ts < 300 and now_ts - soc2_ts < 300
+             and states('sensor.solarflow_1_status_raw') | upper not in ['UNAVAILABLE','UNKNOWN','FAULT','ERROR']
+             and states('sensor.solarflow_2_status_raw') | upper not in ['UNAVAILABLE','UNKNOWN','FAULT','ERROR']
+             and is_state('input_boolean.zendure_calib_mode_u1','off')
+             and is_state('input_boolean.zendure_calib_mode_u2','off')
+             and is_state('input_boolean.zendure_emergency_u1','off')
+             and is_state('input_boolean.zendure_emergency_u2','off')
+             and is_state('input_boolean.zendure_vguard_u1','off')
+             and is_state('input_boolean.zendure_vguard_u2','off') }}
+        for: "00:01:00"
+      - trigger: state
+        entity_id:
+          - sensor.solarflow_1_battery_level
+          - sensor.solarflow_2_battery_level
+          - input_boolean.zendure_calib_mode_u1
+          - input_boolean.zendure_calib_mode_u2
+          - input_boolean.zendure_emergency_u1
+          - input_boolean.zendure_emergency_u2
+          - input_boolean.zendure_vguard_u1
+          - input_boolean.zendure_vguard_u2
+          - sensor.solarflow_1_status_raw
+          - sensor.solarflow_2_status_raw
+        id: reconcile
+    actions:
+      - variables:
+          now_ts: "{{ as_timestamp(now()) }}"
+          release_soc: "{{ states('input_number.zendure_conf_full_priority_release_soc') | int(98) }}"
+          soc1: "{{ states('sensor.solarflow_1_battery_level') | int(-1) }}"
+          soc2: "{{ states('sensor.solarflow_2_battery_level') | int(-1) }}"
+          soc_ts1: "{{ as_timestamp(state_attr('sensor.solarflow_1_mqtt_freshness','soc_ts'), 0) }}"
+          soc_ts2: "{{ as_timestamp(state_attr('sensor.solarflow_2_mqtt_freshness','soc_ts'), 0) }}"
+          soc_fresh1: "{{ soc_ts1 > 1 and now_ts - soc_ts1 < 300 }}"
+          soc_fresh2: "{{ soc_ts2 > 1 and now_ts - soc_ts2 < 300 }}"
+          online1: "{{ states('sensor.solarflow_1_status_raw') | upper not in ['UNAVAILABLE','UNKNOWN','FAULT','ERROR'] }}"
+          online2: "{{ states('sensor.solarflow_2_status_raw') | upper not in ['UNAVAILABLE','UNKNOWN','FAULT','ERROR'] }}"
+          busy1: >-
+            {{ is_state('input_boolean.zendure_calib_mode_u1','on')
+               or is_state('input_boolean.zendure_emergency_u1','on')
+               or is_state('input_boolean.zendure_vguard_u1','on') }}
+          busy2: >-
+            {{ is_state('input_boolean.zendure_calib_mode_u2','on')
+               or is_state('input_boolean.zendure_emergency_u2','on')
+               or is_state('input_boolean.zendure_vguard_u2','on') }}
+          set_u1_now: >-
+            {{ trigger.id == 'set_u1' and soc1 == 100 and soc2 >= 0 and soc2 < 100
+               and soc_fresh1 | bool and soc_fresh2 | bool and online1 | bool and online2 | bool
+               and not busy1 | bool and not busy2 | bool }}
+          set_u2_now: >-
+            {{ trigger.id == 'set_u2' and soc2 == 100 and soc1 >= 0 and soc1 < 100
+               and soc_fresh1 | bool and soc_fresh2 | bool and online1 | bool and online2 | bool
+               and not busy1 | bool and not busy2 | bool }}
+          clear_u1: >-
+            {{ is_state('input_boolean.zendure_full_priority_u1','on')
+               and (not soc_fresh1 | bool or not soc_fresh2 | bool or not online1 | bool
+                    or busy1 | bool or busy2 | bool
+                    or soc1 <= release_soc or soc2 >= 100) }}
+          clear_u2: >-
+            {{ is_state('input_boolean.zendure_full_priority_u2','on')
+               and (not soc_fresh1 | bool or not soc_fresh2 | bool or not online2 | bool
+                    or busy1 | bool or busy2 | bool
+                    or soc2 <= release_soc or soc1 >= 100) }}
+      - if:
+          - condition: template
+            value_template: "{{ trigger.id == 'startup' }}"
+        then:
+          - action: input_boolean.turn_off
+            target:
+              entity_id:
+                - input_boolean.zendure_full_priority_u1
+                - input_boolean.zendure_full_priority_u2
+          - parallel:
+              - action: input_datetime.set_datetime
+                target: { entity_id: input_datetime.zendure_full_priority_since_u1 }
+                data: { datetime: "1970-01-01 00:00:00" }
+              - action: input_datetime.set_datetime
+                target: { entity_id: input_datetime.zendure_full_priority_since_u2 }
+                data: { datetime: "1970-01-01 00:00:00" }
+          - stop: "Full Priority must be earned again by a fresh exact-100% event."
+      - choose:
+          - conditions:
+              - condition: template
+                value_template: "{{ set_u1_now | bool }}"
+            sequence:
+              - action: input_boolean.turn_off
+                target: { entity_id: input_boolean.zendure_full_priority_u2 }
+              - action: input_boolean.turn_on
+                target: { entity_id: input_boolean.zendure_full_priority_u1 }
+              - parallel:
+                  - action: input_datetime.set_datetime
+                    target: { entity_id: input_datetime.zendure_full_priority_since_u1 }
+                    data: { timestamp: "{{ now_ts }}" }
+                  - action: input_datetime.set_datetime
+                    target: { entity_id: input_datetime.zendure_full_priority_since_u2 }
+                    data: { datetime: "1970-01-01 00:00:00" }
+                  - action: input_text.set_value
+                    target: { entity_id: input_text.zendure_full_priority_diagnostic }
+                    data: { value: "{{ now().isoformat() }}|u1_armed_exact_100|soc={{ soc1 }}+{{ soc2 }}" }
+          - conditions:
+              - condition: template
+                value_template: "{{ set_u2_now | bool }}"
+            sequence:
+              - action: input_boolean.turn_off
+                target: { entity_id: input_boolean.zendure_full_priority_u1 }
+              - action: input_boolean.turn_on
+                target: { entity_id: input_boolean.zendure_full_priority_u2 }
+              - parallel:
+                  - action: input_datetime.set_datetime
+                    target: { entity_id: input_datetime.zendure_full_priority_since_u2 }
+                    data: { timestamp: "{{ now_ts }}" }
+                  - action: input_datetime.set_datetime
+                    target: { entity_id: input_datetime.zendure_full_priority_since_u1 }
+                    data: { datetime: "1970-01-01 00:00:00" }
+                  - action: input_text.set_value
+                    target: { entity_id: input_text.zendure_full_priority_diagnostic }
+                    data: { value: "{{ now().isoformat() }}|u2_armed_exact_100|soc={{ soc1 }}+{{ soc2 }}" }
+      - if:
+          - condition: template
+            value_template: "{{ clear_u1 | bool }}"
+        then:
+          - action: input_boolean.turn_off
+            target: { entity_id: input_boolean.zendure_full_priority_u1 }
+          - action: input_datetime.set_datetime
+            target: { entity_id: input_datetime.zendure_full_priority_since_u1 }
+            data: { datetime: "1970-01-01 00:00:00" }
+          - action: input_text.set_value
+            target: { entity_id: input_text.zendure_full_priority_diagnostic }
+            data: { value: "{{ now().isoformat() }}|u1_released|soc={{ soc1 }}+{{ soc2 }}" }
+      - if:
+          - condition: template
+            value_template: "{{ clear_u2 | bool }}"
+        then:
+          - action: input_boolean.turn_off
+            target: { entity_id: input_boolean.zendure_full_priority_u2 }
+          - action: input_datetime.set_datetime
+            target: { entity_id: input_datetime.zendure_full_priority_since_u2 }
+            data: { datetime: "1970-01-01 00:00:00" }
+          - action: input_text.set_value
+            target: { entity_id: input_text.zendure_full_priority_diagnostic }
+            data: { value: "{{ now().isoformat() }}|u2_released|soc={{ soc1 }}+{{ soc2 }}" }
+
+  # --- V195: CROSS-CYCLE EVENT MEMORY / PROBE BACKOFF ---
+  - alias: "Zendure: Full Priority Cross-Cycle Guard"
+    id: "zendure_full_priority_cross_cycle_guard"
+    mode: queued
+    max: 5
+    max_exceeded: warning
+    triggers:
+      - trigger: state
+        entity_id: binary_sensor.solarflow_full_priority_cross_cycle
+        to: "on"
+    actions:
+      - variables:
+          direction: "{{ state_attr('binary_sensor.solarflow_full_priority_cross_cycle','direction') | default('none') }}"
+          now_ts: "{{ as_timestamp(now()) }}"
+      - choose:
+          - conditions:
+              - condition: template
+                value_template: "{{ direction[0:2] == 'u1' }}"
+            sequence:
+              - action: input_datetime.set_datetime
+                target: { entity_id: input_datetime.zendure_last_cross_cycle_u1 }
+                data: { timestamp: "{{ now_ts }}" }
+          - conditions:
+              - condition: template
+                value_template: "{{ direction[0:2] == 'u2' }}"
+            sequence:
+              - action: input_datetime.set_datetime
+                target: { entity_id: input_datetime.zendure_last_cross_cycle_u2 }
+                data: { timestamp: "{{ now_ts }}" }
+      - action: input_boolean.turn_off
+        target: { entity_id: input_boolean.zendure_balance_anchor_valid }
+      - parallel:
+          - action: input_text.set_value
+            target: { entity_id: input_text.zendure_full_priority_diagnostic }
+            data:
+              value: >-
+                {{ now().isoformat() }}|cross_cycle={{ direction }}|u1_dis={{ states('sensor.solarflow_1_battery_discharge_power_estimated')|int(0) }}|u2_dis={{ states('sensor.solarflow_2_battery_discharge_power_estimated')|int(0) }}|u1_chg={{ states('sensor.solarflow_1_battery_charge_power_estimated')|int(0) }}|u2_chg={{ states('sensor.solarflow_2_battery_charge_power_estimated')|int(0) }}
+          - action: input_text.set_value
+            target: { entity_id: input_text.zendure_balance_last_result }
+            data: { value: "{{ now().isoformat() }}|anchor_invalidated_cross_cycle|{{ direction }}" }
+
+  # --- V195: STATE-DEPENDENT BALANCE-ANCHOR INVALIDATION ---
+  - alias: "Zendure: Balance Anchor Validity"
+    id: "zendure_balance_anchor_validity"
+    mode: restart
+    max_exceeded: silent
+    triggers:
+      - trigger: time_pattern
+        minutes: "/1"
+        id: periodic
+      - trigger: state
+        entity_id:
+          - input_boolean.zendure_full_priority_u1
+          - input_boolean.zendure_full_priority_u2
+          - input_number.zendure_effective_cap_u1
+          - input_number.zendure_effective_cap_u2
+          - sensor.solarflow_1_battery_level
+          - sensor.solarflow_2_battery_level
+          - sensor.solarflow_1_status_raw
+          - sensor.solarflow_2_status_raw
+          - input_boolean.zendure_emergency_u1
+          - input_boolean.zendure_emergency_u2
+          - input_boolean.zendure_calib_mode_u1
+          - input_boolean.zendure_calib_mode_u2
+          - input_boolean.zendure_vguard_u1
+          - input_boolean.zendure_vguard_u2
+          - input_boolean.zendure_batt_temp_cooldown_u1
+          - input_boolean.zendure_batt_temp_cooldown_u2
+          - input_boolean.zendure_hub_temp_cooldown_u1
+          - input_boolean.zendure_hub_temp_cooldown_u2
+        id: state_change
+    conditions:
+      - condition: state
+        entity_id: input_boolean.zendure_balance_anchor_valid
+        state: "on"
+    actions:
+      - variables:
+          now_ts: "{{ as_timestamp(now()) }}"
+          anchor_ts: "{{ state_attr('input_datetime.zendure_balance_anchor_ts','timestamp') | float(0) }}"
+          max_age_s: "{{ states('input_number.zendure_conf_balance_anchor_max_age_min') | float(120) * 60 }}"
+          anchor_mode: "{{ states('input_text.zendure_balance_anchor_mode') }}"
+          current_mode: >-
+            {% if is_state('input_boolean.zendure_full_priority_u1','on') and is_state('input_boolean.zendure_full_priority_u2','off') %}full_u1
+            {% elif is_state('input_boolean.zendure_full_priority_u2','on') and is_state('input_boolean.zendure_full_priority_u1','off') %}full_u2
+            {% else %}normal{% endif %}
+          cap1: "{{ states('input_number.zendure_effective_cap_u1') | int(0) }}"
+          cap2: "{{ states('input_number.zendure_effective_cap_u2') | int(0) }}"
+          anchor_cap1: "{{ states('input_number.zendure_balance_anchor_cap_u1') | int(0) }}"
+          anchor_cap2: "{{ states('input_number.zendure_balance_anchor_cap_u2') | int(0) }}"
+          anchor_soc1: "{{ states('input_number.zendure_balance_anchor_soc_u1') | float(-1) }}"
+          anchor_soc2: "{{ states('input_number.zendure_balance_anchor_soc_u2') | float(-1) }}"
+          soc1: "{{ states('sensor.solarflow_1_battery_level') | float(-1) }}"
+          soc2: "{{ states('sensor.solarflow_2_battery_level') | float(-1) }}"
+          weight: "{{ states('input_number.zendure_balance_anchor_weight_u1_pct') | float(50) }}"
+          safety_invalid: >-
+            {{ not is_state('input_boolean.zendure_auto_mode','on')
+               or states('sensor.solarflow_1_status_raw') | upper in ['UNAVAILABLE','UNKNOWN','FAULT','ERROR']
+               or states('sensor.solarflow_2_status_raw') | upper in ['UNAVAILABLE','UNKNOWN','FAULT','ERROR']
+               or is_state('input_boolean.zendure_emergency_u1','on')
+               or is_state('input_boolean.zendure_emergency_u2','on')
+               or is_state('input_boolean.zendure_calib_mode_u1','on')
+               or is_state('input_boolean.zendure_calib_mode_u2','on')
+               or is_state('input_boolean.zendure_vguard_u1','on')
+               or is_state('input_boolean.zendure_vguard_u2','on')
+               or is_state('input_boolean.zendure_batt_temp_cooldown_u1','on')
+               or is_state('input_boolean.zendure_batt_temp_cooldown_u2','on')
+               or is_state('input_boolean.zendure_hub_temp_cooldown_u1','on')
+               or is_state('input_boolean.zendure_hub_temp_cooldown_u2','on') }}
+          age_expired: "{{ anchor_ts <= 1 or now_ts - anchor_ts >= max_age_s }}"
+          mode_mismatch: "{{ anchor_mode != current_mode }}"
+          cap_material_change: >-
+            {{ anchor_cap1 <= 0 or anchor_cap2 <= 0
+               or (cap1 - anchor_cap1) | abs >= 150
+               or (cap2 - anchor_cap2) | abs >= 150 }}
+          soc_material_change: >-
+            {{ anchor_mode == 'normal'
+               and (anchor_soc1 < 0 or anchor_soc2 < 0 or soc1 < 0 or soc2 < 0
+                    or (soc1 - anchor_soc1) | abs >= 5
+                    or (soc2 - anchor_soc2) | abs >= 5
+                    or ((soc1 - soc2) - (anchor_soc1 - anchor_soc2)) | abs >= 5) }}
+          soc_order_reversed: >-
+            {{ soc1 < 0 or soc2 < 0
+               or (anchor_mode == 'normal' and weight >= 55 and soc1 + 3 < soc2)
+               or (anchor_mode == 'normal' and weight <= 45 and soc2 + 3 < soc1) }}
+          invalid: >-
+            {{ safety_invalid | bool or age_expired | bool or mode_mismatch | bool
+               or cap_material_change | bool or soc_material_change | bool or soc_order_reversed | bool }}
+          reason: >-
+            {% if safety_invalid | bool %}safety
+            {% elif age_expired | bool %}age
+            {% elif mode_mismatch | bool %}mode
+            {% elif cap_material_change | bool %}cap
+            {% elif soc_material_change | bool %}soc_drift
+            {% elif soc_order_reversed | bool %}soc_order
+            {% else %}none{% endif %}
+      - if:
+          - condition: template
+            value_template: "{{ invalid | bool }}"
+        then:
+          - action: input_boolean.turn_off
+            target: { entity_id: input_boolean.zendure_balance_anchor_valid }
+          - action: input_text.set_value
+            target: { entity_id: input_text.zendure_balance_last_result }
+            data: { value: "{{ now().isoformat() }}|anchor_invalidated|{{ reason }}" }
+
   - alias: "Zendure: Slow Unit Balancer"
     id: "zendure_slow_unit_balancer"
     mode: single
@@ -10925,6 +11814,27 @@ automation:
       - trigger: time_pattern
         seconds: "/30"
         id: balance_tick
+      - trigger: state
+        entity_id: sensor.solarflow_1_battery_level
+        id: top_soc_u1
+      - trigger: state
+        entity_id: sensor.solarflow_2_battery_level
+        id: top_soc_u2
+      - trigger: state
+        entity_id:
+          - input_boolean.zendure_full_priority_u1
+          - input_boolean.zendure_full_priority_u2
+        id: full_priority_change
+      - trigger: state
+        entity_id: binary_sensor.solarflow_full_priority_cross_cycle
+        to: "on"
+        id: cross_cycle
+      - trigger: state
+        entity_id: input_number.zendure_effective_cap_u1
+        id: cap_change_u1
+      - trigger: state
+        entity_id: input_number.zendure_effective_cap_u2
+        id: cap_change_u2
     conditions:
       - condition: state
         entity_id: input_boolean.zendure_auto_mode
@@ -10933,6 +11843,20 @@ automation:
         entity_id: input_boolean.zendure_transfer_pending
         state: "off"
     actions:
+      - if:
+          - condition: template
+            value_template: >-
+              {% if trigger.id in ['top_soc_u1','top_soc_u2'] %}
+                {% set old = trigger.from_state.state | int(-1) if trigger.from_state is not none else -1 %}
+                {% set new = trigger.to_state.state | int(-1) if trigger.to_state is not none else -1 %}
+                {{ old not in [99,100] and new not in [99,100] }}
+              {% elif trigger.id in ['cap_change_u1','cap_change_u2'] %}
+                {% set old = trigger.from_state.state | int(0) if trigger.from_state is not none and is_number(trigger.from_state.state) else 0 %}
+                {% set new = trigger.to_state.state | int(0) if trigger.to_state is not none and is_number(trigger.to_state.state) else 0 %}
+                {{ (new - old) | abs < 50 }}
+              {% else %}false{% endif %}
+        then:
+          - stop: "Top-SoC/cap event was not material for an immediate balance evaluation."
       - variables:
           now_ts: "{{ as_timestamp(now()) }}"
           grid: "{{ states('sensor.zendure_grid_power') | float(9999) }}"
@@ -10956,7 +11880,9 @@ automation:
                and state_attr('sensor.zendure_grid_power','source_fresh') | default(false) | bool
                and (now_ts - last_grid_change_ts) >= stable_seconds
                and (grid - bias) | abs <= 30 }}
-          balance_cooldown_ok: "{{ (now_ts - last_balance_ts) >= 60 }}"
+          balance_cooldown_ok: >-
+            {{ (now_ts - last_balance_ts) >= 60
+               or trigger.id in ['full_priority_change','cross_cycle','cap_change_u1','cap_change_u2'] }}
           status_age1: "{{ now_ts - as_timestamp(state_attr('sensor.solarflow_1_mqtt_freshness','status_ts'), 0) }}"
           status_age2: "{{ now_ts - as_timestamp(state_attr('sensor.solarflow_2_mqtt_freshness','status_ts'), 0) }}"
           online1: "{{ states('sensor.solarflow_1_status_raw')|upper not in ['UNAVAILABLE','UNKNOWN','FAULT','ERROR'] and status_age1 < 300 }}"
@@ -11067,7 +11993,75 @@ automation:
                if now_ts - solar_ts2 < 120 and is_number(states('sensor.solarflow_2_solar_input')) else 0 }}
           vmin1: "{{ states('sensor.solarflow_1_cell_min_vol') | float(0) }}"
           vmin2: "{{ states('sensor.solarflow_2_cell_min_vol') | float(0) }}"
-          weight1: >-
+          full_priority_u1: >-
+            {{ is_state('input_boolean.zendure_full_priority_u1','on')
+               and is_state('input_boolean.zendure_full_priority_u2','off') }}
+          full_priority_u2: >-
+            {{ is_state('input_boolean.zendure_full_priority_u2','on')
+               and is_state('input_boolean.zendure_full_priority_u1','off') }}
+          full_priority_mode: >-
+            {% if full_priority_u1 | bool %}full_u1
+            {% elif full_priority_u2 | bool %}full_u2
+            {% else %}normal{% endif %}
+          full_pv_data_fresh: >-
+            {{ now_ts - solar_ts1 < 120 and now_ts - solar_ts2 < 120
+               and is_number(states('sensor.solarflow_1_solar_input'))
+               and is_number(states('sensor.solarflow_2_solar_input')) }}
+          fallback_full_share: >-
+            {{ [[states('input_number.zendure_conf_full_priority_fallback_share') | float(90) / 100, 0.70] | max, 0.95] | min }}
+          probe_step: "{{ states('input_number.zendure_conf_full_priority_probe_step') | int(50) }}"
+          probe_backoff_s: "{{ states('input_number.zendure_conf_full_priority_probe_backoff_min') | float(15) * 60 }}"
+          cross_threshold: "{{ states('input_number.zendure_conf_cross_cycle_threshold') | float(50) }}"
+          battery_charge1: "{{ states('sensor.solarflow_1_battery_charge_power_estimated') | float(0) }}"
+          battery_charge2: "{{ states('sensor.solarflow_2_battery_charge_power_estimated') | float(0) }}"
+          battery_discharge1: "{{ states('sensor.solarflow_1_battery_discharge_power_estimated') | float(0) }}"
+          battery_discharge2: "{{ states('sensor.solarflow_2_battery_discharge_power_estimated') | float(0) }}"
+          cross_cycle_u1: >-
+            {{ full_priority_u1 | bool and
+               ((battery_discharge1 | float(0) >= cross_threshold | float(50)
+                 and battery_charge2 | float(0) >= cross_threshold | float(50)
+                 and cap2 | float(0) - actual2 | float(0) >= cross_threshold | float(50))
+                or
+                (battery_charge1 | float(0) >= cross_threshold | float(50)
+                 and battery_discharge2 | float(0) >= cross_threshold | float(50)
+                 and cap1 | float(0) - actual1 | float(0) >= cross_threshold | float(50))) }}
+          cross_cycle_u2: >-
+            {{ full_priority_u2 | bool and
+               ((battery_discharge2 | float(0) >= cross_threshold | float(50)
+                 and battery_charge1 | float(0) >= cross_threshold | float(50)
+                 and cap1 | float(0) - actual1 | float(0) >= cross_threshold | float(50))
+                or
+                (battery_charge2 | float(0) >= cross_threshold | float(50)
+                 and battery_discharge1 | float(0) >= cross_threshold | float(50)
+                 and cap2 | float(0) - actual2 | float(0) >= cross_threshold | float(50))) }}
+          last_cross_u1: "{{ state_attr('input_datetime.zendure_last_cross_cycle_u1','timestamp') | float(0) }}"
+          last_cross_u2: "{{ state_attr('input_datetime.zendure_last_cross_cycle_u2','timestamp') | float(0) }}"
+          probe_backoff_ok_u1: "{{ last_cross_u1 <= 1 or now_ts - last_cross_u1 >= probe_backoff_s }}"
+          probe_backoff_ok_u2: "{{ last_cross_u2 <= 1 or now_ts - last_cross_u2 >= probe_backoff_s }}"
+          # V196: the binary sensor already requires a 10-second sustained energy
+          # cross-cycle. When it is still physically present, permit a dedicated
+          # PV-first redistribution even if the global grid point is already good.
+          cross_cycle_correction: >-
+            {{ full_priority_mode != 'normal'
+               and is_state('binary_sensor.solarflow_full_priority_cross_cycle','on')
+               and (cross_cycle_u1 | bool or cross_cycle_u2 | bool) }}
+          cross_cycle_direction: >-
+            {{ state_attr('binary_sensor.solarflow_full_priority_cross_cycle','direction') | default('none') }}
+          cross_cycle_overlap_w: >-
+            {% if cross_cycle_direction == 'u1_discharges_u2_charges' %}
+              {{ [battery_discharge1 | float(0), battery_charge2 | float(0)] | min }}
+            {% elif cross_cycle_direction == 'u1_charges_u2_discharges' %}
+              {{ [battery_charge1 | float(0), battery_discharge2 | float(0)] | min }}
+            {% elif cross_cycle_direction == 'u2_discharges_u1_charges' %}
+              {{ [battery_discharge2 | float(0), battery_charge1 | float(0)] | min }}
+            {% elif cross_cycle_direction == 'u2_charges_u1_discharges' %}
+              {{ [battery_charge2 | float(0), battery_discharge1 | float(0)] | min }}
+            {% else %}0{% endif %}
+          cross_cycle_shift_w: >-
+            {% set raw = [[cross_cycle_overlap_w | float(0), cross_threshold | float(50)] | max, 150] | min %}
+            {{ ((raw | int(0)) // 5) * 5 }}
+
+          normal_weight1: >-
             {# Base split follows remaining usable energy, not raw SoC alone. #}
             {% set usable_sum = usable_wh1 | float(0) + usable_wh2 | float(0) %}
             {% set capacity_sum = capacity1_wh | float(0) + capacity2_wh | float(0) %}
@@ -11082,8 +12076,6 @@ automation:
             {% set thermal_penalty1 = [[bp1 + hp1, 0.0] | max, 0.12] | min %}
             {% set thermal_penalty2 = [[bp2 + hp2, 0.0] | max, 0.12] | min %}
             {% set w = w - thermal_penalty1 + thermal_penalty2 %}
-            {% if soc1 >= 99 and soc2 < 99 %}{% set w = w + 0.25 %}
-            {% elif soc2 >= 99 and soc1 < 99 %}{% set w = w - 0.25 %}{% endif %}
             {% if (solar1 - solar2) > 150 %}{% set w = w + 0.10 %}
             {% elif (solar1 - solar2) < -150 %}{% set w = w - 0.10 %}{% endif %}
             {% set actual_sum = actual1 + actual2 %}
@@ -11097,7 +12089,95 @@ automation:
             {% if (vmin1 + 0.05) < vmin2 %}{% set w = w - 0.08 %}
             {% elif (vmin2 + 0.05) < vmin1 %}{% set w = w + 0.08 %}{% endif %}
             {{ [[w, 0.20] | max, 0.80] | min }}
-          requested1: "{{ (balance_total * (weight1 | float(0.5))) | int(0) }}"
+
+          full_priority_base1: >-
+            {% set total = balance_total | int(0) %}
+            {% set c1 = cap1 | int(0) %}
+            {% set c2 = cap2 | int(0) %}
+            {% if full_priority_u1 | bool %}
+              {% if full_pv_data_fresh | bool %}
+                {% set p1 = [total, solar1 | int(0), c1] | min %}
+                {% set rem1 = [total - p1, 0] | max %}
+                {% set p2 = [rem1, solar2 | int(0), c2] | min %}
+                {% set rem2 = [rem1 - p2, 0] | max %}
+                {% set extra1 = [rem2, [c1 - p1, 0] | max] | min %}
+                {{ p1 + extra1 }}
+              {% else %}
+                {% set preferred = (total * fallback_full_share | float(0.9)) | int(0) %}
+                {% set u1 = [preferred, c1] | min %}
+                {% set u2 = [total - u1, c2] | min %}
+                {{ u1 + [total - u1 - u2, [c1 - u1, 0] | max] | min }}
+              {% endif %}
+            {% elif full_priority_u2 | bool %}
+              {% if full_pv_data_fresh | bool %}
+                {% set p2 = [total, solar2 | int(0), c2] | min %}
+                {% set rem1 = [total - p2, 0] | max %}
+                {% set p1 = [rem1, solar1 | int(0), c1] | min %}
+                {% set rem2 = [rem1 - p1, 0] | max %}
+                {% set extra2 = [rem2, [c2 - p2, 0] | max] | min %}
+                {% set rem3 = [rem2 - extra2, 0] | max %}
+                {{ p1 + [rem3, [c1 - p1, 0] | max] | min }}
+              {% else %}
+                {% set preferred2 = (total * fallback_full_share | float(0.9)) | int(0) %}
+                {% set u2 = [preferred2, c2] | min %}
+                {% set u1 = [total - u2, c1] | min %}
+                {{ u1 + [total - u1 - u2, [c1 - u1, 0] | max] | min }}
+              {% endif %}
+            {% else %}
+              {{ (total * normal_weight1 | float(0.5)) | int(0) }}
+            {% endif %}
+          full_priority_base2: "{{ balance_total | int(0) - full_priority_base1 | int(0) }}"
+          probe_allowed_u1: >-
+            {{ full_priority_u1 | bool and full_pv_data_fresh | bool
+               and not cross_cycle_u1 | bool and probe_backoff_ok_u1 | bool
+               and battery_discharge1 | float(0) <= 20
+               and balance_total | int(0) >= 120
+               and desired2 | int(0) >= probe_step | int(50) + 30
+               and cap1 | int(0) - full_priority_base1 | int(0) >= probe_step | int(50)
+               and (total_desired | int(0) - balance_total | int(0)) | abs < 10 }}
+          probe_allowed_u2: >-
+            {{ full_priority_u2 | bool and full_pv_data_fresh | bool
+               and not cross_cycle_u2 | bool and probe_backoff_ok_u2 | bool
+               and battery_discharge2 | float(0) <= 20
+               and balance_total | int(0) >= 120
+               and desired1 | int(0) >= probe_step | int(50) + 30
+               and cap2 | int(0) - full_priority_base2 | int(0) >= probe_step | int(50)
+               and (total_desired | int(0) - balance_total | int(0)) | abs < 10 }}
+          full_priority_target1_raw: >-
+            {% set total = balance_total | int(0) %}
+            {% set base = full_priority_base1 | int(0) %}
+            {% set minimum = 30 %}
+            {% if cross_cycle_correction | bool %}
+              {% set low = [0, total - cap2 | int(0)] | max %}
+              {% set high = [cap1 | int(0), total] | min %}
+              {% set shift = cross_cycle_shift_w | int(50) %}
+              {% if cross_cycle_direction in ['u1_discharges_u2_charges','u2_charges_u1_discharges'] %}
+                {# Reduce U1. If PV-first already moves far enough, use it; otherwise
+                   force one bounded correction step so pair_delta=0 cannot mask it. #}
+                {% set target = base if base <= (desired1 | int(0)) - (cross_threshold | int(50))
+                     else (desired1 | int(0)) - shift %}
+              {% elif cross_cycle_direction in ['u1_charges_u2_discharges','u2_discharges_u1_charges'] %}
+                {# Increase U1 for the opposite cross-cycle direction. #}
+                {% set target = base if base >= (desired1 | int(0)) + (cross_threshold | int(50))
+                     else (desired1 | int(0)) + shift %}
+              {% else %}
+                {% set target = base %}
+              {% endif %}
+              {{ [[target | int(0), low | int(0)] | max, high | int(0)] | min }}
+            {% elif probe_allowed_u1 | bool %}
+              {% set current = [desired1 | int(0), base] | max %}
+              {{ [current + probe_step | int(50), cap1 | int(0), total - minimum] | min }}
+            {% elif probe_allowed_u2 | bool %}
+              {% set current2 = [desired2 | int(0), full_priority_base2 | int(0)] | max %}
+              {% set target2 = [current2 + probe_step | int(50), cap2 | int(0), total - minimum] | min %}
+              {{ total - target2 }}
+            {% else %}
+              {{ base }}
+            {% endif %}
+          requested1: >-
+            {{ full_priority_target1_raw | int(0)
+               if full_priority_mode != 'normal'
+               else (balance_total * (normal_weight1 | float(0.5))) | int(0) }}
           requested2: "{{ balance_total - requested1 }}"
           ideal1_pre: "{{ [requested1, cap1] | min }}"
           ideal2_raw: "{{ [[requested2 + (requested1 - ideal1_pre), 0] | max, cap2] | min }}"
@@ -11105,15 +12185,39 @@ automation:
           minimum: 30
           ideal1: >-
             {% set total = balance_total | int(0) %}
-            {% set low = [minimum, total - cap2] | max %}
-            {% set high = [cap1, total - minimum] | min %}
-            {% if total < 60 %}
-              {{ total if cap1 >= total and desired1 >= desired2 else 0 }}
-            {% elif low <= high %}
-              {{ [[ideal1_raw, low] | max, high] | min }}
-            {% elif cap1 >= total %}{{ total }}
-            {% else %}0{% endif %}
-          ideal2: "{{ [[balance_total - ideal1, 0] | max, cap2] | min }}"
+            {% set raw = ideal1_raw | int(0) %}
+            {% set c1 = cap1 | int(0) %}
+            {% set c2 = cap2 | int(0) %}
+            {% set minimum = 30 %}
+            {% if full_priority_mode != 'normal' %}
+              {% set both_low = [minimum, total - c2] | max %}
+              {% set both_high = [c1, total - minimum] | min %}
+              {% if full_priority_u1 | bool and c1 >= total and (total - raw) < minimum %}
+                {{ total }}
+              {% elif full_priority_u2 | bool and c2 >= total and raw < minimum %}
+                0
+              {% elif both_low <= both_high %}
+                {{ [[raw, both_low] | max, both_high] | min }}
+              {% elif full_priority_u1 | bool %}
+                {{ [total, c1] | min if c1 >= minimum else 0 }}
+              {% elif full_priority_u2 | bool %}
+                {{ 0 if c2 >= minimum else ([total, c1] | min if c1 >= minimum else 0) }}
+              {% elif c1 >= total %}{{ total }}
+              {% elif c2 >= total %}0
+              {% else %}{{ [total, c1] | min if c1 >= minimum else 0 }}{% endif %}
+            {% else %}
+              {% set low = [minimum, total - c2] | max %}
+              {% set high = [c1, total - minimum] | min %}
+              {% if total < 60 %}
+                {{ total if c1 >= total and desired1 >= desired2 else 0 }}
+              {% elif low <= high %}
+                {{ [[raw, low] | max, high] | min }}
+              {% elif c1 >= total %}{{ total }}
+              {% else %}0{% endif %}
+            {% endif %}
+          ideal2: >-
+            {% set rem = [[balance_total - ideal1, 0] | max, cap2] | min %}
+            {{ 0 if full_priority_mode != 'normal' and rem > 0 and rem < 30 else rem }}
           # The pair dispatcher floors every device command to 5W. Store and
           # verify exactly those wire targets, otherwise an ideal value such as
           # 273W would wait forever for a publish/readback that is correctly 270W.
@@ -11134,9 +12238,23 @@ automation:
             {{ [write_bucket_capacity | float(5), states('input_number.zendure_write_tokens_u2') | float(0)
                 + ([now_ts - (state_attr('input_datetime.zendure_write_budget_ts_u2','timestamp') | float(0)), 0] | max)
                   / write_refill_seconds | float(4)] | min }}
-          balance_allowed: >-
+          material_transfer_threshold: >-
+            {{ [effective_min_transfer | int(60), probe_step | int(50)] | min
+               if full_priority_mode != 'normal' or cross_cycle_u1 | bool or cross_cycle_u2 | bool
+               else effective_min_transfer | int(60) }}
+          normal_balance_timing_ok: >-
             {{ grid_stable | bool and balance_cooldown_ok | bool
-               and balance_transaction_idle | bool and balance_failure_backoff_ok | bool
+               and last_dispatch_age1 | float(0) >= 10 and last_dispatch_age2 | float(0) >= 10
+               and last_retry_age1 | float(0) >= 30 and last_retry_age2 | float(0) >= 30 }}
+          cross_cycle_balance_timing_ok: >-
+            {{ cross_cycle_correction | bool
+               and (trigger.id == 'cross_cycle' or (now_ts - last_balance_ts) >= 60)
+               and last_dispatch_age1 | float(0) >= 3 and last_dispatch_age2 | float(0) >= 3
+               and last_retry_age1 | float(0) >= 10 and last_retry_age2 | float(0) >= 10 }}
+          balance_source: >-
+            {{ 'slow_balance_cross_cycle' if cross_cycle_correction | bool else 'slow_balance' }}
+          balance_allowed: >-
+            {{ balance_transaction_idle | bool and balance_failure_backoff_ok | bool
                and online1 | bool and online2 | bool and not busy1 | bool and not busy2 | bool
                and cap1 >= 30 and cap2 >= 30 and balance_total >= 120
                and output_fresh1 | bool and output_fresh2 | bool
@@ -11144,18 +12262,20 @@ automation:
                and balance_data_fresh1 | bool and balance_data_fresh2 | bool
                and not pending1 | bool and not pending2 | bool
                and write_budget1 | float(0) >= 2 and write_budget2 | float(0) >= 2
-               and last_dispatch_age1 | float(0) >= 10 and last_dispatch_age2 | float(0) >= 10
-               and last_retry_age1 | float(0) >= 30 and last_retry_age2 | float(0) >= 30
                and soc1 >= 0 and soc2 >= 0 and vmin1 > 3.10 and vmin2 > 3.10
-               and opposing | bool and transfer_size >= effective_min_transfer | int(60) }}
-          next_trim: "{{ 'u1' if (cap1 - ideal1_command) >= (cap2 - ideal2_command) else 'u2' }}"
+               and (normal_balance_timing_ok | bool or cross_cycle_balance_timing_ok | bool)
+               and opposing | bool and transfer_size >= material_transfer_threshold | int(50) }}
+          next_trim: >-
+            {% if full_priority_u1 | bool %}u1
+            {% elif full_priority_u2 | bool %}u2
+            {% else %}{{ 'u1' if (cap1 - ideal1_command) >= (cap2 - ideal2_command) else 'u2' }}{% endif %}
           generation_next: "{{ 1 + (((as_timestamp(now()) * 1000000) | int) % 999999999) }}"
 
       - if:
           - condition: template
             value_template: "{{ not balance_allowed | bool }}"
         then:
-          - stop: "No stable/material unit rebalance required."
+          - stop: "No safe/material normal or cross-cycle rebalance required."
 
       # V194: arm a transaction before the asynchronous pair dispatcher. No
       # successful cooldown or fast-trim anchor is committed until physical effect.
@@ -11172,6 +12292,9 @@ automation:
           - action: input_text.set_value
             target: { entity_id: input_text.zendure_pending_balance_trim }
             data: { value: "{{ next_trim }}" }
+          - action: input_text.set_value
+            target: { entity_id: input_text.zendure_pending_balance_mode }
+            data: { value: "{{ full_priority_mode }}" }
           - action: input_number.set_value
             target: { entity_id: input_number.zendure_pending_balance_target_u1 }
             data: { value: "{{ ideal1_command | int(0) }}" }
@@ -11252,7 +12375,7 @@ automation:
             update_desired_2: true
             allow_pending_transfer: true
             cancel_pending_transfer: true
-            source: "slow_balance"
+            source: "{{ balance_source }}"
             emergency_zero_1: false
             emergency_zero_2: false
             generation: "{{ generation_next }}"
@@ -11311,6 +12434,13 @@ automation:
           - condition: template
             value_template: "{{ not event_matches_u1 | bool and not event_matches_u2 | bool }}"
         then:
+          - parallel:
+              - action: input_number.set_value
+                target: { entity_id: input_number.zendure_balance_superseded_total }
+                data: { value: "{{ [states('input_number.zendure_balance_superseded_total') | int(0) + 1, 999999] | min }}" }
+              - action: input_text.set_value
+                target: { entity_id: input_text.zendure_balance_last_result }
+                data: { value: "{{ now().isoformat() }}|clamped_or_coalesced|gen={{ event_generation }}|target={{ event_target }}" }
           - action: script.zendure_clear_balance_transaction
           - stop: "Balance target was clamped/coalesced before the expected wire commit."
       - parallel:
@@ -11479,7 +12609,8 @@ automation:
             {{ transaction_state == 'awaiting_wire' and pending_generation > 0
                and current_generation != pending_generation }}
           transaction_superseded: >-
-            {{ wire_superseded | bool or desired_materially_changed | bool or event_supersedes | bool }}
+            {{ wire_superseded | bool or desired_materially_changed | bool or event_supersedes | bool
+               or pending_mode != current_balance_mode }}
           timeout_generation_at_trigger: "{{ balance_timeout_generation | default(0) | int(0) }}"
           timeout_state_at_trigger: "{{ balance_timeout_state | default('none') }}"
           stale_timeout_event: >-
@@ -11503,6 +12634,11 @@ automation:
             {{ pending_gen2 == pending_generation
                and (pending_source2[0:12] == 'slow_balance' or pending_source2 == 'transfer_release') }}
           pending_trim: "{{ states('input_text.zendure_pending_balance_trim') }}"
+          pending_mode: "{{ states('input_text.zendure_pending_balance_mode') }}"
+          current_balance_mode: >-
+            {% if is_state('input_boolean.zendure_full_priority_u1','on') and is_state('input_boolean.zendure_full_priority_u2','off') %}full_u1
+            {% elif is_state('input_boolean.zendure_full_priority_u2','on') and is_state('input_boolean.zendure_full_priority_u1','off') %}full_u2
+            {% else %}normal{% endif %}
           target_weight_pct: "{{ states('input_number.zendure_pending_balance_target_weight_u1_pct') | float(50) }}"
       - if:
           - condition: template
@@ -11518,6 +12654,13 @@ automation:
           - condition: template
             value_template: "{{ transaction_superseded | bool or busy_or_offline | bool }}"
         then:
+          - parallel:
+              - action: input_number.set_value
+                target: { entity_id: input_number.zendure_balance_superseded_total }
+                data: { value: "{{ [states('input_number.zendure_balance_superseded_total') | int(0) + 1, 999999] | min }}" }
+              - action: input_text.set_value
+                target: { entity_id: input_text.zendure_balance_last_result }
+                data: { value: "{{ now().isoformat() }}|superseded|gen={{ pending_generation }}|mode={{ pending_mode }}->{{ current_balance_mode }}" }
           - action: script.zendure_clear_balance_transaction
           - stop: "Slow-balance transaction superseded or invalidated by safety state."
       - if:
@@ -11578,6 +12721,10 @@ automation:
                 {{ edge_current_generation | int(0) != edge_pending_generation | int(0)
                    and (((edge_desired1 | int(0) - edge_target1 | int(0)) | abs >= 50)
                         or ((edge_desired2 | int(0) - edge_target2 | int(0)) | abs >= 50)) }}
+              edge_current_mode: >-
+                {% if is_state('input_boolean.zendure_full_priority_u1','on') and is_state('input_boolean.zendure_full_priority_u2','off') %}full_u1
+                {% elif is_state('input_boolean.zendure_full_priority_u2','on') and is_state('input_boolean.zendure_full_priority_u1','off') %}full_u2
+                {% else %}normal{% endif %}
               edge_status_age1: >-
                 {{ edge_now_ts | float(0)
                    - as_timestamp(state_attr('sensor.solarflow_1_mqtt_freshness','status_ts'), 0) }}
@@ -11603,6 +12750,7 @@ automation:
               edge_owner_valid: >-
                 {{ edge_state == 'awaiting_effect'
                    and edge_pending_generation | int(0) == pending_generation | int(0)
+                   and pending_mode == edge_current_mode
                    and not edge_materially_superseded | bool
                    and edge_safety_valid | bool }}
               edge_effect_ok: "{{ edge_owner_valid | bool and edge_effect1 | bool and edge_effect2 | bool }}"
@@ -11628,6 +12776,27 @@ automation:
               - action: input_number.set_value
                 target: { entity_id: input_number.zendure_balance_anchor_weight_u1_pct }
                 data: { value: "{{ target_weight_pct }}" }
+              - action: input_text.set_value
+                target: { entity_id: input_text.zendure_balance_anchor_mode }
+                data: { value: "{{ pending_mode }}" }
+              - action: input_number.set_value
+                target: { entity_id: input_number.zendure_balance_anchor_cap_u1 }
+                data: { value: "{{ states('input_number.zendure_effective_cap_u1') | int(0) }}" }
+              - action: input_number.set_value
+                target: { entity_id: input_number.zendure_balance_anchor_cap_u2 }
+                data: { value: "{{ states('input_number.zendure_effective_cap_u2') | int(0) }}" }
+              - action: input_number.set_value
+                target: { entity_id: input_number.zendure_balance_anchor_soc_u1 }
+                data: { value: "{{ states('sensor.solarflow_1_battery_level') | int(0) }}" }
+              - action: input_number.set_value
+                target: { entity_id: input_number.zendure_balance_anchor_soc_u2 }
+                data: { value: "{{ states('sensor.solarflow_2_battery_level') | int(0) }}" }
+              - action: input_number.set_value
+                target: { entity_id: input_number.zendure_balance_success_total }
+                data: { value: "{{ [states('input_number.zendure_balance_success_total') | int(0) + 1, 999999] | min }}" }
+              - action: input_text.set_value
+                target: { entity_id: input_text.zendure_balance_last_result }
+                data: { value: "{{ now().isoformat() }}|success|mode={{ pending_mode }}|target={{ edge_target1 }}+{{ edge_target2 }}" }
               - action: input_datetime.set_datetime
                 target: { entity_id: input_datetime.zendure_balance_anchor_ts }
                 data: { timestamp: "{{ edge_now_ts }}" }
@@ -11708,6 +12877,12 @@ automation:
                   - action: input_number.set_value
                     target: { entity_id: input_number.zendure_balance_effect_failure_count }
                     data: { value: "{{ wire_failure_count_next }}" }
+                  - action: input_number.set_value
+                    target: { entity_id: input_number.zendure_balance_wire_failure_total }
+                    data: { value: "{{ [states('input_number.zendure_balance_wire_failure_total') | int(0) + 1, 999999] | min }}" }
+                  - action: input_text.set_value
+                    target: { entity_id: input_text.zendure_balance_last_result }
+                    data: { value: "{{ now().isoformat() }}|wire_failure|gen={{ pending_generation }}" }
                   - action: input_datetime.set_datetime
                     target: { entity_id: input_datetime.zendure_last_balance_effect_failure }
                     data: { timestamp: "{{ now_ts }}" }
@@ -11743,6 +12918,12 @@ automation:
               - action: input_number.set_value
                 target: { entity_id: input_number.zendure_balance_effect_failure_count }
                 data: { value: "{{ failure_count_next }}" }
+              - action: input_number.set_value
+                target: { entity_id: input_number.zendure_balance_physical_failure_total }
+                data: { value: "{{ [states('input_number.zendure_balance_physical_failure_total') | int(0) + 1, 999999] | min }}" }
+              - action: input_text.set_value
+                target: { entity_id: input_text.zendure_balance_last_result }
+                data: { value: "{{ now().isoformat() }}|physical_failure|missing={{ missing_unit }}|gen={{ pending_generation }}" }
               - action: input_datetime.set_datetime
                 target: { entity_id: input_datetime.zendure_last_balance_effect_failure }
                 data: { timestamp: "{{ now_ts }}" }
@@ -11860,6 +13041,9 @@ automation:
           - input_boolean.zendure_batt_temp_cooldown_u2
           - input_boolean.zendure_hub_temp_cooldown_u1
           - input_boolean.zendure_hub_temp_cooldown_u2
+          - input_boolean.zendure_full_priority_u1
+          - input_boolean.zendure_full_priority_u2
+          - binary_sensor.solarflow_full_priority_cross_cycle
           - input_number.zendure_conf_max_output_per_unit
           - input_number.zendure_conf_max_output
         id: safety_change
@@ -12436,45 +13620,175 @@ automation:
                  cap_u1 | int(0) + cap_u2 | int(0), available_capacity | int(0)] | min }}
           base_sum: "{{ base_1 | int(0) + base_2 | int(0) }}"
           pair_delta: "{{ fast_total | int(0) - base_sum | int(0) }}"
+          full_priority_u1_fast: >-
+            {{ is_state('input_boolean.zendure_full_priority_u1','on')
+               and is_state('input_boolean.zendure_full_priority_u2','off')
+               and active_1 | bool and active_2 | bool }}
+          full_priority_u2_fast: >-
+            {{ is_state('input_boolean.zendure_full_priority_u2','on')
+               and is_state('input_boolean.zendure_full_priority_u1','off')
+               and active_1 | bool and active_2 | bool }}
+          current_balance_mode: >-
+            {% if full_priority_u1_fast | bool %}full_u1
+            {% elif full_priority_u2_fast | bool %}full_u2
+            {% else %}normal{% endif %}
+          full_priority_active: "{{ current_balance_mode != 'normal' and fast_total | int(0) >= 30 }}"
+          full_pv_data_fresh_fast: >-
+            {{ solar_age_1 | float(9999) < 120 and solar_age_2 | float(9999) < 120
+               and is_number(states('sensor.solarflow_1_solar_input'))
+               and is_number(states('sensor.solarflow_2_solar_input'))
+               and states('sensor.solarflow_1_solar_input') | float(-1) >= 0
+               and states('sensor.solarflow_2_solar_input') | float(-1) >= 0 }}
+          full_solar_1: >-
+            {{ states('sensor.solarflow_1_solar_input') | int(0)
+               if full_pv_data_fresh_fast | bool else 0 }}
+          full_solar_2: >-
+            {{ states('sensor.solarflow_2_solar_input') | int(0)
+               if full_pv_data_fresh_fast | bool else 0 }}
+          full_fallback_share: >-
+            {{ [[states('input_number.zendure_conf_full_priority_fallback_share') | float(90) / 100, 0.70] | max, 0.95] | min }}
+          full_cross_cycle_active: "{{ is_state('binary_sensor.solarflow_full_priority_cross_cycle','on') }}"
+
           balance_anchor_ts: "{{ state_attr('input_datetime.zendure_balance_anchor_ts','timestamp') | float(0) }}"
           balance_anchor_age: >-
             {{ as_timestamp(now()) - balance_anchor_ts | float(0)
                if balance_anchor_ts | float(0) > 1 else 999999 }}
-          balance_anchor_active: >-
+          balance_anchor_max_age_s: >-
+            {{ [states('input_number.zendure_conf_balance_anchor_max_age_min') | float(120) * 60, 600] | max }}
+          balance_anchor_mode: "{{ states('input_text.zendure_balance_anchor_mode') }}"
+          balance_anchor_cap_match: >-
+            {{ (states('input_number.zendure_balance_anchor_cap_u1') | int(0) - cap_u1 | int(0)) | abs < 150
+               and (states('input_number.zendure_balance_anchor_cap_u2') | int(0) - cap_u2 | int(0)) | abs < 150 }}
+          stored_anchor_active: >-
             {{ is_state('input_boolean.zendure_balance_anchor_valid','on')
-               and balance_anchor_age | float(999999) < 1800
+               and balance_anchor_age | float(999999) < balance_anchor_max_age_s | float(7200)
+               and balance_anchor_mode == current_balance_mode
+               and balance_anchor_cap_match | bool
                and active_1 | bool and active_2 | bool
                and fast_total | int(0) >= 60 }}
           balance_anchor_weight_u1: >-
             {{ states('input_number.zendure_balance_anchor_weight_u1_pct') | float(50) / 100 }}
-          balance_anchor_target_1: >-
+
+          normal_anchor_active: "{{ stored_anchor_active | bool and current_balance_mode == 'normal' }}"
+          normal_anchor_target_1: >-
             {% set total = fast_total | int(0) %}
             {% set raw = (total * balance_anchor_weight_u1 | float(0.5)) | int(0) %}
             {% set low = [30, total - cap_u2 | int(0)] | max %}
             {% set high = [cap_u1 | int(0), total - 30] | min %}
-            {% if balance_anchor_active | bool and low <= high %}
+            {% if normal_anchor_active | bool and low <= high %}
               {{ [[raw, low] | max, high] | min }}
             {% else %}
               {{ base_1 | int(0) }}
             {% endif %}
+
+          # Exact-100%-priority is PV-first, not a blind 100/0 split. Both
+          # currently harvested PV streams are allocated before the residual
+          # battery demand is placed on the truly full unit. With stale PV
+          # telemetry a conservative configurable 90/10 fallback is used.
+          full_priority_base_1_fast: >-
+            {% set total = fast_total | int(0) %}
+            {% set c1 = cap_u1 | int(0) %}
+            {% set c2 = cap_u2 | int(0) %}
+            {% if full_priority_u1_fast | bool %}
+              {% if full_pv_data_fresh_fast | bool %}
+                {% set p1 = [total, full_solar_1 | int(0), c1] | min %}
+                {% set rem1 = [total - p1, 0] | max %}
+                {% set p2 = [rem1, full_solar_2 | int(0), c2] | min %}
+                {% set rem2 = [rem1 - p2, 0] | max %}
+                {% set extra1 = [rem2, [c1 - p1, 0] | max] | min %}
+                {{ p1 + extra1 }}
+              {% else %}
+                {% set preferred = (total * full_fallback_share | float(0.9)) | int(0) %}
+                {% set u1 = [preferred, c1] | min %}
+                {% set u2 = [total - u1, c2] | min %}
+                {{ u1 + [total - u1 - u2, [c1 - u1, 0] | max] | min }}
+              {% endif %}
+            {% elif full_priority_u2_fast | bool %}
+              {% if full_pv_data_fresh_fast | bool %}
+                {% set p2 = [total, full_solar_2 | int(0), c2] | min %}
+                {% set rem1 = [total - p2, 0] | max %}
+                {% set p1 = [rem1, full_solar_1 | int(0), c1] | min %}
+                {% set rem2 = [rem1 - p1, 0] | max %}
+                {% set extra2 = [rem2, [c2 - p2, 0] | max] | min %}
+                {% set rem3 = [rem2 - extra2, 0] | max %}
+                {{ p1 + [rem3, [c1 - p1, 0] | max] | min }}
+              {% else %}
+                {% set preferred2 = (total * full_fallback_share | float(0.9)) | int(0) %}
+                {% set u2 = [preferred2, c2] | min %}
+                {% set u1 = [total - u2, c1] | min %}
+                {{ u1 + [total - u1 - u2, [c1 - u1, 0] | max] | min }}
+              {% endif %}
+            {% else %}
+              {{ base_1 | int(0) }}
+            {% endif %}
+          full_priority_base_2_fast: "{{ fast_total | int(0) - full_priority_base_1_fast | int(0) }}"
+          full_priority_anchor_target_1_raw: >-
+            {% set total = fast_total | int(0) %}
+            {% set base = full_priority_base_1_fast | int(0) %}
+            {% set low = [0, total - cap_u2 | int(0)] | max %}
+            {% set high = [cap_u1 | int(0), total] | min %}
+            {% if stored_anchor_active | bool and current_balance_mode == balance_anchor_mode
+                  and not full_cross_cycle_active | bool %}
+              {% set anchor = (total * balance_anchor_weight_u1 | float(0.5)) | int(0) %}
+              {% if full_priority_u1_fast | bool %}
+                {{ [[[base, anchor] | max, low] | max, high] | min }}
+              {% elif full_priority_u2_fast | bool %}
+                {{ [[[base, anchor] | min, low] | max, high] | min }}
+              {% else %}{{ base }}{% endif %}
+            {% else %}
+              {{ [[base, low] | max, high] | min }}
+            {% endif %}
+          full_priority_target_1: >-
+            {% set total = fast_total | int(0) %}
+            {% set raw = full_priority_anchor_target_1_raw | int(0) %}
+            {% set c1 = cap_u1 | int(0) %}
+            {% set c2 = cap_u2 | int(0) %}
+            {% set minimum = 30 %}
+            {% set both_low = [minimum, total - c2] | max %}
+            {% set both_high = [c1, total - minimum] | min %}
+            {% if full_priority_u1_fast | bool and c1 >= total and (total - raw) < minimum %}
+              {{ total }}
+            {% elif full_priority_u2_fast | bool and c2 >= total and raw < minimum %}
+              0
+            {% elif both_low <= both_high %}
+              {{ [[raw, both_low] | max, both_high] | min }}
+            {% elif full_priority_u1_fast | bool %}
+              {{ [total, c1] | min if c1 >= minimum else 0 }}
+            {% elif full_priority_u2_fast | bool %}
+              {{ 0 if c2 >= minimum else ([total, c1] | min if c1 >= minimum else 0) }}
+            {% elif c1 >= total %}{{ total }}
+            {% elif c2 >= total %}0
+            {% else %}{{ [total, c1] | min if c1 >= minimum else 0 }}{% endif %}
+          full_priority_target_2: "{{ fast_total | int(0) - full_priority_target_1 | int(0) }}"
+
+          # Full priority is an immediate allocation policy, while the stored
+          # anchor is used only to preserve a physically proven hidden-PV probe.
+          balance_anchor_active: "{{ full_priority_active | bool or normal_anchor_active | bool }}"
+          balance_anchor_target_1: >-
+            {{ full_priority_target_1 | int(0)
+               if full_priority_active | bool else normal_anchor_target_1 | int(0) }}
           balance_anchor_target_2: "{{ fast_total | int(0) - balance_anchor_target_1 | int(0) }}"
           anchor_deficit_u1: "{{ [balance_anchor_target_1 | int(0) - base_1 | int(0), 0] | max }}"
           anchor_deficit_u2: "{{ [balance_anchor_target_2 | int(0) - base_2 | int(0), 0] | max }}"
           anchor_surplus_u1: "{{ [base_1 | int(0) - balance_anchor_target_1 | int(0), 0] | max }}"
           anchor_surplus_u2: "{{ [base_2 | int(0) - balance_anchor_target_2 | int(0), 0] | max }}"
           # Preserve the low-write trim architecture: one unit may temporarily
-          # deviate up to 50W from the physical balance share before the peer is
-          # also adjusted. Large load steps remain ratio-aware without turning
-          # every small meter change into two device writes.
+          # deviate up to 50W from the allocation target before the peer is also
+          # adjusted. Full priority is directional: raises go first to the full
+          # unit, reductions first unload the non-full unit.
           anchor_trim_corridor: 50
           trim_u1: >-
             {% if active_1 | bool and not active_2 | bool %}true
             {% elif active_2 | bool and not active_1 | bool %}false
-            {% elif balance_anchor_active | bool and pair_delta | int(0) > 0 %}
+            {% elif full_priority_u1_fast | bool and pair_delta | int(0) > 0 %}true
+            {% elif full_priority_u1_fast | bool and pair_delta | int(0) < 0 %}false
+            {% elif full_priority_u2_fast | bool and pair_delta | int(0) > 0 %}false
+            {% elif full_priority_u2_fast | bool and pair_delta | int(0) < 0 %}true
+            {% elif normal_anchor_active | bool and pair_delta | int(0) > 0 %}
               {% if anchor_deficit_u1 | int(0) > anchor_deficit_u2 | int(0) + 5 %}true
               {% elif anchor_deficit_u2 | int(0) > anchor_deficit_u1 | int(0) + 5 %}false
               {% else %}{{ trim_pref == 'u1' }}{% endif %}
-            {% elif balance_anchor_active | bool and pair_delta | int(0) < 0 %}
+            {% elif normal_anchor_active | bool and pair_delta | int(0) < 0 %}
               {% if anchor_surplus_u1 | int(0) > anchor_surplus_u2 | int(0) + 5 %}true
               {% elif anchor_surplus_u2 | int(0) > anchor_surplus_u1 | int(0) + 5 %}false
               {% else %}{{ trim_pref == 'u1' }}{% endif %}
@@ -12487,7 +13801,6 @@ automation:
             {% set c1 = cap_u1 | int(0) %}
             {% set c2 = cap_u2 | int(0) %}
             {% if balance_anchor_active | bool and d >= 0 %}
-              {# Move toward the stored physical share without crossing it. #}
               {% if trim_u1 | bool %}
                 {% set room1 = [c1 - b1, 0] | max %}
                 {% set preferred1 = anchor_deficit_u1 | int(0) + anchor_trim_corridor | int(50) %}
@@ -12590,6 +13903,22 @@ automation:
               0
             {% elif not active_2 | bool %}
               {{ [total, c1] | min if [total, c1] | min >= minimum else 0 }}
+            {% elif full_priority_active | bool %}
+              {% set both_low = [minimum, total - c2] | max %}
+              {% set both_high = [c1, total - minimum] | min %}
+              {% if full_priority_u1_fast | bool and c1 >= total and (total - a1) < minimum %}
+                {{ total }}
+              {% elif full_priority_u2_fast | bool and c2 >= total and a1 < minimum %}
+                0
+              {% elif both_low <= both_high %}
+                {{ [[a1, both_low] | max, both_high] | min }}
+              {% elif full_priority_u1_fast | bool %}
+                {{ [total, c1] | min if c1 >= minimum else 0 }}
+              {% elif full_priority_u2_fast | bool %}
+                {{ 0 if c2 >= minimum else ([total, c1] | min if c1 >= minimum else 0) }}
+              {% elif c1 >= total %}{{ total }}
+              {% elif c2 >= total %}0
+              {% else %}{{ [total, c1] | min if c1 >= minimum else 0 }}{% endif %}
             {% elif total < (minimum * 2) %}
               {% if prefer1 and c1 >= total %}{{ total }}
               {% elif (not prefer1) and c2 >= total %}0
@@ -12626,6 +13955,8 @@ automation:
           trim_next: >-
             {% if not active_1 | bool and active_2 | bool %}u2
             {% elif not active_2 | bool and active_1 | bool %}u1
+            {% elif full_priority_u1_fast | bool %}u1
+            {% elif full_priority_u2_fast | bool %}u2
             {% elif final_1_eff | int(0) >= cap_u1 | int(0) - 5 and final_2_eff | int(0) < cap_u2 | int(0) - 5 %}u2
             {% elif final_2_eff | int(0) >= cap_u2 | int(0) - 5 and final_1_eff | int(0) < cap_u1 | int(0) - 5 %}u1
             {% elif final_1_eff | int(0) <= 0 and final_2_eff | int(0) > 0 %}u2
@@ -12792,6 +14123,25 @@ automation:
           - input_boolean.zendure_hub_temp_cooldown_u1
           - input_boolean.zendure_hub_temp_cooldown_u2
 
+      # V197: immediately restore the normal full PV charge ceiling when a
+      # calibration/emergency/AC-input episode ends, and keep the special-mode
+      # upper-SoC soft landing current while such an episode is active.
+      - trigger: state
+        id: "charge_policy_reconcile"
+        entity_id:
+          - input_boolean.zendure_calib_mode_u1
+          - input_boolean.zendure_calib_mode_u2
+          - input_boolean.zendure_calib_discharge_u1
+          - input_boolean.zendure_calib_discharge_u2
+          - input_boolean.zendure_emergency_u1
+          - input_boolean.zendure_emergency_u2
+          - input_text.zendure_ac_mode_u1
+          - input_text.zendure_ac_mode_u2
+          - sensor.solarflow_1_ac_mode
+          - sensor.solarflow_2_ac_mode
+          - sensor.solarflow_1_battery_level
+          - sensor.solarflow_2_battery_level
+
       - trigger: template
         id: "device_online_u1"
         value_template: "{{ states('sensor.solarflow_1_status_raw')|upper not in ['UNAVAILABLE','UNKNOWN','FAULT','ERROR'] }}"
@@ -12931,38 +14281,48 @@ automation:
           soc1_valid: "{{ is_number(states('sensor.solarflow_1_battery_level')) }}"
           soc2_valid: "{{ is_number(states('sensor.solarflow_2_battery_level')) }}"
 
-          sl1: >
-            {% if soc1 >= 99 %} 100
-            {% elif soc1 >= 97 %} 150
-            {% elif soc1 >= 95 %} 200
-            {% elif soc1 >= 90 %} 400
-            {% else %} 800
-            {% endif %}
-          sl2: >
-            {% if soc2 >= 99 %} 100
-            {% elif soc2 >= 97 %} 150
-            {% elif soc2 >= 95 %} 200
-            {% elif soc2 >= 90 %} 400
-            {% else %} 800
-            {% endif %}
-          ss1: "{% if soc1 < 12 %} 300 {% else %} 800 {% endif %}"
-          ss2: "{% if soc2 < 12 %} 300 {% else %} 800 {% endif %}"
+          # V197 charge-policy split:
+          # - Normal Output/PV operation: no artificial high-SoC taper. The
+          #   temperature-safe ceiling (normally 800W) remains available through
+          #   99->100%; the device BMS performs the natural end-of-charge taper.
+          # - Calibration/top-hold, Emergency and every desired AC Input-mode
+          #   episode retain the conservative 800/200/100W soft landing.
+          special_charge_u1: >-
+            {{ is_state('input_boolean.zendure_calib_mode_u1','on')
+               or is_state('input_boolean.zendure_emergency_u1','on')
+               or states('input_text.zendure_ac_mode_u1') == 'Input mode'
+               or states('sensor.solarflow_1_ac_mode') == 'Input mode' }}
+          special_charge_u2: >-
+            {{ is_state('input_boolean.zendure_calib_mode_u2','on')
+               or is_state('input_boolean.zendure_emergency_u2','on')
+               or states('input_text.zendure_ac_mode_u2') == 'Input mode'
+               or states('sensor.solarflow_2_ac_mode') == 'Input mode' }}
 
           charge_limit_u1: >
             {% set temp_cap = states('sensor.solarflow_1_charge_temperature_cap') | int(0) %}
             {% set soc = states('sensor.solarflow_1_battery_level') | float(-1) %}
             {% set landing_cap = 100 if soc > 97 else (200 if soc >= 90 else 800) %}
             {% set low_soc_cap = 300 if soc < 12 else 800 %}
-            {% if is_state('input_boolean.zendure_calib_discharge_u1', 'on') %}0
-            {% else %}{{ [temp_cap | int(0), landing_cap | int, low_soc_cap | int] | min }}{% endif %}
+            {% if is_state('input_boolean.zendure_calib_discharge_u1', 'on') %}
+              0
+            {% elif special_charge_u1 | bool %}
+              {{ [temp_cap | int(0), landing_cap | int, low_soc_cap | int] | min }}
+            {% else %}
+              {{ [temp_cap | int(0), low_soc_cap | int] | min }}
+            {% endif %}
 
           charge_limit_u2: >
             {% set temp_cap = states('sensor.solarflow_2_charge_temperature_cap') | int(0) %}
             {% set soc = states('sensor.solarflow_2_battery_level') | float(-1) %}
             {% set landing_cap = 100 if soc > 97 else (200 if soc >= 90 else 800) %}
             {% set low_soc_cap = 300 if soc < 12 else 800 %}
-            {% if is_state('input_boolean.zendure_calib_discharge_u2', 'on') %}0
-            {% else %}{{ [temp_cap | int(0), landing_cap | int, low_soc_cap | int] | min }}{% endif %}
+            {% if is_state('input_boolean.zendure_calib_discharge_u2', 'on') %}
+              0
+            {% elif special_charge_u2 | bool %}
+              {{ [temp_cap | int(0), landing_cap | int, low_soc_cap | int] | min }}
+            {% else %}
+              {{ [temp_cap | int(0), low_soc_cap | int] | min }}
+            {% endif %}
 
           curr_min_soc_1: "{{ states('sensor.solarflow_1_setting_minsoc') | int(-1) }}"
           curr_charge_1: >
@@ -15921,15 +17281,29 @@ automation:
                   u1_bias: "{{ states('input_number.zendure_conf_grid_bias') | int(10) }}"
                   u1_tokens: "{{ states('input_number.zendure_write_tokens_u1') | float(0) | round(1) }}"
                   u1_source: "{{ states('input_text.zendure_last_output_publish_u1')[:70] }}"
+                  u1_pending_source: "{{ states('input_text.zendure_pending_output_source_u1') }}"
               - variables:
+                  u1_is_balance: >-
+                    {{ u1_pending_source[0:12] == 'slow_balance'
+                       or u1_pending_source == 'transfer_release' }}
+                  u1_zero_physically_safe: >-
+                    {{ u1_dispatched == 0 and u1_actual_valid | bool and u1_actual <= 30
+                       and (not u1_grid_valid | bool or u1_grid >= u1_bias - 50) }}
+                  u1_increase_delay: >-
+                    {{ u1_dispatched > 0 and u1_actual_valid | bool
+                       and u1_dispatched - u1_actual >= 30
+                       and u1_grid_valid | bool and u1_grid > u1_bias + 50 }}
+                  u1_reduction_delay: >-
+                    {{ u1_actual_valid | bool and u1_actual - u1_dispatched >= 30 }}
                   u1_material: >-
-                    {{ (u1_desired - u1_dispatched) | abs >= 30
-                       or (u1_dispatched - u1_confirmed) | abs >= 30
-                       or (u1_actual_valid | bool and (u1_dispatched - u1_actual) | abs >= 30)
-                       or (u1_grid_valid | bool and (u1_grid - u1_bias) | abs >= 50)
-                       or (u1_dispatched == 0 and
-                           ((u1_actual_valid | bool and u1_actual > 30)
-                            or (u1_grid_valid | bool and u1_grid < u1_bias - 50))) }}
+                    {{ not u1_zero_physically_safe | bool and
+                       ((u1_desired - u1_dispatched) | abs >= 30
+                        or (u1_dispatched - u1_confirmed) | abs >= 30
+                        or (u1_actual_valid | bool and (u1_dispatched - u1_actual) | abs >= 30)
+                        or (u1_grid_valid | bool and (u1_grid - u1_bias) | abs >= 50)
+                        or (u1_dispatched == 0 and
+                            ((u1_actual_valid | bool and u1_actual > 30)
+                             or (u1_grid_valid | bool and u1_grid < u1_bias - 50)))) }}
                   u1_stage: "{{ 120 if trigger.id == 'u1_pending_120' else 30 }}"
               - if:
                   - condition: template
@@ -15944,17 +17318,32 @@ automation:
                     data:
                       notification_id: zendure_output_pending_u1
                       title: >-
-                        {{ 'Zendure U1: wahrscheinlich nicht reagierend (>120 s)'
-                           if u1_stage | int(30) >= 120
-                           else 'Zendure U1: Output-Befehl verzögert (>30 s)' }}
+                        {% if u1_stage | int(30) >= 120 and u1_is_balance | bool %}
+                          Zendure U1: Balancewirkung fehlt (>120 s)
+                        {% elif u1_stage | int(30) >= 120 %}
+                          Zendure U1: wahrscheinlich nicht reagierend (>120 s)
+                        {% elif u1_is_balance | bool %}
+                          Zendure U1: Physische Balance-Umverteilung verzögert (>30 s)
+                        {% elif u1_increase_delay | bool %}
+                          Zendure U1: Output-Erhöhung physisch verzögert (>30 s)
+                        {% elif u1_reduction_delay | bool %}
+                          Zendure U1: Output-Abregelung physisch verzögert (>30 s)
+                        {% else %}
+                          Zendure U1: Output-Befehl verzögert (>30 s)
+                        {% endif %}
                       message: >-
                         Desired {{ u1_desired }} W, Dispatched {{ u1_dispatched }} W,
                         Confirmed {{ u1_confirmed }} W, physisch {{ u1_actual }} W,
                         Netz {{ u1_grid }} W, Tokens {{ u1_tokens }},
-                        letzte Quelle {{ u1_source }}.
-                        {{ 'Der Befehl ist materiell abweichend und seit mehr als zwei Minuten offen.'
-                           if u1_stage | int(30) >= 120
-                           else 'Dies ist zunächst eine Verzögerungswarnung, kein bestätigter Writer-Deadlock.' }}
+                        Pending-Quelle {{ u1_pending_source }}, letzter Publish {{ u1_source }}.
+                        {% if u1_is_balance | bool %}
+                          Die Gesamtausgangsleistung kann bereits stimmen; die physische
+                          Verteilung zwischen den Units hat das Balanceziel noch nicht erreicht.
+                        {% elif u1_stage | int(30) >= 120 %}
+                          Der Befehl ist materiell abweichend und seit mehr als zwei Minuten offen.
+                        {% else %}
+                          Dies ist zunächst eine Gerätewirkungsverzögerung, kein bestätigter Writer-Deadlock.
+                        {% endif %}
                 else:
                   - action: persistent_notification.dismiss
                     data: { notification_id: zendure_output_pending_u1 }
@@ -15979,15 +17368,29 @@ automation:
                   u2_bias: "{{ states('input_number.zendure_conf_grid_bias') | int(10) }}"
                   u2_tokens: "{{ states('input_number.zendure_write_tokens_u2') | float(0) | round(1) }}"
                   u2_source: "{{ states('input_text.zendure_last_output_publish_u2')[:70] }}"
+                  u2_pending_source: "{{ states('input_text.zendure_pending_output_source_u2') }}"
               - variables:
+                  u2_is_balance: >-
+                    {{ u2_pending_source[0:12] == 'slow_balance'
+                       or u2_pending_source == 'transfer_release' }}
+                  u2_zero_physically_safe: >-
+                    {{ u2_dispatched == 0 and u2_actual_valid | bool and u2_actual <= 30
+                       and (not u2_grid_valid | bool or u2_grid >= u2_bias - 50) }}
+                  u2_increase_delay: >-
+                    {{ u2_dispatched > 0 and u2_actual_valid | bool
+                       and u2_dispatched - u2_actual >= 30
+                       and u2_grid_valid | bool and u2_grid > u2_bias + 50 }}
+                  u2_reduction_delay: >-
+                    {{ u2_actual_valid | bool and u2_actual - u2_dispatched >= 30 }}
                   u2_material: >-
-                    {{ (u2_desired - u2_dispatched) | abs >= 30
-                       or (u2_dispatched - u2_confirmed) | abs >= 30
-                       or (u2_actual_valid | bool and (u2_dispatched - u2_actual) | abs >= 30)
-                       or (u2_grid_valid | bool and (u2_grid - u2_bias) | abs >= 50)
-                       or (u2_dispatched == 0 and
-                           ((u2_actual_valid | bool and u2_actual > 30)
-                            or (u2_grid_valid | bool and u2_grid < u2_bias - 50))) }}
+                    {{ not u2_zero_physically_safe | bool and
+                       ((u2_desired - u2_dispatched) | abs >= 30
+                        or (u2_dispatched - u2_confirmed) | abs >= 30
+                        or (u2_actual_valid | bool and (u2_dispatched - u2_actual) | abs >= 30)
+                        or (u2_grid_valid | bool and (u2_grid - u2_bias) | abs >= 50)
+                        or (u2_dispatched == 0 and
+                            ((u2_actual_valid | bool and u2_actual > 30)
+                             or (u2_grid_valid | bool and u2_grid < u2_bias - 50)))) }}
                   u2_stage: "{{ 120 if trigger.id == 'u2_pending_120' else 30 }}"
               - if:
                   - condition: template
@@ -16002,17 +17405,32 @@ automation:
                     data:
                       notification_id: zendure_output_pending_u2
                       title: >-
-                        {{ 'Zendure U2: wahrscheinlich nicht reagierend (>120 s)'
-                           if u2_stage | int(30) >= 120
-                           else 'Zendure U2: Output-Befehl verzögert (>30 s)' }}
+                        {% if u2_stage | int(30) >= 120 and u2_is_balance | bool %}
+                          Zendure U2: Balancewirkung fehlt (>120 s)
+                        {% elif u2_stage | int(30) >= 120 %}
+                          Zendure U2: wahrscheinlich nicht reagierend (>120 s)
+                        {% elif u2_is_balance | bool %}
+                          Zendure U2: Physische Balance-Umverteilung verzögert (>30 s)
+                        {% elif u2_increase_delay | bool %}
+                          Zendure U2: Output-Erhöhung physisch verzögert (>30 s)
+                        {% elif u2_reduction_delay | bool %}
+                          Zendure U2: Output-Abregelung physisch verzögert (>30 s)
+                        {% else %}
+                          Zendure U2: Output-Befehl verzögert (>30 s)
+                        {% endif %}
                       message: >-
                         Desired {{ u2_desired }} W, Dispatched {{ u2_dispatched }} W,
                         Confirmed {{ u2_confirmed }} W, physisch {{ u2_actual }} W,
                         Netz {{ u2_grid }} W, Tokens {{ u2_tokens }},
-                        letzte Quelle {{ u2_source }}.
-                        {{ 'Der Befehl ist materiell abweichend und seit mehr als zwei Minuten offen.'
-                           if u2_stage | int(30) >= 120
-                           else 'Dies ist zunächst eine Verzögerungswarnung, kein bestätigter Writer-Deadlock.' }}
+                        Pending-Quelle {{ u2_pending_source }}, letzter Publish {{ u2_source }}.
+                        {% if u2_is_balance | bool %}
+                          Die Gesamtausgangsleistung kann bereits stimmen; die physische
+                          Verteilung zwischen den Units hat das Balanceziel noch nicht erreicht.
+                        {% elif u2_stage | int(30) >= 120 %}
+                          Der Befehl ist materiell abweichend und seit mehr als zwei Minuten offen.
+                        {% else %}
+                          Dies ist zunächst eine Gerätewirkungsverzögerung, kein bestätigter Writer-Deadlock.
+                        {% endif %}
                 else:
                   - action: persistent_notification.dismiss
                     data: { notification_id: zendure_output_pending_u2 }
@@ -16493,7 +17911,18 @@ automation:
                 data:
                   level: warning
                   logger: zendure_control
-                  message: "U1 emergency wire lock exceeded 10s; lock released and bounded 0W recovery requested."
+                  message: >-
+                    U1 emergency wire lock exceeded 10s at stage={{ states('input_text.zendure_emergency_stage_u1') }};
+                    lock released and bounded 0W recovery requested.
+              - action: input_text.set_value
+                target: { entity_id: input_text.zendure_last_fault_event }
+                data:
+                  value: >-
+                    {{ now().strftime('%Y-%m-%d %H:%M:%S') }} | U1 Emergency-Lock Watchdog |
+                    stage={{ states('input_text.zendure_emergency_stage_u1') }} | desired={{ states('input_number.zendure_last_sent_1') }}
+              - action: input_text.set_value
+                target: { entity_id: input_text.zendure_emergency_stage_u1 }
+                data: { value: "watchdog_recovered" }
               - if:
                   - condition: template
                     value_template: "{{ states('input_number.zendure_last_sent_1') | int(0) == 0 }}"
@@ -16528,7 +17957,18 @@ automation:
                 data:
                   level: warning
                   logger: zendure_control
-                  message: "U2 emergency wire lock exceeded 10s; lock released and bounded 0W recovery requested."
+                  message: >-
+                    U2 emergency wire lock exceeded 10s at stage={{ states('input_text.zendure_emergency_stage_u2') }};
+                    lock released and bounded 0W recovery requested.
+              - action: input_text.set_value
+                target: { entity_id: input_text.zendure_last_fault_event }
+                data:
+                  value: >-
+                    {{ now().strftime('%Y-%m-%d %H:%M:%S') }} | U2 Emergency-Lock Watchdog |
+                    stage={{ states('input_text.zendure_emergency_stage_u2') }} | desired={{ states('input_number.zendure_last_sent_2') }}
+              - action: input_text.set_value
+                target: { entity_id: input_text.zendure_emergency_stage_u2 }
+                data: { value: "watchdog_recovered" }
               - if:
                   - condition: template
                     value_template: "{{ states('input_number.zendure_last_sent_2') | int(0) == 0 }}"
