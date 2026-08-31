@@ -1529,13 +1529,14 @@
 #   * Export correction is more aggressive again, but only where truly necessary
 #   * Removed unused code and further optimized the usage of scripts to be more code efficient
 #
-# Upcoming changes:
-# - Add option to use 3 Solarflow Units instead of only 2 (or 1)
+# Changes V99:
+# - Added new automation "Zendure: Force Calibration on Suspicious SoC Drift"
+#   to improve healthiness of the battery.
 #
-# Changes V103:
+#ChangesV103:
 # - Bugfixes and slight adjustments in safety values
 #
-# Changes V104:
+#Changes V104:
 # - Set hb_fresh (for heartbeat_stale) from 120 to 180 because 120 seems to be too short
 #
 # Changes V105:
@@ -1607,7 +1608,7 @@
 # - Change soc_exit from bypass to 3 (instead of 1) to prevent frequent bypass switches
 # - Increased summer soc_off because 10% might just be too low for some hardware even if new
 # - Change time for smart calibration start from 13:00 to 12:00
-# - Probably best to exclude these entities from the recorder in config.yaml:
+# - Probably best to exclude these entities from the recorder in configuration.yaml:
 #       - input_datetime.zendure_zero_next
 #       - input_datetime.zendure_zero_fast_until
 #       - input_number.zendure_target_total
@@ -1626,7 +1627,7 @@
 # - Fix an issue where there was an active output during calibration (even though the battery was ont at 100% yet)
 #
 # Changes V143:
-# - Previous version tried to hold the battery at 100% for 3 houts during calibration
+# - Previous version tried to hold the battery at 100% for 3 hours during calibration
 # - This has been changed to 5min because the 3 hours period seems useless after all
 # - Removed the calibration bypass logic that we introduced in the last update (didn't work anyway)
 #
@@ -1744,11 +1745,6 @@
 #   * >=65°C: hard 0W cooldown until <=62°C for 10 minutes
 # - Final output cap is the most restrictive value: min(raw safety cap, battery_temp_cap, hub_temp_cap).
 # - Output block reason and ETA diagnostics now distinguish battery and hub temperature limits separately.
-#
-# Changes V166:
-# - Some fixes and improvements regarding the latest re-write of temperature degrading
-# - Chargelimit is not being temperature degraded as well
-# - Temperature degrading has been added to the calibration path
 #
 # Changes V166:
 # - Some fixes and improvements regarding the latest re-write of temperature degrading
@@ -2206,6 +2202,66 @@
 # - Exact-100% Full Priority and release at 98% remain unchanged, reducing dwell time at full charge while still allowing periodic true-full/BMS calibration.
 # - No new MQTT topics, secrets, writers or active read requests are introduced.
 #
+# Changes V198:
+# - OPEN 0W EPISODE OWNERSHIP: a Desired/Dispatched 0W operation with an active Pending/ACK/deferred chain or a recent 0W dispatch owns the safety episode.
+#   Priority Emergency Zero no longer starts a redundant second wire lock; it only restores the bounded ACK timer.
+# - CROSS-CYCLE DISTRIBUTION OWNER: a PV-first cross-cycle correction transaction owns the unit split for 15 seconds after its required wire publishes. The fast
+#   total controller may still follow house-load changes and all safety reductions/0W commands, but it preserves the correction ratio instead of immediately undoing it.
+# - ONE BOUNDED REARM: if the correction is superseded and the physical cross-cycle still exists after the ownership window, exactly one event-driven re-evaluation
+#   is allowed for that cross-cycle episode.
+# - EMERGENCY TRACE DETAIL: lock_set is split into stopping_normal_writer and clearing_deferred, identifying the exact blocking service path in future traces.
+# - Retains the V197 normal-PV full-charge policy, all temperature, SmartMode, traffic, system-limit, physical-effect and emergency-watchdog protections.
+# - No new MQTT topics, secrets, publish boundaries or active read requests.
+#
+# Changes V199:
+# - ZERO RETRY OWNERSHIP FIX: only the first safety 0W command may use the unbudgeted priority writer. Every ACK/export/physical follow-up retry now uses
+#   the normal token-bound writer with safety-zero semantics and 10/30/60s backoff.
+# - ZERO DEFENSE IN DEPTH: a physically unresolved 0W command is retryable even when OutputLimit readback already says 0W or house load masks grid export.
+# - IDEMPOTENT ZERO GENERATIONS: a budgeted safety-zero retry survives newer same-zero generations, but is still cancelled immediately by a positive Desired owner.
+# - LOW-SOC RUNAWAY GUARD: when SoC/voltage protection requires 0W but a unit still outputs power, one additional budgeted reassert is allowed every 30 seconds.
+# - BALANCE OWNERSHIP: newer per-unit dispatch targets supersede an old balance transaction before it can be misclassified as a physical failure.
+# - TELEMETRY GRACE: missing post-dispatch outputHomePower receives one 15-second grace window and is diagnosed separately from a fresh physical mismatch.
+# - CROSS-CYCLE DIAGNOSTICS: blocked corrections expose their exact gate and get exactly one delayed recheck per uninterrupted cross-cycle episode.
+# - Retains V198 cross-cycle ratio ownership, V197 normal-PV full-charge policy, SmartMode, temperature, traffic, system-limit and physical-effect protections.
+#
+# Changes V200:
+# - HARD-ZERO VS PV-ONLY SPLIT: soc_off, hard undervoltage, VGuard, Emergency and temperature cooldown still require 0W; a latched Low-SoC/early-voltage bypass
+#   above soc_off is monitored against its permitted PV-only cap instead of being repeatedly forced to 0W.
+# - PV-ONLY PHYSICAL GUARD: the independent fail-safe computes the same strict 90%-of-fresh-PV ceiling, applies temperature/unit caps and sends only a bounded
+#   reduction when physical output materially exceeds that permitted ceiling.
+# - ACTUAL-FIRST EVIDENCE: fresh outputHomePower is authoritative. OutputLimit readback is consulted only when physical output is unavailable; stale positive
+#   readback can no longer override a fresh safe physical 0W value.
+# - ZERO-INTENT OWNERSHIP: ordinary 0W retries require both Desired=0W and Last-Dispatched=0W. A newer positive owner can no longer inherit an old zero
+#   mismatch and receive an obsolete reassert.
+# - DIAGNOSTIC HYGIENE: no Low-SoC runaway publish or fault event is generated when fresh physical output already lies within the hard-zero/PV-only safety target.
+# - Retains V199 bounded zero recovery, low-voltage defense in depth, V198 cross-cycle ownership, V197 normal-PV full-charge policy and all existing
+#   SmartMode, temperature, traffic, system-limit and physical-effect protections.
+# - No new MQTT topics, secrets, publish boundaries or active read requests.
+#
+# Changes V201:
+# - ABSOLUTE CALIBRATION DEADLINE: every real calibration campaign (scheduled top-balance or forced bottom-to-top cycle) gets a restart-persistent start
+#   timestamp and a configurable 30-hour total deadline. A timeout cleans up the AC/input/output path without recording a false successful full charge.
+# - SEPARATE CALIBRATION CLOCKS: total campaign start, first true 100% and the current uninterrupted 100% Top-Hold are tracked independently. If SoC falls
+#   to 99/98%, the Top-Hold restarts after the next real 100%, while the absolute campaign deadline and first-100 evidence remain latched.
+# - PARALLEL TOP-BALANCE QUALIFICATION: the 30-minute uninterrupted 100% hold and the 10-minute <=50mV cell-spread qualification now run in parallel rather
+#   than serially; successful completion therefore needs at least 30 minutes, not an unnecessary fixed 40 minutes when cells are already balanced.
+# - HEALTHY STAGED CALIBRATION CHARGE: before the first true 100%, calibration uses 800W <90%, 600W at 90-94%, 400W at 95-97%, 200W at 98%, and 100W at
+#   99-100%. After the first true 100%, the calibration hold/refill ceiling stays at 100W. Existing low-SoC and temperature caps always remain more restrictive.
+# - AC charging remains limited to the existing 12:00-19:59 window; no evening extension is introduced. Retains all V200 zero-recovery, Low-SoC/PV-only,
+#   SmartMode, traffic, balancing, system-limit and physical-effect protections.
+#
+# Changes V202:
+# - PV-ONLY GUARD FIX: physical/confirmed/internal excess is compared against the actual permitted PV-only ceiling, not against min(ceiling, current Desired).
+#   The command target remains min(ceiling, Desired), so the guard can only reduce and can never raise output. This removes false 0W clamps while safe PV
+#   passthrough is already below its permitted ceiling.
+# - CALIBRATION CHARGE CURVE: calibration now permits up to 800W below 98% SoC, 200W from 98% to below 99%, and 100W from 99% through the uninterrupted
+#   100% Top-Hold. Temperature and low-SoC charge caps remain more restrictive.
+# - TOP-HOLD LIFECYCLE UNCHANGED: a drop from 100% to 99/98% resets only the uninterrupted Top-Hold qualification. Recharging follows the same current-SoC
+#   curve (200W at 98%, 100W at 99%); the campaign deadline and first-100 evidence remain latched.
+# - Retains all V201 calibration deadline, first-100, cell-spread, SmartMode, zero-recovery, Low-SoC, traffic, balancing, system-limit and safety logic.
+# - No new entities, MQTT topics, secrets, publish boundaries or active reads.
+
+
 # Beta:
 # - Implement binary_sensor.solarflow_pv_curtailment_suspected which is enabled when a surplus of sunlight pv energy that isn't being used is expected:
 #   * Auto mode is ON
@@ -2219,7 +2275,4 @@
 # - Added binary_sensor.solarflow_confirmed_export_surplus which measures real surplus grid export which should theoretically never exist
 # - Added binary_sensor.excess_solar_available turns on when confirmed grid export exists OR forecast-based PV curtailment is suspected
 #
-
-#
 ################################################################################
-
