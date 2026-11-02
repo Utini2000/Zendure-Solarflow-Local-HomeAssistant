@@ -2260,6 +2260,134 @@
 #   curve (200W at 98%, 100W at 99%); the campaign deadline and first-100 evidence remain latched.
 # - Retains all V201 calibration deadline, first-100, cell-spread, SmartMode, zero-recovery, Low-SoC, traffic, balancing, system-limit and safety logic.
 # - No new entities, MQTT topics, secrets, publish boundaries or active reads.
+#
+# Changes V203:
+# - PENDING-COMMAND ANTI-WINDUP: while an OutputLimit command or a physically unconfirmed reduction owns the settling episode, fresh coherent physical
+#   output is used as the feedback baseline. If coherent physical telemetry is temporarily unavailable, the latest dispatched total is held instead of subtracting the same unresolved grid error repeatedly.
+# - CALMER SLOW BALANCER: the default stable-load qualification is increased from 15s to 30s and the normal baseline transfer from 60W to 80W. Existing
+#   adaptive large-SoC-gap and full-priority/cross-cycle overrides are retained.
+# - FRESH ACCOUNTING: gridInputPower receives the same true MQTT receive-time tracking as PV/output telemetry. Fresh-only PV/grid accounting sensors feed
+#   the energy and battery-flow calculations, preventing stale positive values from accumulating energy after a telemetry freeze.
+# - No MQTT topic, secret key, writer boundary, safety limit or active read is added. V202 calibration, SmartMode, zero-recovery, Low-SoC, temperature,
+#   balancing, 800W/unit and configurable 1000W system-limit logic is retained.
+#
+# Changes V204:
+# - SETTLING-COMPENSATED ANTI-WINDUP: replaces V203's over-broad freeze. A physically unconfirmed reduction no longer hides subsequent house-load
+#   changes. With fresh coherent physical output, regulation remains actual-first. Without coherent pair telemetry, the controller predicts the post-settlement
+#   grid point by adding only the still-unrealized reduction to the live grid measurement. This prevents the same command error from being subtracted twice.
+#   Until post-dispatch physical evidence arrives, the compensation may hold or reduce the command but never undo an unresolved reduction with a blind raise.
+# - FLOOR OWNERSHIP HARDENING: anti-windup uses a down-floor only while its stored target still equals the current Last-Dispatched command. Fresh post-dispatch
+#   per-unit output reports reduce the compensation to the actually missing effect.
+# - V203's calmer slow balancer (30s / 80W) and fresh PV/grid-input accounting are retained unchanged. No MQTT topic, secret key, writer boundary, safety limit
+#   or active read is added; all V202/V203 safety and calibration logic remains.
+#
+# Changes V205:
+# - ACK LATEST-TARGET OWNERSHIP: non-zero ACK/export recovery dispatches now use the same latest-target coalescing and final Desired-value validation as the
+#   normal fast controller. A queued recovery run evaluated against an older Desired/Last-Dispatched snapshot can therefore no longer resurrect a
+#   superseded higher output command after a newer reduction has already won.
+# - Recovery remains queued and lossless; zero-safety retries, token budgets, 1.2-second wire spacing, generations, system limits and retry backoff remain
+#   unchanged. No MQTT topic, secret, entity, active read or safety limit is added.
+# - Retains V204 settling-compensated anti-windup, V203's 30s/80W calmer slow balancer and fresh PV/grid-input energy accounting unchanged.
+#
+# Changes V206:
+# - OWNED-REDUCTION NO-RAISE GUARD: while a current down-floor proves that a downward command is still physically unresolved and the independent grid
+#   meter remains below the configured bias/deadband, the fast controller may hold or reduce total output but cannot raise the combined target. This closes
+#   the observed 155W -> 725W / 30W -> 195W reversals before their reductions had physically settled. A real import immediately releases the guard.
+# - BOUNDED PHYSICAL-EFFECT REASSERT: an owned non-zero reduction that remains unresolved during persistent export receives a latest-target-coalesced
+#   reassert after 10 seconds and at most once per 60 seconds thereafter. It uses the existing ACK writer, token bucket, generation checks, 1.2-second wire gap,
+#   system-limit validation and V205 stale-target protection; no blind writer or new MQTT path is introduced.
+# - Retains V205 ACK latest-target ownership, V204 settling compensation, V203 fresh accounting and calmer 30s/80W balancing unchanged.
+#
+# Changes V207:
+# - TRUE-EDGE OWNED-REDUCTION GUARD: both final OutputLimit wire governors now re-read the live grid, source freshness, current Last-Dispatched pair and
+#   current down-floor ownership immediately before MQTT publish. While a current reduction remains physically unresolved and the fresh grid meter still shows
+#   export beyond bias/hysteresis, a stale candidate may not raise the combined Last-Dispatched target. A physically validated lower-first transfer remains
+#   exempt so safe same-total redistribution still works.
+# - STALE-EVALUATION HANDOFF BARRIER: every fast Guard-Layer evaluation snapshots generation, per-unit Last-Dispatched values and dispatch timestamps before its
+#   long calculation. If any of them changes before the pair-dispatch handoff, the obsolete evaluation is discarded and the next event/2s pass recalculates from
+#   current state instead of assigning a newer generation to stale intent.
+# - RECOVERY AUDIT OWNERSHIP: ordinary ACK retry, persistent-export reassert and unresolved physical-floor reassert now carry distinct source labels while
+#   retaining V205 latest-target coalescing and all existing balance ownership.
+# - No parameter, MQTT topic, secret, safety limit, token budget, wire gap, calibration rule or active read changed. All V206 floor-effect logic remains.
+#
+# Changes V208 to V209:
+# - PRE-MUTATION FLOOR OWNERSHIP: each final OutputLimit writer snapshots the current self/peer floor owner before changing any helper. A live export plus
+#   an owned unresolved reduction blocks a combined raise before floor metadata can be retargeted. This closes the observed 220W -> 70W -> 115W and
+#   330W -> 230W -> 265W ordering races.
+# - TRUE-DOWNWARD FLOOR ARMING: a floor is armed before publish only for a real target decrease, or for a forced same-target physical reassert when no valid
+#   floor already owns that target. An upward candidate can no longer overwrite the evidence that the previous reduction is still unresolved.
+# - POST-PUBLISH OWNER TRANSFER: when a legitimate upward command is allowed by a fresh neutral/importing grid but remains below the conservative physical
+#   floor, ownership is transferred only after the MQTT publish and after the higher Last-Dispatched value is committed. The conservative floor value is
+#   retained, so unit/system headroom remains protected until physical evidence.
+# - TRUE-EDGE DEFENSE RETAINED: generation, Desired, emergency lock, SmartMode, unit/system headroom and owned-reduction checks are still re-read at the
+#   actual MQTT edge. Failed edge validation restores only a floor armed by the current run.
+# - No parameter, MQTT topic, secret, safety limit, token budget, wire gap, calibration rule, retry interval or active read changed.
+#
+# Changes V210:
+# - TRANSFER SNAPSHOT RANGE HARDENING: raw physical outputHomePower may report a one-watt rounding overshoot (for example 801W at the 800W hardware ceiling).
+#   The split-loop transfer snapshot now preserves the raw sensor for diagnostics but clamps effective1/effective2 to 0..800W before control use. Both
+#   transfer_start_effective helper writes independently repeat the same clamp, preventing an out-of-range input_number error from aborting transfer setup.
+# - FRESHNESS-AWARE PENDING DIAGNOSTICS: numeric physical output is no longer treated as proof of current command effect unless its MQTT receive timestamp
+#   is recent and belongs to the present pending dispatch. Stale/pre-dispatch samples are labelled as missing physical feedback rather than increase or
+#   reduction delay. A fresh post-dispatch non-zero output within 30W of target and a grid value within 50W of bias suppress stale-ACK false positives.
+# - NOTIFICATION NOISE REDUCTION: the 30-second stage remains in the internal fault audit, but persistent notifications are created only at the existing
+#   120-second stage. ACK delay, missing physical telemetry, fresh physical mismatch, balance delay and grid mismatch are reported separately.
+# - No controller parameter, MQTT topic, safety limit, token budget, retry timing, wire gap, calibration rule or active read changed.
+#
+# Changes V211:
+# - MULTI-SOURCE PV FRESHNESS: each unit now records independent MQTT receive timestamps for solarInputPower, solarPower1 and solarPower2. The existing
+#   solar_ts attribute remains a compatibility alias for the total-PV topic.
+# - CONSERVATIVE PV CONTROL EVIDENCE: Low-SoC/PV-only control uses fresh total PV first, then a fresh coherent MPPT-channel sum, then a 90s full hold with
+#   linear decay to zero by 180s. This removes the former hard 60s PV cliff without treating a channel packet as proof that an old total-PV value is fresh.
+# - CONSISTENT CONTROL PATHS: the dedicated Low-SoC physical guard and the Advanced Guard Layer use the same PV evidence hierarchy for PV-only caps.
+#   High-temperature strict/soft PV evidence remains separately conservative.
+# - PV-ONLY START/STOP HYSTERESIS: a stopped unit requires a 40W quantized PV-only target to start; a running unit may continue down to 30W. The same
+#   thresholds are applied in both control paths.
+# - SEASON-AWARE SOC FALLBACK: the live helper remains authoritative (20% October-March, 14% April-September). If that helper is temporarily invalid,
+#   both affected control paths use the matching calendar-season fallback.
+# - No down-floor release rule, controller timing, grid bias, write budget, MQTT publication boundary, calibration rule or safety limit changed.
+#
+# Changes V212 (2026-10-26):
+# - Verified per-unit emergency lifecycle, separate from the unchanged fast regulator.
+# - An MQTT write is only a request: fresh AC-mode/InputLimit readback and fresh BMS charging direction/power distinguish configuration ACK from charging effect.
+# - One initial attempt plus at most three 60s-spaced retries per missing-effect episode; persistent warning and output interlock after exhaustion, passive
+#   recovery observation continues. No polling or unbounded resend loop.
+# - Session ownership is rechecked at the EXISTING final config MQTT boundary; stale/closed-session positive charging commands cannot publish. Unowned
+#   positive InputLimit/Input-mode requests are rejected during a managed session, so the legacy AC-mode watchdog cannot bypass the emergency retry budget.
+# - Existing temperature/SmartMode/write-budget limits retained; max emergency input remains 300W, further limited by the existing temperature cap.
+# - Completion: target SoC and >=3.25V stable 5min, OR own-unit PV >=200W, fresh BMS charging >=50W, fresh AC <=15W, recovering SoC and >=3.20V
+#   stable 5min. Other unit's sunshine cannot finish this session.
+# - InputLimit=0, Output mode and negligible AC draw must be confirmed before releasing the emergency interlock. Unchanged configuration readbacks may
+#   qualify only with 90s sustained fresh post-close physical cessation; identical values need not be re-published by the device. Closing retries are bounded.
+# - Emergency session state survives HA restart; live evidence is reset and reacquired. SoC-drop-after-zero snapshots are diagnostic only.
+# - Raw sensors, seasonal values, calibration and zero-export tuning unchanged.
+# - This file REPLACES V211; never load both. Existing secrets are reused.
+# - Static validation is not a hardware/firmware acceptance test.
+#
+# Changes V213 (2026-11-02):
+# - ONE CHARGE OWNER: reserve recovery and top-charge maintenance share the verified per-unit session lifecycle. Protection can preempt every maintenance phase;
+#   the 12:00-19:59 economy window never blocks protective reserve recovery.
+# - TOP-CHARGE FIRST: overdue/full-reference and credible drift requests no longer start an automatic deep discharge. Device-specific deep learning is not
+#   inferred from a percentage crash or our external hold/balance criteria.
+# - TWO-TIER EXPORT RECOVERY: the existing >80W/3s fast guard is retained. A separate >30W/45s guard gets one bounded latest-target reassert per unit/episode through
+#   the existing writer/budget. 120s or 5Wh raises one episode warning.
+# - FAIL CLOSED: missing grid feedback requests 0W; final positive writes recheck live safety permission. Invalid packets cannot renew an old measurement.
+# - BATTERY EVIDENCE: charging requires fresh battery temperature; validated BMS receive times replace last_reported. Full reference, cell balance and optional
+#   native calibration status are diagnosed separately; no calibration-success claim.
+# - LOCAL/TRAFFIC: no new active reads, device topics, secrets, or faster writer limits. Notifications are isolated, unchanged helper writes are suppressed,
+#   and selected volatile Zendure bookkeeping is excluded from Recorder.
+# - SETTINGS: operator tuning restores across restart; seasonal defaults affect seasonal values only. No cross-charging prevention was added; peer PV remains
+#   available. Reserve deferral now requires that unit's own proven PV charging.
+# - This file REPLACES V212; never load both. Existing secrets are reused.
+# - Optional diagnostic entity selectors may remain blank. No native calibration command is written. Hardware/firmware acceptance still requires installation.
+# - STARTUP SCHEMA FIX: Slow Export Guard delay_on is a scalar template. Template binary-sensor duration dictionaries require numeric components, so the former
+#   templated seconds component prevented the template integration from loading.
+# - Keeps the adjustable duration (default 45s) and all V213 control behavior, charging safety, MQTT topics, existing secrets and write budgets unchanged.
+# - Added a regression check for this binary-sensor-specific duration restriction.
+# - RUNTIME TEMPLATE FIX: convert the slow-export threshold to a number before applying unary minus. Entity states are text; negating the raw helper state
+#   caused TypeError and prevented the slow-export binary sensor from updating.
+# - The 30W/45s defaults, V213.1 delay fix, charge protections and MQTT writer limits remain in effect. No new device messages, topics or secrets are added.
+# - Added actual sensor-render tests with numeric strings, threshold boundaries, import/export and unavailable/stale data, plus an audit for raw-state negation.
 
 
 # Beta:
