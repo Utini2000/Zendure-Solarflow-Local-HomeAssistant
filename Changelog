@@ -2388,6 +2388,175 @@
 #   caused TypeError and prevented the slow-export binary sensor from updating.
 # - The 30W/45s defaults, V213.1 delay fix, charge protections and MQTT writer limits remain in effect. No new device messages, topics or secrets are added.
 # - Added actual sensor-render tests with numeric strings, threshold boundaries, import/export and unavailable/stale data, plus an audit for raw-state negation.
+#
+# Changes V214.0 to V214.12:
+# Changes V214 (2026-11-02):
+# - NATIVE CALIBRATION OWNER: socStatus=1 suspends routine writes only for that unit.
+#   The four MQTT publication boundaries recheck ownership; queued sessions and retries are invalidated without sending a reset or 0W to the calibrating unit.
+# - VERIFIED RESUME: missing native status pauses writes. Explicit normal status
+#   plus live telemetry must remain stable for 15s before fresh control resumes. Native cycle end, full-reference and balance qualification remain separate.
+# - STARTUP/LOAD: configuration triggers ignore timestamp-only attribute changes; writers-ready and native-ready replace duplicate 7s boot/reconnect sequences.
+# - NON-DELIVERY: two acknowledged-limit reassertions without measured effect are followed by a diagnostic pause. Export reductions/zero retain existing priority.
+# - MEASURED ACCOUNTING: fresh measured output is separate from conservative command-based control estimates. Stale measurements become unavailable.
+# - LOCAL/TRAFFIC: two passive socStatus subscriptions; no extra device polling, no shorter writer spacing, no budget increases, no added cross-charge block.
+# - CALIBRATION: no guessed external charge/discharge/charge sequence, no writes to read-only socStatus, and no unsupported batCalTime/start command.
+# - SETUP REQUIRED: add the two actual readback topics in secrets.yaml BEFORE loading:
+#     zendure_topic_u1_sensor_socStatus:         "Zendure/sensor/HUB1_SERIAL_NUMBER/socStatus"
+#     zendure_topic_u2_sensor_socStatus:         "Zendure/sensor/HUB2_SERIAL_NUMBER/socStatus"
+#   These are NOT command topics. Do not use outputHomePower or a *_set topic.
+#   If the existing MQTT bridge does not publish socStatus, expose that read-only property there first. Unknown status intentionally prevents ordinary writes.
+# - Replace the old package; never load V213.2 and V214 together. New native status
+#   support must be commissioned on the real device. No firmware arbitration or unconditional zero-export guarantee is inferred from a software simulation.
+#
+# Changes V214.1 (2026-11-02):
+# - MQTT STATUS COMPATIBILITY: accept the bridge's observed socStatus=idle as inactive calibration (internal 0), alongside 0/normal, for both units.
+# - Active 1/calibrating still suspends writes. Unknown/offline/invalid payloads remain unverified and cannot release control or a calibration ownership latch.
+# - The existing 15s stable normal/live-telemetry resume is retained. No additional subscriptions, polling, publications or changed writer budgets are introduced.
+# - All V214 and V213.2 protections remain. Use the existing U1/U2 serial mapping when assigning the two socStatus readback topic secrets; do not swap units.
+#
+# Changes V214.2 (2026-11-02):
+# - STARTUP RECOVERY FIX: an import recovery attempt waits for verified SmartMode. Its timestamp is recorded only after a positive ACK-recovery MQTT publication;
+#   a cancelled or rejected command no longer consumes the recovery opportunity.
+# - READY HANDOFF: SmartMode-ready events wake the recovery observer. Unchanged restored limits no longer strand a valid target after an early rejected write.
+# - BOUNDED EFFECT RETRY: a confirmed limit without physical delivery can reassert after 60s. The existing two-publication cap and diagnostic pause remain active;
+#   a third no-effect check pauses retries without another device publication.
+# - DIAGNOSTICS: distinguish SmartMode verification, non-delivery retry pause and the existing near-empty discharge cap from the generic freigegeben state.
+# - All V214.1 native-calibration ownership, idle parsing, safety checks, secrets, writer spacing and token budgets remain. No added device polling/subscriptions.
+#
+# Changes V214.3 (2026-11-03):
+# - MEASURED TOTAL: the existing solarflow_system_total_output entity now uses actual output only. Stale data becomes unavailable; no 100W limit fallback.
+# - PASSIVE DIAGNOSIS: non-delivery starts a 45s capture of existing MQTT messages for both units. It records raw restrictions, observed set commands and the
+#   controller snapshot, then unsubscribes and creates one local JSON report.
+# - The capture can also be started with script.zendure_capture_output_diagnostics. Its two observers are disabled by default and after HA restart. No new secrets,
+#   device polling, automatic retry, reset, charge or discharge commands are added.
+# - Existing V214.2 control scripts and automations are unchanged. This diagnostic build fixes the aggregate display; it does not claim to fix physical delivery.
+#
+# Changes V214.4 (2026-11-03):
+# - VOLTAGE LATCH FIX: valid cell voltage below 3.12V now latches PV-only protection regardless of the reported SoC. The former SoC-Off+8 ceiling
+#   no longer permits the observed 32%-SoC / 100W / 0W restart loop.
+# - RESTART CONTINUITY: voltage latch and reason restore together after HA restart. A voltage latch also survives Auto OFF; Auto OFF still stops output.
+# - STABLE RELEASE: voltage recovery requires fresh readings at/above 3.20V for 60 seconds plus the existing restart SoC. Missing/stale voltage or an
+#   HA restart resets the recovery clock. These are controller test settings, not a manufacturer calibration or battery-health guarantee.
+# - ZERO DELIVERY HOLD: pending safety stops block positive output until fresh post-stop MQTT readbacks show a 0W limit and measured output <=5W. Existing
+#   feedback subscriptions resolve the hold; no new polling or device topics.
+# - WRITER RECOVERY: the emergency writer watchdog now allows 25s, preserves the logical stop on timeout and requests only the existing bounded zero.
+#   Releasing its writer mutex cannot reopen a positive retry while unresolved.
+# - WRITER METADATA: an omitted optional generation is stored as neutral 0, avoiding an out-of-range helper write after publication. Existing command
+#   generation checks and balance ownership remain unchanged.
+# - Measured-only total, firmware-calibration handoff, export protections, charging ownership, per-unit topics, write budgets and cross-charge policy
+#   are retained. This does not identify or clear U1's device-reported error.
+#
+# Changes V214.5 (2026-11-03):
+# - MANUAL TO FULL: separate U1/U2 manual-charge switches request a managed charge to reported 100% at any hour. No deep discharge or full-hold/balance
+#   maintenance is requested. OFF cancels; at full the request turns OFF.
+# - SHARED SAFETY: manual charging uses the existing session owner, temperature caps, near-full taper, telemetry checks, physical-effect retries and verified
+#   AC closure. Auto remains the master enable; native calibration and reserve protection retain priority. Paused manual requests can resume when permitted.
+# - STOP BOUNDARY: queued positive charge/mode writes recheck the manual switch and reported SOC immediately before MQTT publication. The output interlock
+#   remains until physical cessation is confirmed; output latches do not block a permitted charging recovery. Both switches restore their request after HA
+#   restart; global Auto OFF cancels them.
+# - MAINTENANCE HANDOFF: manual requests supersede top maintenance. A 30-minute maintenance cooldown after a manual stop prevents an immediate scheduled
+#   top-charge restart. Reaching 100% manually does not mark BMS calibration or qualified full/balance maintenance complete.
+# - Existing 30s watchdogs handle both manual requests; helper/full/readiness events provide immediate wake-ups. No polling, MQTT topic, subscription,
+#   secret, publication site or write-budget increase. All V214.4 fixes retained.
+#
+# Changes V214.6 (2026-11-03):
+# - VOLTAGE POLICY: above SoC-Off+8, a valid cell-voltage dip below 3.12V now latches reduced discharge (50W AC allowance plus 90% of fresh PV), rather
+#   than an indefinite PV-only lockout. The 50W limit remains through voltage rebounds; normal power returns after fresh >=3.20V recovery for 60s.
+# - CRITICAL/NEAR-EMPTY STOPS: the existing <=3.00V critical condition now also blocks the fast/final writers and latches at every SOC. Existing SOC stops
+#   and the near-empty <=SoC-Off+8 / <3.12V PV-only latch remain. An unresolved critical latch cannot be downgraded to a soft voltage/SOC-only reason.
+# - CONSISTENT CAPS: fast regulator, physical guard and final MQTT boundary share the soft/critical distinction. Derated output needs SOC/voltage data
+#   newer than 30s; its PV allowance uses existing reports newer than 15s. Stale/unknown evidence cannot grant the reduced battery allowance.
+# - UPGRADE RECOVERY: old high-SOC vmin_early_stop latches migrate only with fresh SOC and voltage above 3.00V, and only into the 50W derated state.
+#   Critical and SOC-only stops are retained. Derating survives HA restarts; the existing recovery clock restarts after HA restart.
+# - DIAGNOSTICS: voltage_derated_50w distinguishes limited output from a stop. ETA no longer calls high-SOC derating fully blocked; SOC remains an estimate.
+# - No new MQTT topic, secret, subscription, polling, publication site, periodic trigger or write-budget increase. Manual charging, native calibration
+#   ownership, temperature guards and zero-delivery interlocks are unchanged. These controller parameters are not manufacturer-certified cell limits;
+#   offline checks cannot guarantee physical battery health or zero damage.
+#
+# Changes V214.7 (2026-11-04):
+# - MANUAL AC START FIX: existing PV/battery charging can no longer skip the manual AC setup. Both units require current-session matching mode/limit
+#   readbacks, or actual AC charging plus proof that this session published the requested Input mode and charging limit.
+# - PHYSICAL VERIFICATION: PV charging remains usable after confirmed AC setup. Actual AC charging with delayed readbacks remains accepted after
+#   the requested setup was published; matching limits alone never prove physical charging. Changed charging targets require matching setup again.
+# - BOUNDED DIAGNOSTICS: PV-only charging with unconfirmed manual AC settings is reported separately after four attempts. Passive recovery remains
+#   available; verified charging does not produce periodic command repeats.
+# - MQTT SPACING: a positive sub-millisecond remainder now yields for at least 1ms instead of calculating a zero-delay loop. The existing 1.2s minimum
+#   command gap and both token budgets are unchanged.
+# - Scope is limited to both charge-session owners and this writer wait. No new MQTT topics, secrets, subscriptions, timers, periodic triggers, helpers or write-budget
+#   increase. Reserve priority, firmware calibration ownership, temperature, voltage, SOC, cancellation and zero-output guards are retained.
+# - U1's reported Input mode/800W without measured charging is not resolved by this software fix. Native error details still need to be identified.
+#   Offline validation cannot certify fault-free physical device operation.
+#
+# Changes V214.8 (2026-11-04):
+# - ACTIVE-UNIT RAMP FIX: a unit with an effective output cap of 0W no longer contributes its low SOC to the shared 100W upward-step limit. A healthy
+#   peer can resume normal regulation after charging without being slowed by the blocked unit's SOC.
+# - Existing low-SOC ramping remains when a unit with available output is below 25%. Per-unit caps, the system limit, peer uncertainty reservation,
+#   fresh meter checks and all final MQTT safety checks are unchanged.
+# - Only the ramp's SOC selection changes. No new helpers, secrets, topics, subscriptions, timers, polling or write-budget increase. V214.7's manual
+#   charging and MQTT-spacing fixes are retained.
+# - This does not clear U1's native error, explain the inconsistent native BatVolt reading, or establish the cause of all remaining grid deviations.
+#
+# Changes V214.9 (2026-11-04):
+# - FAST-LOOP CPU: the existing 233-value control calculation now runs in one native template render instead of 232 separate renders. Decisions remain
+#   per-execution; final generation, freshness and MQTT safety checks remain.
+# - MQTT PROCESSING: each received payload is decoded and validated once. Output-report interval history is cached between output-power messages;
+#   one small internal attribute preserves the existing window/count behavior. Identical valid reports still renew liveness; invalid packets do not renew
+#   valid timestamps. Existing topics, subscriptions and restart resets remain.
+# - MAINTENANCE CPU: inactive SOC-drift episodes skip energy calculations; full-charge hold calculations run only in the full-charge branch. Existing
+#   sampling intervals, qualification times and reset actions are retained.
+# - DIAGNOSTIC FIX: AC-mode last-seen uses ac_mode_valid_ts. The incorrect, continuously changing age attribute is replaced by its receipt timestamp.
+# - HISTORY/TRACES: verbose native diagnostics and output-publication text are excluded from Recorder; live values, fault/calibration states and power/SOC
+#   history remain. Hot-path automations/writers retain one trace; charging and fault traces retain their existing settings. Retention is not a CPU-off switch.
+# - No new helpers, secrets, topics, polling or write-budget increase. Fast export response, firmware-calibration ownership and all battery protections
+#   are retained, together with V214.7/V214.8's charging and active-unit fixes.
+# - This is an offline-validated performance cleanup; CPU/UI improvement still needs measurement on the Home Assistant Green.
+#
+# Changes V214.10 (2026-11-04):
+# - PROFILED CPU FIX: MQTT receipt/freshness data is split by field. A report updates its own small internal sensor, instead of rendering every field
+#   and waking unrelated consumers. Topics and device polling are unchanged; all timestamp/report consumers are migrated to the matching field sensor.
+# - Internal freshness attribute locations change; the base freshness sensor now carries status only. Existing public SOC/power/temperature entities,
+#   helpers and secrets remain. All added field sensors are Recorder-excluded.
+# - Output-report interval statistics now describe the actual last five valid samples. Invalid packets do not add samples; long gaps reset qualification.
+#   A typed list replaces comma text that HA could parse into a tuple. Count/max no longer change merely because an unrelated field arrived.
+# - ZERO-LIMIT RECONCILIATION: fresh physical 0W no longer suppresses a needed forced 0W setting when the device still reports a positive output limit.
+#   Existing ACK events/watchdog perform at most three normal-budget attempts, 60s apart, then notify and pause. Only new zero readback plus fresh physical
+#   zero clears the episode; peer capacity is never released by editing ACKs.
+# - Pending repair reservations are applied before pair allocation, avoiding repeated transfer transactions toward a target the final writer must reject.
+# - Firmware calibration/unverified status still blocks device commands. Reconciliation neither switches AC mode nor increases output/write budgets.
+# - VOLTAGE HYSTERESIS: the existing <3.15V / 100W battery allowance now latches through brief rebounds. It releases with the existing fresh >=3.20V / 60s
+#   recovery qualification. The <3.12V / 50W stage and critical/SOC stops retain priority. Fast/final/physical guards share the latched 100W stage.
+# - PHYSICAL SETTLING: a matching limit readback no longer closes the recent physical-settling path before output follows. The existing 25s recent-write
+#   window uses measured output, preventing the same undelivered increase from being added to the still-existing grid import again.
+# - All V214.7/V214.8 fixes and V214.9 rendering/history improvements remain. Six small persistent helpers are added for voltage/reconciliation state;
+#   no new MQTT topics, subscriptions, polls or periodic trigger frequencies.
+# - Offline regression and profile-derived event-count checks do not certify live hardware operation or a particular CPU reduction on the Green.
+#
+# Changes V214.11 (2026-11-05):
+# - UNIT EXCLUSION: separate persistent U1/U2 switches exclude a unit from allocation, full-priority, balancing and managed charging. Switch ON means
+#   excluded; OFF means enabled. New installations default to enabled.
+# - NON-DELIVERY FIX: a latched non-delivering unit is no longer repeatedly counted as available capacity. Stale positive work is cancelled through a
+#   bounded zero handoff; unverified output reservations remain conservative.
+# - SETTLING FIX: the transient 10s stall cap no longer causes repeated starts and stops. Delivery retries require settled, post-command physical evidence,
+#   continuous positive demand and 60s separation. Zero commands reset the retry episode; fresh targets cannot inherit exhausted interrupted attempts.
+# - SAFE RECOVERY: existing per-unit safe Output-0W reset scripts rearm a non-delivery pause only after fresh zero-limit and physical-zero evidence.
+# - PV-FIRST CHARGING: accepted fresh PV reduces AC supplementation for manual, top-maintenance and reserve charging. A zero AC target with real PV charging
+#   is valid. Material updates use quantization/cooldown and existing budgets.
+#   ChargeMaxLimit remains a requested value, not proof of a combined PV/AC cap.
+# - Firmware-owned calibration stays authoritative. Voltage/temperature guards, export protection, per-unit/system limits and V214.10 performance fixes stay.
+#   No new device topics, polling or faster periodic loops are introduced.
+# - Offline checks cover these interactions; live hardware response still needs observation. Hardware faults and inaccurate native SOC are not repaired by YAML.
+#
+# Changes V214.12 (2026-11-07):
+# - EXPORT SETTLING FIX: newer grid readings can no longer turn older output feedback from an unfinished reduction into fictitious household demand.
+#   Increases during settling are bounded by measured import beyond the deadband. Reductions and genuine load changes remain responsive.
+# - LIVE MQTT GUARD: the same unsettled-reduction permission is checked again immediately before a positive output publication, after existing waits.
+# - VOLTAGE RECOVERY FIX: remove the continuously active legacy upgrade exception. A 28-to-29% SOC crossing cannot release an early voltage stop;
+#   the existing fresh >=3.20V / 60s recovery qualification remains authoritative.
+# - GUARD LOAD: sensor bursts request one independent guard worker. Changes during a run produce one trailing evaluation of current conditions instead
+#   of a queue of duplicate runs. Cheap eligibility checks skip healthy units; attribute-only triggers and recording of the internal request are avoided.
+# - All V214.11 functions remain included. Device topics, periodic deadlines, write budgets, thermal/critical-voltage protection and charge ownership are
+#   retained. No new polling or cross-charge prevention is introduced.
+# - Validation is offline YAML/template and simulated-action testing; actual hardware timing and native SOC reporting still require observation.
 
 
 # Beta:
